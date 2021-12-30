@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="HexControl.Avalonia.HexEditorControl">
+
+    <Grid RowDefinitions="*,17" ColumnDefinitions="*,17">
+        <TextBox x:Name="FakeTextBox" Width="0" Height="0" Opacity="0" />
+        <ScrollBar Grid.Row="0" Grid.Column="1" Minimum="0" Orientation="Vertical" x:Name="VerticalScrollBar" />
+        <ScrollBar Grid.Row="1" Grid.Column="0" Minimum="0" Orientation="Horizontal" x:Name="HorizontalScrollBar" />
+    </Grid>
+</UserControl>

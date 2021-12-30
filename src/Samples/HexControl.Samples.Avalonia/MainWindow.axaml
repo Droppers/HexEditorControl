@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:avalonia="clr-namespace:HexControl.Avalonia;assembly=HexControl.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="HexControl.Samples.Avalonia.MainWindow"
+        Title="HexControl.Avalonia.Sample"
+        x:Name="Root">
+    <avalonia:HexEditorControl Document="{Binding Document}" />
+</Window>

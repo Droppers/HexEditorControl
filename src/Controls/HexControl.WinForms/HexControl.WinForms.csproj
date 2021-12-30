@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<LangVersion>10</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="SharpDX.Direct2D1" Version="4.2.0" />
+		<PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
+		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Update="HexEditorControl.cs" />
+	</ItemGroup>
+
+</Project>

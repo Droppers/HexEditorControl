@@ -1,0 +1,142 @@
+﻿using HexControl.SharedControl.Framework.Drawing.Text;
+using HexControl.SharedControl.Framework.Helpers;
+using HexControl.SharedControl.Framework.Host;
+
+namespace HexControl.SharedControl.Framework.Drawing;
+
+internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
+    where TNativeBrush : class where TNativePen : class
+{
+    private readonly RenderFactory<TNativeBrush, TNativePen> _factory;
+    private readonly LinkedList<IDisposable> _garbage;
+    protected readonly ObjectCache<ISharedBrush, TNativeBrush?> brushes;
+    protected readonly ObjectCache<ISharedPen, TNativePen?> pens;
+
+    private IRenderStateProvider? _stateProvider;
+
+    protected RenderContext(RenderFactory<TNativeBrush, TNativePen> factory)
+    {
+        _factory = factory;
+        brushes = new ObjectCache<ISharedBrush, TNativeBrush?>(brush =>
+            _factory.CreateBrush(brush));
+        pens = new ObjectCache<ISharedPen, TNativePen?>(pen => _factory.CreatePen(pen));
+
+        _garbage = new LinkedList<IDisposable>();
+    }
+
+    public RenderFactory Factory => _factory;
+
+    public virtual bool RequiresClear => false;
+    public virtual bool PreferTextLayout => false;
+
+    public void CollectGarbage()
+    {
+        var currentNode = _garbage.First;
+        while (currentNode != null)
+        {
+            var nextNode = currentNode.Next;
+            currentNode.Value.Dispose();
+            _garbage.Remove(currentNode);
+            currentNode = nextNode;
+        }
+    }
+
+    public bool CanRender { get; set; }
+
+    public void Clear(ISharedBrush? brush)
+    {
+        if (CanRender)
+        {
+            Clear(brushes[brush]);
+        }
+    }
+
+    public void DrawRectangle(ISharedBrush? brush, ISharedPen? pen, SharedRectangle rectangle)
+    {
+        if (CanRender)
+        {
+            DrawRectangle(brushes[brush], pens[pen], rectangle);
+        }
+    }
+
+    public void DrawPolygon(ISharedBrush? brush, ISharedPen? pen, IReadOnlyList<SharedPoint> points)
+    {
+        if (CanRender)
+        {
+            DrawPolygon(brushes[brush], pens[pen], points);
+        }
+    }
+
+    public void DrawLine(ISharedPen? pen, SharedPoint startPoint, SharedPoint endPoint)
+    {
+        if (CanRender)
+        {
+            DrawLine(pens[pen], startPoint, endPoint);
+        }
+    }
+
+    public void DrawGlyphRun(ISharedBrush? brush, SharedGlyphRun glyphRun)
+    {
+        if (CanRender)
+        {
+            DrawGlyphRun(brushes[brush], glyphRun);
+        }
+    }
+
+    public void DrawTextLayout(ISharedBrush? brush, SharedTextLayout layout)
+    {
+        if (CanRender)
+        {
+            DrawTextLayout(brushes[brush], layout);
+        }
+    }
+
+    public abstract void PushTranslate(double offsetX, double offsetY);
+
+    public abstract void PushClip(double x, double y, double width, double height);
+
+    public abstract void Pop();
+
+
+    public virtual void Begin() { }
+
+    public virtual void End() { }
+
+    public virtual void Dispose()
+    {
+        if (_stateProvider is not null)
+        {
+            _stateProvider.RenderStateChanged -= OnRenderStateChanged;
+            CanRender = false;
+        }
+
+        brushes.Dispose();
+        pens.Dispose();
+        CollectGarbage();
+    }
+
+    public void AttachStateProvider(IRenderStateProvider provider)
+    {
+        _stateProvider = provider;
+        CanRender = provider.CanRender;
+        provider.RenderStateChanged += OnRenderStateChanged;
+    }
+
+    private void OnRenderStateChanged(object? sender, RenderStateChangedEventArgs e)
+    {
+        CanRender = e.CanRender;
+    }
+
+    protected void AddGarbage(IDisposable disposable)
+    {
+        _garbage.AddLast(disposable);
+    }
+
+    protected abstract void Clear(TNativeBrush? brush);
+
+    protected abstract void DrawRectangle(TNativeBrush? brush, TNativePen? pen, SharedRectangle rectangle);
+    protected abstract void DrawLine(TNativePen? pen, SharedPoint startPoint, SharedPoint endPoint);
+    protected abstract void DrawPolygon(TNativeBrush? brush, TNativePen? pen, IReadOnlyList<SharedPoint> points);
+    protected abstract void DrawGlyphRun(TNativeBrush? brush, SharedGlyphRun sharedGlyphRun);
+    protected abstract void DrawTextLayout(TNativeBrush? brush, SharedTextLayout layout);
+}

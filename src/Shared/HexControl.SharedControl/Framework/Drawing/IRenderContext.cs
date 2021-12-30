@@ -1,0 +1,35 @@
+﻿using HexControl.SharedControl.Framework.Drawing.Text;
+using HexControl.SharedControl.Framework.Host;
+
+namespace HexControl.SharedControl.Framework.Drawing;
+
+public interface IRenderContextApi : IDisposable
+{
+    void Clear(ISharedBrush? brush);
+
+    void DrawRectangle(ISharedBrush? brush, ISharedPen? pen, SharedRectangle rectangle);
+    void DrawPolygon(ISharedBrush? brush, ISharedPen? pen, IReadOnlyList<SharedPoint> points);
+    void DrawLine(ISharedPen? pen, SharedPoint startPoint, SharedPoint endPoint);
+
+    void PushTranslate(double offsetX, double offsetY);
+    void PushClip(double x, double y, double width, double height);
+    void Pop();
+
+    void Begin();
+    void End();
+}
+
+internal interface IRenderContext : IRenderContextApi
+{
+    bool CanRender { get; set; }
+
+    bool PreferTextLayout { get; }
+    bool RequiresClear { get; }
+
+    RenderFactory Factory { get; }
+
+    void DrawGlyphRun(ISharedBrush? brush, SharedGlyphRun glyphRun);
+    void DrawTextLayout(ISharedBrush? brush, SharedTextLayout textLayout);
+
+    void CollectGarbage() { }
+}

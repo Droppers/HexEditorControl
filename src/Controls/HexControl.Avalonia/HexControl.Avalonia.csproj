@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<LangVersion>10</LangVersion>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="0.10.3" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Update="HexEditorControl.axaml.cs">
+			<DependentUpon>HexEditorControl.axaml</DependentUpon>
+		</Compile>
+	</ItemGroup>
+</Project>

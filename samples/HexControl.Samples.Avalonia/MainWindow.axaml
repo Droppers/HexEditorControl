@@ -5,7 +5,7 @@
         xmlns:avalonia="clr-namespace:HexControl.Avalonia;assembly=HexControl.Avalonia"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="HexControl.Samples.Avalonia.MainWindow"
-        Title="HexControl.Avalonia.Sample"
+        Title="Avalonia"
         x:Name="Root">
     <avalonia:HexEditorControl Document="{Binding Document}" />
 </Window>

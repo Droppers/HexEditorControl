@@ -46,7 +46,7 @@
             this.ClientSize = new System.Drawing.Size(787, 533);
             this.Controls.Add(this.hexEditorControl2);
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "WinForms";
             this.ResumeLayout(false);
 
         }

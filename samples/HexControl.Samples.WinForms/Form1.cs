@@ -10,7 +10,7 @@ public partial class Form1 : Form
     {
         InitializeComponent();
 
-        var document = Document.FromFile(@"..\..\..\..\..\..\files\sample-binary");
+        var document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
         hexEditorControl2.Document = document;
     }
 }

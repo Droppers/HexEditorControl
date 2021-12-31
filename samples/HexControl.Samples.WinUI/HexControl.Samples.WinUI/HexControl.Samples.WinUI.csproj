@@ -19,6 +19,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\Controls\HexControl.WinUI\HexControl.WinUI.csproj" />
+		<ProjectReference Include="..\..\..\src\Controls\HexControl.WinUI\HexControl.WinUI.csproj" />
 	</ItemGroup>
 </Project>

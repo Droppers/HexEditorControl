@@ -78,7 +78,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         
-        _doc = Document.FromFile(@"..\..\..\..\..\..\files\sample-binary");
+        _doc = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
         _doc.Buffer.Write(38, new byte[100]);
 
         Document = _doc;

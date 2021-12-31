@@ -21,6 +21,6 @@ public class MainWindow : Window
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
-        Document = Document.FromFile(@"..\..\..\..\..\..\files\sample-binary");
+        Document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
     }
 }

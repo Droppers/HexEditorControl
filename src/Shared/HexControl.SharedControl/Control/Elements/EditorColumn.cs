@@ -27,7 +27,7 @@ internal class EditorColumn : VisualElement
     
     private ColumnSide _activeColumn = ColumnSide.Left;
 
-    private SynchronizationContext? _syncContext;
+    private readonly SynchronizationContext? _syncContext;
     private bool _cursorTick;
 
     private Timer? _cursorTimer;
@@ -144,8 +144,11 @@ internal class EditorColumn : VisualElement
 
     private void InitCursorTimer()
     {
-        _cursorTimer = new Timer();
-        _cursorTimer.Interval = 500;
+        _cursorTimer = new Timer
+        {
+            Interval = 500,
+            Enabled = true
+        };
         _cursorTimer.Elapsed += (_, _) =>
         {
             _cursorTick = !_cursorTick;
@@ -159,7 +162,6 @@ internal class EditorColumn : VisualElement
                 Host?.Invalidate();
             }
         };
-        _cursorTimer.Enabled = true;
     }
 
     private void InitTextBox()

@@ -15,13 +15,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{D324
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Wpf", "src\Controls\HexControl.Wpf\HexControl.Wpf.csproj", "{36573113-0ACE-4CBF-8532-3C31469B33FF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.Wpf", "src\Samples\HexControl.Samples.Wpf\HexControl.Samples.Wpf.csproj", "{A0963ADB-64D4-428B-B484-A983F339F6ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.Wpf", "samples\HexControl.Samples.Wpf\HexControl.Samples.Wpf.csproj", "{A0963ADB-64D4-428B-B484-A983F339F6ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.Avalonia", "src\Samples\HexControl.Samples.Avalonia\HexControl.Samples.Avalonia.csproj", "{F9DF50A3-835F-496E-83A3-A8BDA0B7DAE2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.Avalonia", "samples\HexControl.Samples.Avalonia\HexControl.Samples.Avalonia.csproj", "{F9DF50A3-835F-496E-83A3-A8BDA0B7DAE2}"
 EndProject
-Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "HexControl.Samples.WinUI (Package)", "src\Samples\HexControl.Samples.WinUI\HexControl.Samples.WinUI (Package)\HexControl.Samples.WinUI (Package).wapproj", "{33F70B8F-010D-46F7-A2A8-12A8C7A49404}"
+Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "HexControl.Samples.WinUI (Package)", "samples\HexControl.Samples.WinUI\HexControl.Samples.WinUI (Package)\HexControl.Samples.WinUI (Package).wapproj", "{33F70B8F-010D-46F7-A2A8-12A8C7A49404}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.WinUI", "src\Samples\HexControl.Samples.WinUI\HexControl.Samples.WinUI\HexControl.Samples.WinUI.csproj", "{63909426-BCE7-4BF9-A55D-4604634E4395}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.WinUI", "samples\HexControl.Samples.WinUI\HexControl.Samples.WinUI\HexControl.Samples.WinUI.csproj", "{63909426-BCE7-4BF9-A55D-4604634E4395}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.WinUI", "src\Controls\HexControl.WinUI\HexControl.WinUI.csproj", "{12BABC1C-2A9B-49DF-BBAD-58F19FCC3509}"
 EndProject
@@ -29,7 +29,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Skia", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Direct2D", "src\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj", "{937DE1B7-DFCE-4EA3-A5D5-901F7E6E4AA2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.WinForms", "src\Samples\HexControl.Samples.WinForms\HexControl.Samples.WinForms.csproj", "{9B46702C-D4D2-41BA-BADD-76ACEE185CE6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.WinForms", "samples\HexControl.Samples.WinForms\HexControl.Samples.WinForms.csproj", "{9B46702C-D4D2-41BA-BADD-76ACEE185CE6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{20C9E993-FB9A-43D5-9BD7-25A5F72691C2}"
 EndProject

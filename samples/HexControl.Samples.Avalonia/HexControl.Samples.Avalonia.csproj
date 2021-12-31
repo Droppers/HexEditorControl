@@ -15,6 +15,6 @@
 		<PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.10" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\Controls\HexControl.Avalonia\HexControl.Avalonia.csproj" />
+		<ProjectReference Include="..\..\src\Controls\HexControl.Avalonia\HexControl.Avalonia.csproj" />
 	</ItemGroup>
 </Project>

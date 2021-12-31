@@ -18,7 +18,7 @@ For Avalonia the built-in `DrawingContext` is used, internally this context reli
  - GPU accelerated by default.
 
 **Disadvantages**
- - Slower on WPF compared to, for examplem SkiaSharp, but still acceptable performance.
+ - Slower on WPF compared to, for example, SkiaSharp, but still acceptable performance.
 
 ### SkiaSharp
 **Advantages**

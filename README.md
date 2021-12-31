@@ -32,7 +32,7 @@ For Avalonia the built-in `DrawingContext` is used, internally this context reli
 ### WriteableBitmap
 
 **Advantages**
- - CPU-based pixel rendering using WriteableBitmapEx is easy and fast, such as drawing non-aliased shapes.
+ - CPU-based pixel rendering using WriteableBitmapEx is easy and fast, such as drawing non-anti-aliased shapes.
 
 **Disavantages**
   - Drawing text is not straightforward, for this you need to pre-render glyphs with a predefined background color with for example GDI. When not pre-rendering with a background color, cleartype text will not be possible.

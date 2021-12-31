@@ -27,7 +27,7 @@ For Avalonia the built-in `DrawingContext` is used, internally this context reli
 **Disadvantages**
  - Having to include a 8MB native library: `libskiasharp.dll`.
  - No easy way to do GPU acceleration, it requires an OpenGL context, which in turn requires a native library such as `OpenTK.dll`.
- - ClearType text drawn with SkiaSharp does not "feel" like rendered text belonging to Windows UI frameworks compared to, say, GDI and Direct2D.
+ - ClearType text drawn with SkiaSharp does not "feel" like rendered text belonging to Windows UI frameworks compared to, say, GDI and Direct2D. The letters appear to be too thin and not crisp.
 
 ### WriteableBitmap
 

@@ -49,19 +49,10 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         var geometry = new StreamGeometry();
         using var ctx = geometry.Open();
 
-        var first = true;
-        foreach (var point in points)
+        ctx.BeginFigure(Convert(points[0]), true);
+        for (var i = 1; i < points.Count; i++)
         {
-            if (first)
-            {
-                ctx.BeginFigure(Convert(point), true);
-            }
-            else
-            {
-                ctx.LineTo(Convert(point));
-            }
-
-            first = false;
+            ctx.LineTo(Convert(points[i]));
         }
 
         Context.DrawGeometry(brush, pen, geometry);
@@ -130,16 +121,9 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     public override void Pop()
     {
-        try
+        if (_states.TryPop(out var state))
         {
-            if (_states.TryPop(out var state))
-            {
-                state.PushedState.Dispose();
-            }
-        }
-        catch
-        {
-            // TODO: lol very bad
+            state.PushedState.Dispose();
         }
     }
 

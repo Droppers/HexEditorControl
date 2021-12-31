@@ -1,6 +1,6 @@
 ﻿namespace HexControl.SharedControl.Framework.Helpers;
 
-public sealed class ObjectPool<TObject> : IDisposable
+internal sealed class ObjectPool<TObject> : IDisposable
     where TObject : new()
 {
     private readonly object _lock;
@@ -27,7 +27,7 @@ public sealed class ObjectPool<TObject> : IDisposable
         }
     }
 
-    public TObject Take()
+    public TObject Rent()
     {
         lock (_lock)
         {

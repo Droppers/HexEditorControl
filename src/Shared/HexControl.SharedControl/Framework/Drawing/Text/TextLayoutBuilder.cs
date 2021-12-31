@@ -52,7 +52,7 @@ internal class TextLayoutBuilder : ITextBuilder
 
         if (createBuilder)
         {
-            var builder = SbPool.Take();
+            var builder = SbPool.Rent();
             builder.Append(@char);
 
             var position = new SharedPoint(_startPosition.X + _index * 8, _startPosition.Y);

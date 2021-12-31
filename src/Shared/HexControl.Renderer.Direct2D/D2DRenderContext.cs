@@ -187,11 +187,13 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         if (!_instances.TryGetValue(sharedGlyphRun, out var glyphRun))
         {
             var typeface = (sharedGlyphRun.Typeface as D2DGlyphTypeface)?.Typeface;
-            glyphRun = new GlyphRun();
-            glyphRun.FontFace = typeface;
-            glyphRun.FontSize = (float)sharedGlyphRun.FontSize;
-            glyphRun.BidiLevel = 0;
-            glyphRun.IsSideways = false;
+            glyphRun = new GlyphRun
+            {
+                FontFace = typeface,
+                FontSize = (float)sharedGlyphRun.FontSize,
+                BidiLevel = 0,
+                IsSideways = false
+            };
             _instances[sharedGlyphRun] = glyphRun;
         }
 

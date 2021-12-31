@@ -128,7 +128,7 @@ internal class EventManager
 
     private void Tunnel(VisualElement startElement, string name, object sender, HandledEventArgs args)
     {
-        var queue = QueuePool.Take();
+        var queue = QueuePool.Rent();
         try
         {
             queue.Clear();
@@ -182,7 +182,7 @@ internal class EventManager
 
     private static VisualElement GetTargetElement(VisualElement startElement, Func<VisualElement, bool> predicate)
     {
-        var queue = QueuePool.Take();
+        var queue = QueuePool.Rent();
         try
         {
             queue.Clear();

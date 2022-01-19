@@ -30,6 +30,7 @@ public partial class HexEditorControl : UserControl
         _mapper = new HexControlPropertyMapper(control, factory);
         PropertyChanged += OnPropertyChanged;
 
+        AutoScaleMode = AutoScaleMode.Dpi;
         InitializeComponent();
 
         var host = new WinFormsHost(d2dControl)

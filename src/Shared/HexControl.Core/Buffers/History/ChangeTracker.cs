@@ -54,7 +54,7 @@ public class ChangeTracker
         }
 
         var pop = _undoStack.Pop();
-        Revert(pop, true);
+        ApplyChanges(pop, true);
         _redoStack.Push(pop);
 
         return pop.Modification;
@@ -68,35 +68,26 @@ public class ChangeTracker
         }
 
         var pop = _redoStack.Pop();
-        Revert(pop, false);
+        ApplyChanges(pop, false);
         _undoStack.Push(pop);
 
         return pop.Modification;
     }
 
-    private void Revert(ChangeCollection collection, bool revert)
+    private void ApplyChanges(ChangeCollection collection, bool revert)
     {
-        var groups = collection.Groups.Reverse();
-        foreach (var group in groups)
+        var (node, _) = _buffer.GetNodeAt(collection.ChangeOffset);
+        if (collection.StartAtPrevious && node?.Previous != null)
         {
-            ApplyChanges(collection.ChangeOffset, group.StartAtPrevious, group.Changes, revert);
-        }
-    }
-
-    private void ApplyChanges(long offset, bool startAtPrevious, IReadOnlyList<IChange> changes, bool revert)
-    {
-        var (node, _) = _buffer.GetNodeAt(offset);
-        if (startAtPrevious && node?.Previous != null)
-        {
-            (node, _) = _buffer.GetNodeAt(offset - 1);
+            (node, _) = _buffer.GetNodeAt(collection.ChangeOffset - 1);
         }
 
         var currentTargetNode = node;
-        for (var i = 0; i < changes.Count; i++)
+        for (var i = 0; i < collection.Count; i++)
         {
-            var change = changes[i];
+            var change = collection.Changes[i];
             var isInsertion = IsInsertChange(change, revert);
-            var nextIsInsertion = i + 1 < changes.Count && IsInsertChange(changes[i + 1], revert);
+            var nextIsInsertion = i + 1 < collection.Changes.Count && IsInsertChange(collection.Changes[i + 1], revert);
 
             var next = currentTargetNode?.Next;
             var (removed, insertedBefore, insertedAfter) = ApplyChange(change, currentTargetNode, revert);
@@ -134,7 +125,7 @@ public class ChangeTracker
 
         switch (change)
         {
-            case IChunkChange<VirtualChunk> virtualChange when currentNode?.Value is VirtualChunk virtualChunk:
+            case IChunkChange<ReadOnlyChunk> virtualChange when currentNode?.Value is ReadOnlyChunk virtualChunk:
                 Do(virtualChange, currentNode, virtualChunk, revert);
                 break;
             case IChunkChange<MemoryChunk> memoryChange when currentNode?.Value is MemoryChunk memoryChunk:

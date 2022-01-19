@@ -12,7 +12,7 @@ public class ModificationTests
 
     public ModificationTests()
     {
-        _buffer = new FileBuffer(@"D:\test\small-binary");
+        _buffer = new FileBuffer(@"..\..\..\..\..\files\sample.txt");
     }
 
     [Fact]

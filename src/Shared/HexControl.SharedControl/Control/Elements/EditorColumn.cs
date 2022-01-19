@@ -20,6 +20,7 @@ internal class EditorColumn : VisualElement
     private const int SPACING_BETWEEN_COLUMNS = 2;
 
     private readonly char[] _characterBuffer;
+    private readonly byte[] _readBuffer;
     private readonly ObjectCache<Color, ISharedBrush> _colorToBrushCache;
     private readonly List<Marker> _markers;
 
@@ -50,6 +51,7 @@ internal class EditorColumn : VisualElement
         _markers = new List<Marker>();
         _markerForegroundLookup = Array.Empty<ISharedBrush?>();
         _characterBuffer = new char[8];
+        _readBuffer = new byte[8];
 
         Bytes = Array.Empty<byte>();
         Modifications = new List<ModifiedRange>(25);
@@ -935,20 +937,20 @@ internal class EditorColumn : VisualElement
         _startSelectionOffset = null;
     }
 
-    private void SetCursorOffset(long offset, int nibble = 0, bool silent = false)
+    private void SetCursorOffset(long offset, int nibble = 0, bool scrollToCursor = false)
     {
         ResetCursorTick();
-        SetCursorOffset(Document?.Cursor.Column ?? ColumnSide.Left, offset, nibble, silent);
+        SetCursorOffset(Document?.Cursor.Column ?? ColumnSide.Left, offset, nibble, scrollToCursor);
     }
 
-    private void SetCursorOffset(ColumnSide column, long offset, int nibble = 0, bool silent = false)
+    private void SetCursorOffset(ColumnSide column, long offset, int nibble = 0, bool scrollToCursor = false)
     {
         if (Document is null)
         {
             return;
         }
 
-        Document.ChangeCursor(column, offset, nibble, silent);
+        Document.ChangeCursor(column, offset, nibble, scrollToCursor);
         ResetCursorTick();
     }
 
@@ -1002,7 +1004,7 @@ internal class EditorColumn : VisualElement
         var startOffset = newOffset >= _startSelectionOffset ? _startSelectionOffset.Value : newOffset;
         var endOffset = newOffset >= _startSelectionOffset ? newOffset : _startSelectionOffset.Value;
 
-        SetCursorOffset(newOffset >= _startSelectionOffset.Value ? endOffset : startOffset, silent: true);
+        SetCursorOffset(newOffset >= _startSelectionOffset.Value ? endOffset : startOffset, scrollToCursor: true);
 
         if (startOffset == endOffset)
         {
@@ -1035,7 +1037,9 @@ internal class EditorColumn : VisualElement
         }
         else if (ctrlPressed && e.Key is HostKey.A)
         {
-            Document?.Select(0, Document?.Length ?? 0, _activeColumn);
+            _startSelectionOffset = 0;
+            Select(Document.Length, _activeColumn);
+            _startSelectionOffset = null;
         }
         else if (ctrlPressed && e.Key is HostKey.Z)
         {
@@ -1082,11 +1086,11 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private void TextBoxOnTextChanged(object? sender, ProxyTextChangedEventArgs e)
+    private async void TextBoxOnTextChanged(object? sender, ProxyTextChangedEventArgs e)
     {
         if (e.NewText.Length > 0)
         {
-            HandleWriteKey(e.NewText[^1]);
+            await HandleWriteKey(e.NewText[^1]);
         }
 
         if (sender is IHostTextBox textBox)
@@ -1095,7 +1099,7 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private void HandleWriteKey(char @char)
+    private async Task HandleWriteKey(char @char)
     {
         if (Document is null)
         {
@@ -1109,7 +1113,17 @@ internal class EditorColumn : VisualElement
 
         var characterSet = GetCharacterSetForColumn(cursor.Column);
         var relativeOffset = cursor.Offset - Offset;
-        var oldByte = appendToDocument ? (byte)0 : Bytes[relativeOffset];
+        var oldByte = (byte)0;
+
+        if (!appendToDocument)
+        {
+            var readByte = await ReadCursorByte(cursor);
+            if(readByte is null)
+            {
+                return;
+            }
+            oldByte = readByte.Value;
+        }
 
         // Write to byte and validate if it is possible to write this character
         if (!characterSet.TryWrite(oldByte, @char, cursor.Nibble, out var newByte))
@@ -1127,6 +1141,31 @@ internal class EditorColumn : VisualElement
         }
 
         HandleArrowKeys(Document, HostKey.Right);
+    }
+
+    private async Task<byte?> ReadCursorByte(Cursor cursor)
+    {
+        if(Document is null)
+        {
+            return null;
+        }
+
+        var relativeOffset = cursor.Offset - Offset;
+        if (relativeOffset < Bytes.Length)
+        {
+            return Bytes[relativeOffset];
+        }
+        else
+        {
+            // Allow for writing outside of current visible buffer
+            var readLength = await Document.Buffer.ReadAsync(cursor.Offset, _readBuffer);
+            if (readLength <= 0)
+            {
+                return null;
+            }
+
+            return _readBuffer[0];
+        }
     }
 
     private void HandleArrowKeys(Document document, HostKey key, bool jumpByte = false)
@@ -1166,7 +1205,8 @@ internal class EditorColumn : VisualElement
         offset = Math.Max(0, Math.Min(document.Length, offset));
         nibble = Math.Max(0, nibble);
 
-        SetCursorOffset(offset, nibble);
+        // TODO: Don't set cursor offset when selecting, this is already handeled by Select()
+        SetCursorOffset(offset, nibble, scrollToCursor: true);
         Select(offset, _activeColumn); // TODO, should be minus one?
     }
 

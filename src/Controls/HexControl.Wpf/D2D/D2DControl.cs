@@ -35,6 +35,7 @@ internal class D2DControl : Image, IRenderStateProvider
     private Dx11ImageSource? _d3dSurface;
     private Device? _device;
     private Texture2D? _renderTarget;
+    private readonly float _dpi = 2.5f;
 
     public D2DControl()
     {
@@ -132,8 +133,8 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _d2dFactory);
         Disposer.SafeDispose(ref _renderTarget);
 
-        var width = Math.Max((int)ActualWidth, 100);
-        var height = Math.Max((int)ActualHeight, 100);
+        var width = Math.Max((int)(ActualWidth * _dpi), 100);
+        var height = Math.Max((int)(ActualHeight * _dpi), 100);
 
         var renderDesc = new Texture2DDescription
         {
@@ -154,7 +155,7 @@ internal class D2DControl : Image, IRenderStateProvider
         var surface = _renderTarget.QueryInterface<Surface>();
 
         _d2dFactory = new Factory();
-        var rtp = new RenderTargetProperties(new PixelFormat(Format.Unknown, AlphaMode.Ignore));
+        var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Ignore));
         _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
 
         _d3dSurface.SetRenderTarget(_renderTarget);

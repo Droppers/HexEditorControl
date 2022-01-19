@@ -7,6 +7,7 @@ using HexControl.Core.Events;
 
 namespace HexControl.Core.Buffers;
 
+// TODO: move to file
 public record BufferModification(long Offset);
 
 public record WriteModification(long Offset, byte[] Bytes) : BufferModification(Offset);
@@ -15,6 +16,7 @@ public record InsertModification(long Offset, byte[] Bytes) : BufferModification
 
 public record DeleteModification(long Offset, long Length) : BufferModification(Offset);
 
+// TODO: move to file
 public enum ModificationSource
 {
     User,
@@ -22,6 +24,7 @@ public enum ModificationSource
     Redo
 }
 
+// TODO: move to file
 public class ModifiedEventArgs : EventArgs
 {
     public ModifiedEventArgs(BufferModification modification, ModificationSource source = ModificationSource.User)
@@ -34,6 +37,7 @@ public class ModifiedEventArgs : EventArgs
     public ModificationSource Source { get; }
 }
 
+// TODO: get rid if interface, only abstract class?
 public abstract class BaseBuffer : IBuffer
 {
     private readonly ArrayPool<byte> _arrayPool;
@@ -93,7 +97,7 @@ public abstract class BaseBuffer : IBuffer
 
             if ((chunk is not MemoryChunk || isLastChunk) && modificationStart != -1)
             {
-                modifications?.Add(new ModifiedRange(modificationStart, node.Next is null ? Length : currentOffset));
+                modifications?.Add(new ModifiedRange(modificationStart, currentOffset));
                 modificationStart = -1;
             }
 
@@ -123,14 +127,15 @@ public abstract class BaseBuffer : IBuffer
     // TODO: fill gaps with zeros, e.g. writing at 300 when document is completely empty, or writing past the length.
     public void Write(long writeOffset, byte[] writeBytes)
     {
-        var changes = new ChangeCollection(new WriteModification(writeOffset, writeBytes), writeOffset);
+        var oldLength = Length;
+        var changes = ChangeCollection.Write(writeOffset, writeBytes);
 
         var (node, currentOffset) = GetNodeAt(writeOffset);
 
         if (node == null)
         {
             changes.Add(InsertChunk(null, new MemoryChunk(this, writeBytes)));
-            PushChanges(changes);
+            PushChanges(changes, oldLength);
             return;
         }
 
@@ -142,7 +147,7 @@ public abstract class BaseBuffer : IBuffer
         }
         else if (writeOffset == currentOffset && node.Previous?.Value is MemoryChunk previousMemoryChunk)
         {
-            changes.StartAtPrevious();
+            changes.SetStartAtPrevious();
             WriteToMemoryChunk(changes, node.Previous, previousMemoryChunk.Length, writeBytes, previousMemoryChunk);
         }
         else if (writeOffset + writeBytes.Length > currentOffset + chunk.Length &&
@@ -166,18 +171,20 @@ public abstract class BaseBuffer : IBuffer
             WriteCreateNewMemoryChunk(node, relativeOffset, writeBytes, changes);
         }
 
-        PushChanges(changes);
+        PushChanges(changes, oldLength);
     }
 
     public void Insert(long insertOffset, byte[] insertBytes)
     {
+        var oldLength = Length;
+
         var (node, currentOffset) = GetNodeAt(insertOffset);
         if (node == null)
         {
             return;
         }
 
-        var changes = new ChangeCollection(new InsertModification(insertOffset, insertBytes), insertOffset);
+        var changes = ChangeCollection.Insert(insertOffset, insertBytes);
 
         var relativeOffset = insertOffset - currentOffset;
         var chunk = node.Value;
@@ -187,7 +194,7 @@ public abstract class BaseBuffer : IBuffer
         }
         else if (currentOffset == insertOffset && node.Previous?.Value is MemoryChunk previousChunk)
         {
-            changes.StartAtPrevious();
+            changes.SetStartAtPrevious();
             changes.Add(new InsertToMemoryChange(relativeOffset, insertBytes).Apply(this, node, previousChunk));
         }
         else if (insertOffset == 0)
@@ -203,19 +210,20 @@ public abstract class BaseBuffer : IBuffer
             InsertInMiddleOfChunk(node, relativeOffset, new MemoryChunk(this, insertBytes), changes);
         }
 
-        PushChanges(changes);
+        PushChanges(changes, oldLength);
     }
 
     public void Delete(long deleteOffset, long deleteLength)
     {
+        var oldLength = Length;
         var (node, currentOffset) = GetNodeAt(deleteOffset);
 
-        var changes = new ChangeCollection(new DeleteModification(deleteOffset, deleteLength), deleteOffset);
+        var changes = ChangeCollection.Delete(deleteOffset, deleteLength);
 
-        if (node?.Value is VirtualChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length)
+        if (node?.Value is ReadOnlyChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length && deleteOffset - currentOffset is not 0)
         {
             DeleteInMiddleOfChunk(changes, node, deleteOffset - currentOffset, deleteLength);
-            PushChanges(changes);
+            PushChanges(changes, oldLength);
             return;
         }
 
@@ -240,7 +248,7 @@ public abstract class BaseBuffer : IBuffer
             node = nextNode;
         }
 
-        PushChanges(changes);
+        PushChanges(changes, oldLength);
     }
 
     public void Undo()
@@ -330,12 +338,12 @@ public abstract class BaseBuffer : IBuffer
             Debug.WriteLine(
                 $"{chunk.GetType().Name} ({groupFirstChunk.GetType().Name}) ({chunk.Length}), {groupOffset} with length {groupLength}");
             groupLength += chunk.Length;
-            var nextIsDifferent = groupFirstChunk is MemoryChunk && next?.Value is VirtualChunk ||
-                                  groupFirstChunk is VirtualChunk && next?.Value is MemoryChunk;
+            var nextIsDifferent = groupFirstChunk is MemoryChunk && next?.Value is ReadOnlyChunk ||
+                                  groupFirstChunk is ReadOnlyChunk && next?.Value is MemoryChunk;
             if (nextIsDifferent && next?.Value.Length > pattern.Length || endReached || next is null)
             {
                 Debug.WriteLine($"SEARCH: {groupOffset} with length {groupLength} {nextIsDifferent}");
-                if (groupFirstChunk is VirtualChunk)
+                if (groupFirstChunk is ReadOnlyChunk)
                 {
                     var res = FindInVirtual(strategy, groupOffset, groupLength, backward);
                     if (res != -1)
@@ -386,10 +394,20 @@ public abstract class BaseBuffer : IBuffer
 
     protected abstract long FindInVirtual(IFindStrategy strategy, long startOffset, long length, bool backward);
 
-    private void PushChanges(ChangeCollection changes)
+    private void PushChanges(ChangeCollection changes, long oldLength)
     {
         Changes.Push(changes);
         OnModified(changes.Modification, ModificationSource.User);
+
+        if(oldLength != Length)
+        {
+            OnLengthChanged(oldLength, Length);
+        }
+    }
+
+    protected virtual void OnLengthChanged(long oldLength, long newLength)
+    {
+        LengthChanged?.Invoke(this, new LengthChangedEventArgs(oldLength, newLength));
     }
 
     protected virtual void OnModified(BufferModification modification, ModificationSource source)
@@ -451,7 +469,7 @@ public abstract class BaseBuffer : IBuffer
         byte[] writeBuffer,
         ChangeCollection changes)
     {
-        changes.StartAtPrevious();
+        changes.SetStartAtPrevious();
 
         var newChunk = new MemoryChunk(this, writeBuffer);
         changes.Add(InsertChunk(node, newChunk));
@@ -506,7 +524,7 @@ public abstract class BaseBuffer : IBuffer
             return;
         }
 
-        changes.StartAtPrevious();
+        changes.SetStartAtPrevious();
 
         var previous = node.Previous;
         RemoveFromChunk(changes, previous, previous.Value.Length - removeLength, removeLength, true);
@@ -538,19 +556,19 @@ public abstract class BaseBuffer : IBuffer
     {
         if (length >= node.Value.Length)
         {
-            changes.StartAtPrevious();
+            changes.SetStartAtPrevious();
             changes.Add(new RemoveChunkChange(changes.Count is 0 && node.Previous is null).Apply(this, node));
             return;
         }
 
         IChange change = node.Value switch
         {
-            VirtualChunk virtualChunk => new RemoveFromVirtualChange(offset, length).Apply(this, node, virtualChunk),
+            ReadOnlyChunk virtualChunk => new RemoveFromVirtualChange(offset, length).Apply(this, node, virtualChunk),
             MemoryChunk memoryChunk => new RemoveFromMemoryChange(offset, length).Apply(this, node, memoryChunk),
             _ => throw new NotSupportedException($"Chunk {node.Value.GetType().Name} not supported for removing.")
         };
 
-        changes.StartAtPrevious(offset is not 0);
+        changes.SetStartAtPrevious(offset is not 0);
         if (prependChange)
         {
             changes.Prepend(change);

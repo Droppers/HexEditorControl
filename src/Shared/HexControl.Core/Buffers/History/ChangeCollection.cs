@@ -2,74 +2,64 @@
 
 namespace HexControl.Core.Buffers.History;
 
-// TODO: Get rid of the whole groups thing. Groups will be determined based on the modification time difference instead (probably)
-internal class ChangeCollection
+public class ChangeCollection
 {
-    private readonly List<ChangeGroup> _groups;
+    private List<IChange> _changes;
+    private bool? _startAtPrevious;
 
     public ChangeCollection(BufferModification modification, long changeOffset)
     {
         Modification = modification;
         ChangeOffset = changeOffset;
-        _groups = new List<ChangeGroup>();
-        Next();
+
+        _changes = new List<IChange>();
     }
 
-    public int Count => Groups.Last().Changes.Count;
+    public static ChangeCollection Delete(long deleteOffset, long deleteLength)
+    {
+        return new ChangeCollection(new DeleteModification(deleteOffset, deleteLength), deleteOffset);
+    }
+
+    public static ChangeCollection Insert(long insertOffset, byte[] insertBytes)
+    {
+        return new ChangeCollection(new InsertModification(insertOffset, insertBytes), insertOffset);
+    }
+
+    public static ChangeCollection Write(long writeOffset, byte[] writeBytes)
+    {
+        return new ChangeCollection(new WriteModification(writeOffset, writeBytes), writeOffset);
+    }
+
+    public bool StartAtPrevious
+    {
+        get => _startAtPrevious ?? false; private set
+        {
+            if (_startAtPrevious is null)
+            {
+                _startAtPrevious = value;
+            }
+        }
+    }
+
+    public int Count => _changes.Count;
+
+    public IReadOnlyList<IChange> Changes => _changes;
 
     public BufferModification Modification { get; }
     public long ChangeOffset { get; }
 
-    public IEnumerable<ChangeGroup> Groups => _groups;
-
-    public void Next()
+    public void SetStartAtPrevious(bool startAtPrevious = true)
     {
-        _groups.Add(new ChangeGroup());
-    }
-
-    public void StartAtPrevious(bool startAtPrevious = true)
-    {
-        if (_groups.LastOrDefault() is { } group)
-        {
-            group.StartAtPrevious = startAtPrevious;
-        }
+        StartAtPrevious = startAtPrevious;
     }
 
     public void Prepend(IChange change)
     {
-        _groups.LastOrDefault()?.Changes.Insert(0, change);
+        _changes.Insert(0, change);
     }
 
     public void Add(IChange change)
     {
-        _groups.LastOrDefault()?.Changes.Add(change);
-    }
-
-    public class ChangeGroup
-    {
-        private bool _startAtPrevious;
-        private bool _startConfigured;
-
-        public ChangeGroup()
-        {
-            Changes = new List<IChange>();
-        }
-
-        public bool StartAtPrevious
-        {
-            get => _startAtPrevious;
-            set
-            {
-                if (_startConfigured)
-                {
-                    return;
-                }
-
-                _startConfigured = true;
-                _startAtPrevious = value;
-            }
-        }
-
-        public List<IChange> Changes { get; }
+        _changes.Add(change);
     }
 }

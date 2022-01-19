@@ -95,7 +95,7 @@ public class ValidatingBuffer : FileBuffer
 
                 switch (expectedChunk)
                 {
-                    case VirtualChunk virtualChunkA when actualChunk is VirtualChunk virtualChunkB:
+                    case ReadOnlyChunk virtualChunkA when actualChunk is ReadOnlyChunk virtualChunkB:
                         Assert.Equal(virtualChunkA.Length, virtualChunkB.Length);
                         Assert.Equal(virtualChunkA.SourceOffset, virtualChunkB.SourceOffset);
                         break;
@@ -159,7 +159,7 @@ public class ValidatingBuffer : FileBuffer
                 MemoryChunk memory =>
                     $"Memory({memory.Bytes.Length})", //$"Memory(new [] {{{string.Join(",", memory.Bytes)}}})",
                 FileChunk file => $"File({file.Length}, {file.SourceOffset})",
-                VirtualChunk _ => "Virtual()",
+                ReadOnlyChunk _ => "Virtual()",
                 _ => throw new InvalidOperationException("Chunk type is not supported.")
             });
         }

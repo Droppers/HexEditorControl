@@ -225,4 +225,18 @@ public partial class BaseBufferTests
 
         _buffer.ValidateUndoRedo();
     }
+
+    [Fact]
+    public void Delete_Undo_TwoSingleByte()
+    {
+        _buffer.Delete(10, 1);
+
+        _buffer.ValidateDelete(10, 1, expects =>
+            expects
+                .Length(544)
+                .File(10, 0)
+                .File(534, 12));
+
+        _buffer.ValidateUndoRedo();
+    }
 }

@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace HexControl.Core.Buffers.Chunks;
 
-public class FileChunk : VirtualChunk
+public class FileChunk : ReadOnlyChunk
 {
     private readonly MemoryMappedViewAccessor _accessor;
     private readonly MemoryMappedFile _file;

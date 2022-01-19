@@ -12,5 +12,7 @@ public partial class Form1 : Form
 
         var document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
         hexEditorControl2.Document = document;
+
+        AutoScaleMode = AutoScaleMode.Dpi;
     }
 }

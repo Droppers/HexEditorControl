@@ -21,16 +21,16 @@ public class Cursor
 
 public class CursorChangedEventArgs : EventArgs
 {
-    public CursorChangedEventArgs(Cursor oldCursor, Cursor newCursor, bool selection)
+    public CursorChangedEventArgs(Cursor oldCursor, Cursor newCursor, bool scrollToCursor)
     {
         OldCursor = oldCursor;
         NewCursor = newCursor;
-        Selection = selection;
+        ScrollToCursor = scrollToCursor;
     }
 
     public Cursor OldCursor { get; }
     public Cursor NewCursor { get; }
-    public bool Selection { get; }
+    public bool ScrollToCursor { get; }
 }
 
 internal record MarkerState(string Id, long Offset, long Length);
@@ -209,7 +209,7 @@ public class Document
     public static Document FromBuffer(byte[] bytes, DocumentConfiguration? configuration = null) =>
         new(new FileBuffer(""), configuration);
 
-    public void ChangeCursor(ColumnSide column, long offset, int nibble, bool selection = false)
+    public void ChangeCursor(ColumnSide column, long offset, int nibble, bool scrollToCursor = false)
     {
         var value = new Cursor(offset, nibble, column);
         if (!ValidateCursor(value))
@@ -220,7 +220,7 @@ public class Document
         var oldCursor = Cursor;
         Cursor = value;
 
-        OnCursorChanged(oldCursor, Cursor, selection);
+        OnCursorChanged(oldCursor, Cursor, scrollToCursor);
     }
 
     public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCursor = true,
@@ -308,9 +308,9 @@ public class Document
         Select(null);
     }
 
-    protected virtual void OnCursorChanged(Cursor oldCursor, Cursor newCursor, bool selection)
+    protected virtual void OnCursorChanged(Cursor oldCursor, Cursor newCursor, bool scrollToCursor)
     {
-        CursorChanged?.Invoke(this, new CursorChangedEventArgs(oldCursor, newCursor, selection));
+        CursorChanged?.Invoke(this, new CursorChangedEventArgs(oldCursor, newCursor, scrollToCursor));
     }
 
     protected virtual void OnSelectionChanged(Selection? oldArea, Selection? newArea, bool requestCenter)

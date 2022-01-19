@@ -30,15 +30,15 @@ internal class RemoveChunkChange : IBufferChange
     {
         if (contextNode is null)
         {
-            throw new InvalidOperationException("contextNode cannot be null.");
+            throw new ArgumentNullException(nameof(contextNode));
         }
 
         if (_removedChunk is null)
         {
-            throw new InvalidOperationException("There was no chunk to be restored.");
+            throw new InvalidOperationException("There is no chunk to be restored.");
         }
 
-        if (_atStart && contextNode.Previous == null)
+        if (_atStart && contextNode.Previous is null)
         {
             buffer.Chunks.AddFirst(_removedChunk.Clone());
         }

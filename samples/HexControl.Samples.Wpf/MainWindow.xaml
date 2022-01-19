@@ -10,7 +10,8 @@
     Height="450"
     mc:Ignorable="d">
     <Grid>
-        <wpf:HexEditorControl x:Name="EditorControl" Document="{Binding Document}" RenderApi="{Binding Api}" />
+        <wpf:HexEditorControl x:Name="EditorControl" Document="{Binding Document}" />
+        <!-- RenderApi="{Binding Api}" -->
         <StackPanel Margin="0,0,17,0">
             <Button
                 x:Name="Undo"

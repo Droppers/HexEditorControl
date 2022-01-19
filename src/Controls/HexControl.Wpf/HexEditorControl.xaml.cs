@@ -1,5 +1,7 @@
-﻿using System.Windows;
+﻿using System.Diagnostics;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
@@ -7,6 +9,7 @@ using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 using Microsoft.Win32;
+using Microsoft.Wpf.Interop.DirectX;
 
 namespace HexControl.Wpf;
 
@@ -27,7 +30,9 @@ public partial class HexEditorControl : UserControl
         typeof(HexRenderApi), typeof(HexEditorControl), new PropertyMetadata(null, OnPropertyChanged));
 
 #if D2D_RENDER
-    private readonly WpfD2DHost _host;
+    private WpfD2DInteropHost _host;
+    //private readonly Image _image;
+    //private readonly D3D11Image _d3dImage;
 #elif SKIA_RENDER
     private readonly WpfSkiaHost _host;
 #else
@@ -41,36 +46,56 @@ public partial class HexEditorControl : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
 
-#if D2D_RENDER
-        var d2dControl = new D2DControl();
-        Container.Children.Insert(0, d2dControl);
+//#if D2D_RENDER
+        //_image = new Image();
+        //_d3dImage = new D3D11Image();
+        //_image.Source = _d3dImage;
+        //Container.Children.Insert(0, _image);
 
-        var factory = new WpfNativeFactory();
-        _host = new WpfD2DHost(d2dControl)
-#elif SKIA_RENDER
-        var skiaCanvas = new SKElement();
-        Container.Children.Insert(0, skiaCanvas);
-        skiaCanvas.PaintSurface += SkiaCanvasOnPaintSurface;
+        //var d2dControl = new D2DControl();
+
+        //Container.Children.Insert(0, d2dControl);
+
+        //_host = new WpfD2DHost(d2dControl)
+//        var owner = Process.GetCurrentProcess().MainWindowHandle;
+//        _host = new WpfD2InteropDHost(owner, image, d3dImage)
+//#elif SKIA_RENDER
+//        var skiaCanvas = new SKElement();
+//        Container.Children.Insert(0, skiaCanvas);
+//        skiaCanvas.PaintSurface += SkiaCanvasOnPaintSurface;
         
-        _host = new WpfSkiaHost(skiaCanvas, new WpfSkiaRenderFactory())
-#else
-        _host = new WpfHost(this)
-#endif
-        {
-            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
-            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
-            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
-        };
+//        _host = new WpfSkiaHost(skiaCanvas, new WpfSkiaRenderFactory())
+//#else
+//        _host = new WpfHost(this)
+//#endif
+//        {
+//            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
+//            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
+//            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
+//        };
 
         Control = new SharedHexControl();
-        Control.AttachHost(_host);
+        //Control.AttachHost(_host);
 
+        var factory = new WpfNativeFactory();
         Mapper = new HexControlPropertyMapper(Control, factory);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         SystemEvents.PowerModeChanged += SystemEventsOnPowerModeChanged;
+
+        var factory = new WpfNativeFactory();
+
+        var window = Window.GetWindow(this);
+        var owner = new WindowInteropHelper(window).Handle;
+        _host = new WpfD2DInteropHost(owner, MainImage, InteropImage)
+        {
+            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
+            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
+            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
+        };
+        Control.AttachHost(_host);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

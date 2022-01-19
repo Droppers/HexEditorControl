@@ -404,7 +404,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             return;
         }
 
-        if (e.Selection)
+        if (e.ScrollToCursor)
         {
             if (Document.Cursor.Offset < Document.Offset)
             {
@@ -415,6 +415,10 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
                 Document.Offset = Document.Cursor.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
                                   Configuration.BytesPerRow;
             }
+
+
+            // TODO: not always necessary to invalidate when cursor has changed, for example when the selection has changed it will already be invalidated before.
+            //Host?.Invalidate();
         }
         else
         {
@@ -425,15 +429,13 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)
     {
         _offsetColumn.Length = Document?.Length ?? 0;
+        UpdateScrollbars();
+        UpdateChildDimensions();
     }
 
     private async void BufferOnModified(object? sender, ModifiedEventArgs e)
     {
-        // TODO: implement length changed event
-        _offsetColumn.Length = Document?.Length ?? 0;
-        UpdateScrollbars();
-        UpdateChildDimensions();
-
+        if(e.Modification.Offset
         // TODO: this should only be refreshed if the changes are actually visible on screen
         await RefreshDocument();
     }
@@ -673,6 +675,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     protected override void RenderAfter(IRenderContext context)
     {
         base.RenderAfter(context);
+
+        context.DrawRectangle(new ColorBrush(Color.Red), null, new SharedRectangle(10, 10, 100, 100));
 
         if (_renderApi is not null)
         {

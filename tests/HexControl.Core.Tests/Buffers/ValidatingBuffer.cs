@@ -145,7 +145,7 @@ public class ValidatingBuffer : FileBuffer
         }
     }
 
-    private IReadOnlyList<string> ConvertChunksToStrings(IReadOnlyList<IChunk> chunks)
+    private static IReadOnlyList<string> ConvertChunksToStrings(IReadOnlyList<IChunk> chunks)
     {
         var strings = new List<string>();
 

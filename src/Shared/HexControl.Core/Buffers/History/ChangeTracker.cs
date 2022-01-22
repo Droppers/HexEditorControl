@@ -114,7 +114,7 @@ public class ChangeTracker
         }
     }
 
-    public bool IsInsertChange(IChange change, bool revert) =>
+    private static bool IsInsertChange(IChange change, bool revert) =>
         change is RemoveChunkChange && revert || change is InsertNewChunkChange && !revert;
 
     private (bool removed, bool insertedBefore, bool insertedAfter) ApplyChange(IChange change,

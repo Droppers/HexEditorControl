@@ -33,7 +33,7 @@ internal class WpfD2DFactory : D2DRenderFactory
             new RawColor4(brush.Color.R / 255f, brush.Color.G / 255f,
                 brush.Color.B / 255f, brush.Color.A / 255f));
 
-    private PenStyle Convert(DashStyle dash) => throw new NotSupportedException("Cannot convert WPF dashes");
+    private static PenStyle Convert(DashStyle dash) => throw new NotSupportedException("Cannot convert WPF dashes");
 
     public override D2DPen CreatePen(ISharedPen pen)
     {

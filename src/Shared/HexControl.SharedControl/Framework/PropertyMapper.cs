@@ -22,7 +22,7 @@ internal abstract class PropertyMapper
 
     protected abstract TValue? GetValueInternal<TValue>(string? propertyName);
 
-    protected TTarget Cast<TTarget>(object value) => (TTarget)value;
+    protected static TTarget Cast<TTarget>(object value) => (TTarget)value;
 
     protected static TCast? CastNullable<TCast>(object? obj) => (TCast?)obj;
 }

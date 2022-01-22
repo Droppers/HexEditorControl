@@ -259,7 +259,7 @@ internal abstract class VisualElement : ObservableObject
         _children.Add(element);
     }
 
-    private void AttachAllToTree(VisualElement element, VisualElementTree attachTree)
+    private static void AttachAllToTree(VisualElement element, VisualElementTree attachTree)
     {
         element.AttachToTree(attachTree);
 
@@ -269,7 +269,7 @@ internal abstract class VisualElement : ObservableObject
         }
     }
 
-    private void AttachAllToHost(VisualElement element, IHostControl host)
+    private static void AttachAllToHost(VisualElement element, IHostControl host)
     {
         element.AttachHost(host);
 

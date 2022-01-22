@@ -435,7 +435,6 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private async void BufferOnModified(object? sender, ModifiedEventArgs e)
     {
-        if(e.Modification.Offset
         // TODO: this should only be refreshed if the changes are actually visible on screen
         await RefreshDocument();
     }

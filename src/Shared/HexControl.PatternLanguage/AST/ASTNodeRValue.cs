@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
@@ -41,11 +42,11 @@ internal class ASTNodeRValue : ASTNode
         Literal literal;
         if (pattern is PatternDataUnsigned or PatternDataEnum)
         {
-            literal = ReadValue<ulong>(evaluator, pattern) ?? 0;
+            literal = ReadValue<UInt128>(evaluator, pattern) ?? 0;
         }
         else if (pattern is PatternDataSigned)
         {
-            literal = ReadValue<long>(evaluator, pattern) ?? 0L;
+            literal = ReadValue<Int128>(evaluator, pattern) ?? 0L;
             //value = hex::signExtend(pattern.Size * 8, value); // TODO: impl
         }
         else if (pattern is PatternDataFloat)
@@ -207,7 +208,7 @@ internal class ASTNodeRValue : ASTNode
                         throw new Exception("cannot use custom type to index array");
                     default:
                     {
-                        var arrayIndex = (int)indexLiteral.ToSignedLong();
+                        var arrayIndex = (int)indexLiteral.ToInt128();
                         switch (currentPattern)
                         {
                             case PatternDataDynamicArray when arrayIndex >= searchScope.Count || arrayIndex < 0:
@@ -313,17 +314,17 @@ internal class ASTNodeRValue : ASTNode
         var endian = data.Endian;
 
         // TODO: readlocal should have endian conversions
-        if (typeof(T) == typeof(ulong))
+        if (typeof(T) == typeof(UInt128))
         {
             value = (T)(object)(data.Local
-                ? ReadLocal(evaluator, offset).ToUnsignedLong()
-                : buffer.ReadUInt64(offset, size, endian));
+                ? ReadLocal(evaluator, offset).ToUInt128()
+                : buffer.ReadUInt128(offset, size, endian));
         }
-        else if (typeof(T) == typeof(long))
+        else if (typeof(T) == typeof(Int128))
         {
             value = (T)(object)(data.Local
-                ? ReadLocal(evaluator, offset).ToSignedLong()
-                : buffer.ReadInt64(offset, size, endian));
+                ? ReadLocal(evaluator, offset).ToInt128()
+                : buffer.ReadInt128(offset, size, endian));
         }
         else if (typeof(T) == typeof(bool))
         {

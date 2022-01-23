@@ -208,12 +208,7 @@ internal class Token
 
         public override bool Equals(object? other)
         {
-            if (other is not EnumValue<T> otherValue)
-            {
-                return false;
-            }
-
-            return EqualityComparer<T>.Default.Equals(Value, otherValue.Value);
+            return other is EnumValue<T> otherValue && EqualityComparer<T>.Default.Equals(Value, otherValue.Value);
         }
 
         public override int GetHashCode() => Value.GetHashCode();

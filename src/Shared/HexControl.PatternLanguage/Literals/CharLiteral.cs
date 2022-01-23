@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage.Literals
@@ -10,9 +11,12 @@ namespace HexControl.PatternLanguage.Literals
     public class CharLiteral : Literal<AsciiChar>
     {
         public CharLiteral(AsciiChar value) : base(value) { }
-        public override ulong ToUnsignedLong() => Value;
+        public override UInt128 ToUInt128() => (byte)Value;
 
-        public override long ToSignedLong() => Value;
+        public override Int128 ToInt128() => (byte)Value;
+
+        public override long ToInt64() => Value;
+        public override ulong ToUInt64() => Value;
 
         public override double ToDouble() => Value;
 

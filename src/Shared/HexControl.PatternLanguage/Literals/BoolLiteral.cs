@@ -1,4 +1,5 @@
-﻿using HexControl.PatternLanguage.Types;
+﻿using HexControl.Core.Numerics;
+using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage.Literals;
 
@@ -6,8 +7,8 @@ public class BoolLiteral : Literal<bool>, IEqualityOperations
 {
     public BoolLiteral(bool value) : base(value) { }
 
-    public override AsciiChar ToChar() => (AsciiChar)(byte)ToUnsignedLong();
-    public override char ToChar16() => (char)ToUnsignedLong();
+    public override AsciiChar ToChar() => (AsciiChar)(byte)ToUInt128();
+    public override char ToChar16() => (char)ToUInt128();
 
     public BoolLiteral Equal(Literal other) => Value == other.ToBool();
 
@@ -35,9 +36,12 @@ public class BoolLiteral : Literal<bool>, IEqualityOperations
 
     public override double ToDouble() => Value ? 1 : 0;
 
-    public override long ToSignedLong() => Value ? 1 : 0;
+    public override Int128 ToInt128() => Value ? 1 : 0;
 
-    public override ulong ToUnsignedLong() => (ulong)(Value ? 1 : 0);
+    public override UInt128 ToUInt128() => (ulong)(Value ? 1 : 0);
+
+    public override long ToInt64() => Value ? 1 : 0;
+    public override ulong ToUInt64() => (ulong)(Value ? 1 : 0);
 
     public override bool ToBool() => Value;
 

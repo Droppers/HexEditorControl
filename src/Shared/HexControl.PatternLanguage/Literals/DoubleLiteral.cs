@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage.Literals
@@ -12,18 +13,21 @@ namespace HexControl.PatternLanguage.Literals
     {
         public DoubleLiteral(double value) : base(value) { }
 
-        public override AsciiChar ToChar() => (AsciiChar)(byte)ToUnsignedLong();
-        public override char ToChar16() => (char)ToUnsignedLong();
+        public override AsciiChar ToChar() => (AsciiChar)(byte)ToUInt128();
+        public override char ToChar16() => (char)ToUInt128();
 
-        public override long ToSignedLong()
+        public override Int128 ToInt128()
         {
-            return (long)Value;
+            return (Int128)Value;
         }
 
-        public override ulong ToUnsignedLong()
+        public override UInt128 ToUInt128()
         {
-            return (ulong)Value;
+            return (UInt128)Value;
         }
+
+        public override long ToInt64() => (long)Value;
+        public override ulong ToUInt64() => (ulong)Value;
 
         public override bool ToBool()
         {

@@ -46,7 +46,7 @@ internal class ASTNodeBitfield : AttributableASTNode
             {
                 StringLiteral => throw new Exception("bitfield field size cannot be a string"), // this
                 PatternDataLiteral => throw new Exception("bitfield field size cannot be a custom type"), // this
-                _ => (byte)literalNode.Literal.ToUnsignedLong()
+                _ => (byte)literalNode.Literal.ToUInt128()
             };
 
             // If a field is named padding, it was created through a padding expression and only advances the bit position

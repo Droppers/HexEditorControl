@@ -8,9 +8,9 @@ namespace HexControl.PatternLanguage.Literals
 {
     internal static class Extensions
     {
-        public static UInt64Literal Create(this ulong literal)
+        public static UInt128Literal Create(this ulong literal)
         {
-            return new UInt64Literal(literal);
+            return new UInt128Literal(literal);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using HexControl.Core.Helpers;
+using HexControl.Core.Numerics;
 
 namespace HexControl.Core.Buffers.Extensions;
 
@@ -12,7 +13,57 @@ public enum Endianess
 public static class BufferExtensions
 {
     private static readonly ExactArrayPool<byte> Pool = ExactArrayPool<byte>.Instance;
-    
+
+    // TODO: fix endian, reversing two separate arrays is wrong
+    public static Int128 ReadInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    {
+        if (offset + Int128.Size > buffer.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+        }
+
+        var bytes = Pool.Rent(Int128.Size / 2);
+        try
+        {
+            buffer.Read(offset, bytes);
+            var a = BitConverter.ToInt64(SwapEndianess(bytes, endianess));
+
+            buffer.Read(offset + Int128.Size / 2, bytes);
+            var b = BitConverter.ToInt64(SwapEndianess(bytes, endianess));
+            
+            return new Int128(a, b);
+        }
+        finally
+        {
+            Pool.Return(bytes);
+        }
+    }
+
+    // TODO: fix endian, reversing two separate arrays is wrong
+    public static UInt128 ReadUInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    {
+        if (offset + UInt128.Size > buffer.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+        }
+
+        var bytes = Pool.Rent(UInt128.Size / 2);
+        try
+        {
+            buffer.Read(offset, bytes);
+            var a = BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
+
+            buffer.Read(offset + UInt128.Size / 2, bytes);
+            var b = BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
+
+            return new UInt128(a, b);
+        }
+        finally
+        {
+            Pool.Return(bytes);
+        }
+    }
+
     public static long ReadInt64(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(long) > buffer.Length)

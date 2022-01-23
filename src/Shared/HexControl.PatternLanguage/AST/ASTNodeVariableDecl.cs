@@ -51,7 +51,7 @@ internal class ASTNodeVariableDecl : AttributableASTNode
             {
                 StringLiteral => throw new Exception("placement offset cannot be a string"), // this
                 PatternDataLiteral => throw new Exception("placement offset cannot be a custom type"), // this
-                _ => offsetNode.Literal.ToSignedLong()
+                _ => offsetNode.Literal.ToInt64()
             };
         }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.PatternLanguage.Types;
 
@@ -10,8 +11,12 @@ namespace HexControl.PatternLanguage.Literals
 {
     public abstract class Literal
     {
-        public abstract ulong ToUnsignedLong();
-        public abstract long ToSignedLong();
+        public abstract UInt128 ToUInt128();
+        public abstract Int128 ToInt128();
+
+        public abstract long ToInt64();
+        public abstract ulong ToUInt64();
+
         public abstract double ToDouble();
         public abstract bool ToBool();
         public abstract AsciiChar ToChar();
@@ -28,14 +33,14 @@ namespace HexControl.PatternLanguage.Literals
             return ToString()!;
         }
 
-        public static Int64Literal Create(long value)
+        public static Int128Literal Create(Int128 value)
         {
-            return new Int64Literal(value);
+            return new Int128Literal(value);
         }
 
-        public static UInt64Literal Create(ulong value)
+        public static UInt128Literal Create(UInt128 value)
         {
-            return new UInt64Literal(value);
+            return new UInt128Literal(value);
         }
 
         public static DoubleLiteral Create(double value)
@@ -68,8 +73,8 @@ namespace HexControl.PatternLanguage.Literals
             return new Char16Literal(value);
         }
 
-        public static implicit operator Literal(long value) => Create(value);
-        public static implicit operator Literal(ulong value) => Create(value);
+        public static implicit operator Literal(Int128 value) => Create(value);
+        public static implicit operator Literal(UInt128 value) => Create(value);
         public static implicit operator Literal(double value) => Create(value);
         public static implicit operator Literal(string value) => Create(value);
         public static implicit operator Literal(bool value) => Create(value);

@@ -43,7 +43,7 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
             {
                 StringLiteral => throw new Exception("placement offset cannot be a string"), // this
                 PatternDataLiteral => throw new Exception("placement offset cannot be a custom type"), // this
-                _ => offsetNode.Literal.ToSignedLong()
+                _ => offsetNode.Literal.ToInt64()
             };
         }
 
@@ -53,11 +53,11 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         
         var size = sizePattern.Size;
         var pointerAddress = evaluator.GetBuffer()
-            .ReadInt64(startOffset, (int)size, sizePattern.Endian);
+            .ReadInt128(startOffset, (int)size, sizePattern.Endian);
         
         var pattern = new PatternDataPointer(startOffset, size, evaluator)
         {
-            PointedAtAddress = pointerAddress,
+            PointedAtAddress = (long)pointerAddress,
             VariableName = _name,
             Endian = sizePattern.Endian
         };

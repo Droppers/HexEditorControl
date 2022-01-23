@@ -19,11 +19,11 @@ namespace Playground
             //var code = File.ReadAllText(@"Patterns\java_class.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
 
-            var code = File.ReadAllText(@"Patterns\pe.hexpat");
-            var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
+            //var code = File.ReadAllText(@"Patterns\pe.hexpat");
+            //var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
 
-            //var code = File.ReadAllText(@"Patterns\elf.hexpat");
-            //var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
+            var code = File.ReadAllText(@"Patterns\elf.hexpat");
+            var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
 
             //
             var buffer = document.Buffer;

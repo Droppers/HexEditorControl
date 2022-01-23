@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage
@@ -79,11 +80,11 @@ namespace HexControl.PatternLanguage
 
 
                 AddFunction(new string[] { "std", "mem" }, "find_sequence", MoreParametersThan | 1,(ctx, args) => {
-                    var occurrenceIndex = (int)args[0].ToSignedLong();
+                    var occurrenceIndex = (int)args[0].ToInt128();
 
                     var sequence = new List<byte>();
                     for (var i = 1; i < args.Count; i++) {
-                        var @byte = args[i].ToUnsignedLong();
+                        var @byte = args[i].ToUInt128();
 
                         if (@byte > 0xFF)
                         {
@@ -107,7 +108,7 @@ namespace HexControl.PatternLanguage
                                 continue;
                             }
 
-                            return Literal.Create((ulong)offset);
+                            return Literal.Create((Int128)offset);
                         }
                     }
 

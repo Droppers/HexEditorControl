@@ -148,7 +148,7 @@ internal abstract class AttributableASTNode : ASTNode
                     }
 
                     // TODO: literaltoUnsigned a bad choice??
-                    pointerPattern.PointedAtAddress = result.ToSignedLong() + pointerValue;
+                    pointerPattern.PointedAtAddress = result.ToInt64() + pointerValue;
                 }
                 else
                 {

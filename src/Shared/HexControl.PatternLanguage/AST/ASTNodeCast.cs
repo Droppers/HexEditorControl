@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.AST;
@@ -37,16 +38,16 @@ internal class ASTNodeCast : ASTNode
         var literal = literalNode.Literal;
         Literal castedLiteral = type switch
         {
-            Token.ValueType.Unsigned8Bit => (ulong)(byte)literal.ToUnsignedLong(),
-            Token.ValueType.Unsigned16Bit => (ulong)(ushort)literal.ToUnsignedLong(),
-            Token.ValueType.Unsigned32Bit => (ulong)(uint)literal.ToUnsignedLong(),
-            Token.ValueType.Unsigned64Bit => literal.ToUnsignedLong(),
-            Token.ValueType.Unsigned128Bit => literal.ToUnsignedLong(), // no 128 bit numbers
-            Token.ValueType.Signed8Bit => (long)(byte)literal.ToSignedLong(),
-            Token.ValueType.Signed16Bit => (long)(ushort)literal.ToSignedLong(),
-            Token.ValueType.Signed32Bit => (long)(uint)literal.ToSignedLong(),
-            Token.ValueType.Signed64Bit => literal.ToSignedLong(),
-            Token.ValueType.Signed128Bit => literal.ToSignedLong(), // no 128 bit numbers
+            Token.ValueType.Unsigned8Bit => (UInt128)(byte)literal.ToUInt128(),
+            Token.ValueType.Unsigned16Bit => (UInt128)(ushort)literal.ToUInt128(),
+            Token.ValueType.Unsigned32Bit => (UInt128)(uint)literal.ToUInt128(),
+            Token.ValueType.Unsigned64Bit => (UInt128)(long)literal.ToUInt128(),
+            Token.ValueType.Unsigned128Bit => literal.ToUInt128(),
+            Token.ValueType.Signed8Bit => (Int128)(byte)literal.ToInt128(),
+            Token.ValueType.Signed16Bit => (Int128)(ushort)literal.ToInt128(),
+            Token.ValueType.Signed32Bit => (Int128)(uint)literal.ToInt128(),
+            Token.ValueType.Signed64Bit => (Int128)(long)literal.ToInt128(),
+            Token.ValueType.Signed128Bit => literal.ToInt128(),
             Token.ValueType.Float => (float)literal.ToDouble(),
             Token.ValueType.Double => literal.ToDouble(),
             Token.ValueType.Character => literal.ToChar(),

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
@@ -124,7 +125,7 @@ namespace HexControl.PatternLanguage
                 var result = mainFunction.Body(this, Array.Empty<Literal>());
                 if (result is not null)
                 {
-                    var returnCode = result.ToSignedLong();
+                    var returnCode = result.ToInt128();
 
                     if (returnCode != 0)
                     {
@@ -299,11 +300,11 @@ namespace HexControl.PatternLanguage
                     throw new Exception("cannot determine type of auto variable"); // type
                 }
 
-                if (value is UInt64Literal)
+                if (value is UInt128Literal)
                 {
                     pattern = new PatternDataUnsigned(0, sizeof(ulong), this);
                 }
-                else if (value is Int64Literal)
+                else if (value is Int128Literal)
                 {
                     pattern = new PatternDataSigned(0, sizeof(long), this);
                 }
@@ -397,11 +398,11 @@ namespace HexControl.PatternLanguage
             {
                 if (pattern is PatternDataUnsigned)
                 {
-                    castedLiteral = Bitmask(doubleVal.ToUnsignedLong(), (byte)pattern.Size);
+                    castedLiteral = Bitmask(doubleVal.ToUInt128(), (byte)pattern.Size);
                 }
                 else if (pattern is PatternDataSigned)
                 {
-                    castedLiteral = Bitmask(doubleVal.ToSignedLong(), (byte)pattern.Size);
+                    castedLiteral = Bitmask(doubleVal.ToInt128(), (byte)pattern.Size);
                 }
                 else if (pattern is PatternDataFloat)
                 {
@@ -435,37 +436,37 @@ namespace HexControl.PatternLanguage
                         $"cannot cast type '{patternVal.Value.TypeName}' to type '{pattern.TypeName}'");
                 }
             }
-            else if (value is UInt64Literal or Int64Literal)
+            else if (value is UInt128Literal or Int128Literal)
             {
                 if (pattern is PatternDataUnsigned or PatternDataEnum)
                 {
-                    castedLiteral = Bitmask(value.ToUnsignedLong(), (byte)pattern.Size);
+                    castedLiteral = Bitmask(value.ToUInt128(), (byte)pattern.Size);
                 }
                 else if (pattern is PatternDataSigned)
                 {
-                    castedLiteral = Bitmask(value.ToSignedLong(), (byte)pattern.Size);
+                    castedLiteral = Bitmask(value.ToInt128(), (byte)pattern.Size);
                 }
                 else if (pattern is PatternDataCharacter)
                 {
-                    castedLiteral = (AsciiChar)(byte)value.ToUnsignedLong();
+                    castedLiteral = (AsciiChar)(byte)value.ToUInt128();
                 }
                 else if (pattern is PatternDataCharacter16)
                 {
-                    castedLiteral = (char)value.ToUnsignedLong();
+                    castedLiteral = (char)value.ToUInt128();
                 }
                 else if (pattern is PatternDataBoolean)
                 {
-                    castedLiteral = value.ToSignedLong() != 0;
+                    castedLiteral = value.ToInt128() != 0;
                 }
                 else if (pattern is PatternDataFloat)
                 {
-                    if (value is Int64Literal)
+                    if (value is Int128Literal)
                     {
-                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToSignedLong() : value.ToSignedLong();
+                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToInt128() : value.ToInt128();
                     }
                     else
                     {
-                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToUnsignedLong() : value.ToUnsignedLong();
+                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToUInt128() : value.ToUInt128();
                     }
 
                 }
@@ -483,16 +484,16 @@ namespace HexControl.PatternLanguage
             GetStack()[(int)pattern.Offset] = castedLiteral;
         }
 
-        private static long Bitmask(long input, byte size)
+        private static Int128 Bitmask(Int128 input, byte size)
         {
-            var mask = long.MaxValue;
-            return input & (mask >> (64 - size * 8));
+            var mask = Int128.MaxValue;
+            return input & (mask >> (128 - size * 8));
         }
 
-        private static ulong Bitmask(ulong input, byte size)
+        private static UInt128 Bitmask(UInt128 input, byte size)
         {
-            var mask = ulong.MaxValue;
-            return input & (mask >> (64 - size * 8));
+            var mask = UInt128.MaxValue;
+            return input & (mask >> (128 - size * 8));
         }
 
         public void Abort()
@@ -564,7 +565,7 @@ namespace HexControl.PatternLanguage
 
         public long CurrentOffset { get; set; } = 0;
 
-        private BaseBuffer _buffer = null;
+        private BaseBuffer _buffer = null!;
 
         private Endianess _defaultEndian = Endianess.Native;
         private long _evalDepth;

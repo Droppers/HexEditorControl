@@ -42,7 +42,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
             {
                 StringLiteral => throw new Exception("placement offset cannot be a string"),
                 PatternDataLiteral => throw new Exception("placement offset cannot be a custom type"),
-                _ => (int)offsetNode.Literal.ToSignedLong()
+                _ => (int)offsetNode.Literal.ToInt128()
             };
         }
 
@@ -88,7 +88,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 {
                     StringLiteral => throw new Exception("cannot use string to index array"),
                     PatternDataLiteral => throw new Exception("cannot use custom type to index array"),
-                    _ => (int)literalNode.Literal.ToSignedLong()
+                    _ => (int)literalNode.Literal.ToInt128()
                 };
             }
             else if (sizeNode is ASTNodeWhileStatement whileStatement)
@@ -211,7 +211,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 {
                     StringLiteral => throw new Exception("cannot use string to index array"),
                     PatternDataLiteral => throw new Exception("cannot use custom type to index array"),
-                    _ => (int)literalNode.Literal.ToSignedLong()
+                    _ => (int)literalNode.Literal.ToInt128()
                 };
 
                 var limit = evaluator.GetArrayLimit();

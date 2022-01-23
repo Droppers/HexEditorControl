@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage.Literals
@@ -76,12 +77,22 @@ namespace HexControl.PatternLanguage.Literals
             return string.Compare(Value, otherString.Value, StringComparison.Ordinal) < 0 || Value == otherString.Value;
         }
 
-        public override long ToSignedLong()
+        public override Int128 ToInt128()
         {
             throw new NotSupportedException("Cannot convert string to number.");
         }
 
-        public override ulong ToUnsignedLong()
+        public override UInt128 ToUInt128()
+        {
+            throw new NotSupportedException("Cannot convert string to number.");
+        }
+
+        public override long ToInt64()
+        {
+            throw new NotSupportedException("Cannot convert string to number.");
+        }
+
+        public override ulong ToUInt64()
         {
             throw new NotSupportedException("Cannot convert string to number.");
         }
@@ -103,7 +114,7 @@ namespace HexControl.PatternLanguage.Literals
 
         public Literal Multiply(Literal other)
         {
-            var times = other.ToSignedLong();
+            var times = other.ToInt128();
             var sb = new StringBuilder();
 
             for (var i = 0; i < times; i++)

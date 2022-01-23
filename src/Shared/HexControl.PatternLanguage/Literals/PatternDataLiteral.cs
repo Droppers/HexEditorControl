@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.PatternLanguage.Types;
 
@@ -12,9 +13,13 @@ namespace HexControl.PatternLanguage.Literals
     {
         public PatternDataLiteral(PatternData value) : base(value) { }
 
-        public override ulong ToUnsignedLong() => throw new Exception("cannot cast custom type to uint64");
+        public override UInt128 ToUInt128() => throw new Exception("cannot cast custom type to number");
 
-        public override long ToSignedLong() => throw new Exception("cannot cast custom type to int64");
+        public override Int128 ToInt128() => throw new Exception("cannot cast custom type to number");
+
+        public override ulong ToUInt64() => throw new Exception("cannot cast custom type to number");
+
+        public override long ToInt64() => throw new Exception("cannot cast custom type to number");
 
         public override double ToDouble() => throw new Exception("cannot cast custom type to double");
 

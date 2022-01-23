@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using HexControl.Core;
 using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
@@ -21,6 +22,14 @@ public class PatternDataUnion : PatternData, IInlinable
     public override PatternData Clone()
     {
         return new PatternDataUnion(this);
+    }
+
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        foreach (var member in Members)
+        {
+            member.CreateMarkers(markers);
+        }
     }
 
     public override long Offset

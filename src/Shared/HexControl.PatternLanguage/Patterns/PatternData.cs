@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
@@ -9,27 +11,35 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternData>
 {
+    private static long _currentColor;
+    private static readonly Color[] palette =
+{
+            System.Drawing.Color.Red,
+                        System.Drawing.Color.Green,            System.Drawing.Color.Blue,
+                                    System.Drawing.Color.Purple,
+                                                System.Drawing.Color.Orange,
+                                                            System.Drawing.Color.Yellow,
+                                                                        System.Drawing.Color.Pink,
+                                                                                    System.Drawing.Color.Maroon,
+                                                                                                System.Drawing.Color.Cyan,
+                                                                                                            System.Drawing.Color.LightGray,
+        };
 
     protected PatternData(long offset, long size, Evaluator evaluator, uint color = 0)
     {
         _offset = offset;
         Size = size;
         Evaluator = evaluator;
-        Color = color;
+        //Color = color; // TODO: Implement colors
 
-        // TODO: implement automatic color selection
-        //uint[] palette =
-        //{
-        //    0x70b4771f, 0x700e7fff, 0x702ca02c, 0x702827d6, 0x70bd6794, 0x704b568c, 0x70c277e3, 0x707f7f7f,
-        //    0x7022bdbc, 0x70cfbe17
-        //};
+
 
         //if (color != 0)
         //{
         //    return;
         //}
 
-        //Color = palette[SharedData.patternPaletteOffset++];
+        Color = palette[(int)(_currentColor++ % palette.Length)];
 
         //if (SharedData.patternPaletteOffset >= (palette.Length / sizeof(uint)))
         //{
@@ -57,7 +67,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     public string? TypeName { set; get; }
 
-    public uint Color { set; get; }
+    public Color? Color { set; get; }
 
     public Endianess Endian { set; get; } = Endianess.Native;
 
@@ -65,6 +75,16 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
     {
         set => _displayName = value;
         get => _displayName ?? VariableName;
+    }
+
+    public virtual void CreateMarkers(List<Marker> markers)
+    {
+        markers.Add(new Marker(Offset, Size)
+        {
+            Background = Color ?? System.Drawing.Color.White,
+            Foreground = Color is null ? System.Drawing.Color.Black : null,
+            BehindText = true
+        });
     }
 
     private Evaluator Evaluator { get; }
@@ -75,20 +95,6 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         
     public abstract string GetFormattedName();
 
-    public virtual Dictionary<long, uint>? GetHighlightedAddresses()
-    {
-        if (Hidden)
-        {
-            return null;
-        }
-
-        Dictionary<long, uint> result = new();
-        for (long i = 0; i < Size; i++)
-            result.Add(Offset + i, Color);
-
-        return result;
-    }
-        
     public virtual string ToString(BaseBuffer buffer)
     {
         return $"{TypeName} {VariableName} @ 0x{Offset:X}";

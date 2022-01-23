@@ -16,5 +16,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Controls\HexControl.Avalonia\HexControl.Avalonia.csproj" />
+		<ProjectReference Include="..\..\src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
 	</ItemGroup>
 </Project>

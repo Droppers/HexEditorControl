@@ -1,4 +1,7 @@
-﻿namespace HexControl.PatternLanguage.Patterns;
+﻿using HexControl.Core;
+using System.Collections.Generic;
+
+namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataPointer : PatternData
 {
@@ -18,7 +21,12 @@ public class PatternDataPointer : PatternData
         return new PatternDataPointer(this);
     }
 
-      
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        base.CreateMarkers(markers);
+        PointedAtPattern.CreateMarkers(markers);
+    }
+
     public override string GetFormattedName()
     {
         var result = $"{_pointedAt.GetFormattedName()}* : ";

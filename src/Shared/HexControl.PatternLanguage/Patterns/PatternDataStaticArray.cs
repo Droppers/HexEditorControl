@@ -1,4 +1,7 @@
-﻿namespace HexControl.PatternLanguage.Patterns;
+﻿using HexControl.Core;
+using System.Collections.Generic;
+
+namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataStaticArray : PatternData, IInlinable
 {
@@ -21,7 +24,18 @@ public class PatternDataStaticArray : PatternData, IInlinable
     {
         return new PatternDataStaticArray(this);
     }
-        
+
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        var entry = Template.Clone();
+
+        for (var address = Offset; address < Offset + Size; address += entry.Size)
+        {
+            entry.Offset = address;
+            entry.CreateMarkers(markers);
+        }
+    }
+
     public override string GetFormattedName()
     {
         return $"{Template.TypeName}[{EntryCount}]";
@@ -35,6 +49,10 @@ public class PatternDataStaticArray : PatternData, IInlinable
         {
             _template = value;
 
+            if (_template is null)
+            {
+                return;
+            }
             _template.Endian = value.Endian;
             _template.Parent = this;
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using HexControl.Core;
 using HexControl.Core.Buffers;
@@ -18,12 +19,11 @@ namespace Playground
             //var code = File.ReadAllText(@"Patterns\java_class.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
 
-            //var code = File.ReadAllText(@"Patterns\pe.hexpat");
-            //var document = Document.FromFile(@"C:\Users\joery\Downloads\python-3.9.0-amd64.exe");
+            var code = File.ReadAllText(@"Patterns\pe.hexpat");
+            var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
 
-
-            var code = File.ReadAllText(@"Patterns\elf.hexpat");
-            var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
+            //var code = File.ReadAllText(@"Patterns\elf.hexpat");
+            //var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
 
             //
             var buffer = document.Buffer;
@@ -33,15 +33,21 @@ namespace Playground
                 var parsed = LanguageParser.Parse(code);
             //}
 
-            for (var i = 0; i < 200; i++)
-            {
+            //for (var i = 0; i < 200; i++)
+            //{
                 var eval = new Evaluator();
                 eval.SetBuffer(buffer);
                 eval.SetEvaluationDepth(9999);
                 eval.SetArrayLimit(100000);
                 //eval.SetDefaultEndian(Endianess.Big);
                 var patterns = eval.Evaluate(parsed);
+
+            var markers = new List<Marker>();
+            foreach(var pattern in patterns)
+            {
+                pattern.CreateMarkers(markers);
             }
+            //}
 
             //new ConsoleVisualizer().Visualize(patterns);
 

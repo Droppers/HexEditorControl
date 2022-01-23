@@ -57,7 +57,7 @@ public enum VisibleColumns
 public class DocumentConfiguration : ObservableObject
 {
     private static readonly int[] ValidBytesPerRowValues = {8, 16, 24, 32, 48, 64, 128, 256, 512, 1024};
-    private int _bytesPerRow = 32;
+    private int _bytesPerRow = 16;
     private VisibleColumns _columnsVisible = VisibleColumns.HexText;
     private int _groupSize = 1;
 

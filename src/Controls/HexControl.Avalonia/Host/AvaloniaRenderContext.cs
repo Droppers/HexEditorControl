@@ -123,7 +123,12 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
     {
         if (_states.TryPop(out var state))
         {
-            state.PushedState.Dispose();
+            // TODO: remove temporary try catch
+            try
+            {
+                state.PushedState.Dispose();
+            }
+            catch { }
         }
     }
 

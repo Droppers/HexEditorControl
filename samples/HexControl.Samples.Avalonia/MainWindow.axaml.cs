@@ -2,6 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.Core;
+using HexControl.PatternLanguage;
+using System.Collections.Generic;
+using System.IO;
 
 namespace HexControl.Samples.Avalonia;
 
@@ -21,6 +24,26 @@ public class MainWindow : Window
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
-        Document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
+        //Document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
+
+        var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
+        var parsed = LanguageParser.Parse(code);
+        var eval = new Evaluator();
+        eval.SetBuffer(Document.Buffer);
+        eval.SetEvaluationDepth(9999);
+        eval.SetArrayLimit(100000);
+        var patterns = eval.Evaluate(parsed);
+
+        var markers = new List<Marker>();
+        foreach (var pattern in patterns)
+        {
+            pattern.CreateMarkers(markers);
+        }
+
+        foreach (var marker in markers)
+        {
+            Document.AddMarker(marker);
+        }
     }
 }

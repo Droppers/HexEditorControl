@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using HexControl.Core;
 using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
@@ -21,6 +22,14 @@ public class PatternDataDynamicArray : PatternData, IInlinable
     public override PatternData Clone()
     {
         return new PatternDataDynamicArray(this);
+    }
+
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        foreach (var entry in _entries)
+        {
+            entry.CreateMarkers(markers);
+        }
     }
 
     public override long Offset
@@ -85,4 +94,4 @@ public class PatternDataDynamicArray : PatternData, IInlinable
     }
 
     private readonly List<PatternData> _entries;
-};
+}

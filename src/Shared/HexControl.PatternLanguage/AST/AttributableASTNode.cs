@@ -65,7 +65,8 @@ internal abstract class AttributableASTNode : ASTNode
             if (name == "color" && requiresValue())
             {
                 var color = Convert.ToUInt32(value!, 16);
-                pattern.Color = color >> 8; // TODO: change endianness :)
+                //pattern.Color = color >> 8; // TODO: change endianness :)
+                // TODO: Implement color parsing to SYstem.Drawing.Color
             }
             else if (name == "name" && requiresValue())
             {

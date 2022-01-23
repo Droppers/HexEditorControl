@@ -13,8 +13,7 @@ public enum Endianess
 public static class BufferExtensions
 {
     private static readonly ExactArrayPool<byte> Pool = ExactArrayPool<byte>.Instance;
-
-    // TODO: fix endian, reversing two separate arrays is wrong
+    
     public static Int128 ReadInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + Int128.Size > buffer.Length)
@@ -26,11 +25,11 @@ public static class BufferExtensions
         try
         {
             buffer.Read(offset, bytes);
-            var a = BitConverter.ToInt64(SwapEndianess(bytes, endianess));
+            bytes = SwapEndianess(bytes, endianess);
 
-            buffer.Read(offset + Int128.Size / 2, bytes);
-            var b = BitConverter.ToInt64(SwapEndianess(bytes, endianess));
-            
+            var span = bytes.AsSpan();
+            var a = BitConverter.ToInt64(span.Slice(0, Int128.Size / 2));
+            var b = BitConverter.ToInt64(span.Slice(Int128.Size / 2, Int128.Size / 2));
             return new Int128(a, b);
         }
         finally
@@ -38,8 +37,7 @@ public static class BufferExtensions
             Pool.Return(bytes);
         }
     }
-
-    // TODO: fix endian, reversing two separate arrays is wrong
+    
     public static UInt128 ReadUInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + UInt128.Size > buffer.Length)
@@ -51,11 +49,11 @@ public static class BufferExtensions
         try
         {
             buffer.Read(offset, bytes);
-            var a = BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
+            bytes = SwapEndianess(bytes, endianess);
 
-            buffer.Read(offset + UInt128.Size / 2, bytes);
-            var b = BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
-
+            var span = bytes.AsSpan();
+            var a = BitConverter.ToUInt64(span.Slice(0, UInt128.Size / 2));
+            var b = BitConverter.ToUInt64(span.Slice(UInt128.Size / 2, UInt128.Size / 2));
             return new UInt128(a, b);
         }
         finally

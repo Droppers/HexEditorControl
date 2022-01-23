@@ -21,7 +21,7 @@ public static class BufferExtensions
             throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
         }
 
-        var bytes = Pool.Rent(Int128.Size / 2);
+        var bytes = Pool.Rent(Int128.Size);
         try
         {
             buffer.Read(offset, bytes);
@@ -45,7 +45,7 @@ public static class BufferExtensions
             throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
         }
 
-        var bytes = Pool.Rent(UInt128.Size / 2);
+        var bytes = Pool.Rent(UInt128.Size);
         try
         {
             buffer.Read(offset, bytes);

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Helpers;
 using HexControl.SharedControl.Framework.Host.Typeface;
 
@@ -6,8 +7,6 @@ namespace HexControl.SharedControl.Framework.Drawing.Text;
 
 internal class TextLayoutBuilder : ITextBuilder
 {
-    private static readonly ObjectPool<StringBuilder> SbPool = new(20);
-
     private readonly List<(ISharedBrush brush, SharedPoint position, StringBuilder builder)> _builders;
 
     private readonly List<SharedTextLayout> _layouts;
@@ -52,7 +51,8 @@ internal class TextLayoutBuilder : ITextBuilder
 
         if (createBuilder)
         {
-            var builder = SbPool.Rent();
+            var builder = ObjectPool<StringBuilder>.Shared.Rent();
+            builder.Clear();
             builder.Append(@char);
 
             var position = new SharedPoint(_startPosition.X + _index * 8, _startPosition.Y);
@@ -120,14 +120,19 @@ internal class TextLayoutBuilder : ITextBuilder
         for (var i = 0; i < _builders.Count; i++)
         {
             var (brush, position, builder) = _builders[i];
-            _layouts.Add(new SharedTextLayout(Typeface, Size, position)
-            {
-                Text = builder.ToString(),
-                Brush = brush
-            });
 
-            builder.Clear();
-            SbPool.Return(builder);
+            try
+            {
+                _layouts.Add(new SharedTextLayout(Typeface, Size, position)
+                {
+                    Text = builder.ToString(),
+                    Brush = brush
+                });
+            }
+            finally
+            {
+                ObjectPool<StringBuilder>.Shared.Return(builder);
+            }
         }
     }
 }

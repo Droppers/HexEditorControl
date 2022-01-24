@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Types;
 
@@ -44,22 +45,29 @@ namespace HexControl.PatternLanguage
     {
         private static string MatchTillInvalid(ReadOnlySpan<char> characters, Func<char, bool> predicate)
         {
-            // TODO: pooling
-            var ret = new StringBuilder();
-
-            var idx = 0;
-            while (idx < characters.Length && characters[idx] != 0x00)
+            var builder = ObjectPool<StringBuilder>.Shared.Rent();
+            try
             {
-                ret.Append(characters[idx]);
-                idx++;
+                builder.Clear();
 
-                if (!predicate(characters[idx]))
+                var idx = 0;
+                while (idx < characters.Length && characters[idx] != 0x00)
                 {
-                    break;
-                }
-            }
+                    builder.Append(characters[idx]);
+                    idx++;
 
-            return ret.ToString();
+                    if (!predicate(characters[idx]))
+                    {
+                        break;
+                    }
+                }
+
+                return builder.ToString();
+            }
+            finally
+            {
+                ObjectPool<StringBuilder>.Shared.Return(builder);
+            }
         }
 
         private static int? FindFirstNotOf(ReadOnlySpan<char> source, string chars)
@@ -330,31 +338,38 @@ namespace HexControl.PatternLanguage
                 return null;
             }
 
-            var size = 1;
+            var builder = ObjectPool<StringBuilder>.Shared.Rent();
 
-            // TODO: object pooling
-            var result = new StringBuilder();
-            while (value[size] != '\"')
+            try
             {
-                var character = GetCharacter(value[size..]);
-
-                if (character is null)
+                builder.Clear();
+                var size = 1;
+                while (value[size] != '\"')
                 {
-                    return null;
+                    var character = GetCharacter(value[size..]);
+
+                    if (character is null)
+                    {
+                        return null;
+                    }
+
+                    var (c, charSize) = character.Value;
+
+                    builder.Append(c);
+                    size += charSize;
+
+                    if (size >= value.Length)
+                    {
+                        return null;
+                    }
                 }
 
-                var (c, charSize) = character.Value;
-
-                result.Append(c);
-                size += charSize;
-
-                if (size >= value.Length)
-                {
-                    return null;
-                }
+                return (builder.ToString(), size + 1);
             }
-
-            return (result.ToString(), size + 1);
+            finally
+            {
+                ObjectPool<StringBuilder>.Shared.Return(builder);
+            }
         }
 
         private static (char, int)? GetCharacterLiteral(ReadOnlySpan<char> value)

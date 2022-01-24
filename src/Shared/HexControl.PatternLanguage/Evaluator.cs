@@ -43,6 +43,43 @@ namespace HexControl.PatternLanguage
         Break,
         Return
     };
+
+    public class EvaluationContext
+    {
+        private List<Scope> _scopes;
+
+        private int _previousScopeSize;
+
+        public EvaluationContext()
+        {
+            _scopes = new List<Scope>();
+        }
+
+        public record Scope(PatternData? Parent, List<PatternData> Variables);
+
+        public Scope GlobalScope => _scopes[0];
+
+        public void PushScope(PatternData parent)
+        {
+            var variables = new List<PatternData>();
+            _scopes.Add(new Scope(parent, variables));
+        }
+
+        public void PushScope()
+        {
+            // TODO: objectpool
+            var variables = new List<PatternData>();
+            _scopes.Add(new Scope(null, variables));
+
+            _previousScopeSize = 0;
+        }
+
+        public void PopScope()
+        {
+            _scopes.RemoveAt(_scopes.Count - 1);
+            // TODO: handle _previousScopeSize
+        }
+    }
     
     public class Evaluator
     {

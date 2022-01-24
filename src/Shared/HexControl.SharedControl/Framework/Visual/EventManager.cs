@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Helpers;
 
 namespace HexControl.SharedControl.Framework.Visual;

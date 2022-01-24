@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.AST;
 using HexControl.PatternLanguage.Literals;
 
@@ -158,15 +159,24 @@ internal class Parser
     
     private string GetNamespacePrefixedName(string name)
     {
-        var result = new StringBuilder();
-        foreach (var part in _currentNamespace.Last())
+        var builder = ObjectPool<StringBuilder>.Shared.Rent();
+
+        try
         {
-            result.Append(part).Append("::");
+            builder.Clear();
+            foreach (var part in _currentNamespace.Last())
+            {
+                builder.Append(part).Append("::");
+            }
+
+            builder.Append(name);
+
+            return builder.ToString();
         }
-
-        result.Append(name);
-
-        return result.ToString();
+        finally
+        {
+            ObjectPool<StringBuilder>.Shared.Return(builder);
+        }
     }
 
     private ASTNode ParseFunctionCall()
@@ -216,59 +226,73 @@ internal class Parser
 
     private string ParseNamespaceResolution()
     {
-        // TODO: pooling
-        var name = new StringBuilder();
-
-        while (true)
+        var builder = ObjectPool<StringBuilder>.Shared.Rent();
+        try
         {
-            name.Append(GetValue<Token.Identifier>(-1).Value);
+            builder.Clear();
+            while (true)
+            {
+                builder.Append(GetValue<Token.Identifier>(-1).Value);
 
-            if (Sequence(OperatorScoperesolution, Identifier))
-            {
-                name.Append("::");
+                if (Sequence(OperatorScoperesolution, Identifier))
+                {
+                    builder.Append("::");
+                }
+                else
+                {
+                    break;
+                }
             }
-            else
-            {
-                break;
-            }
+
+            return builder.ToString();
         }
-
-        return name.ToString();
+        finally
+        {
+            ObjectPool<StringBuilder>.Shared.Return(builder);
+        }
     }
 
     private ASTNode ParseScopeResolution()
     {
-        var typeName = new StringBuilder();
+        var builder = ObjectPool<StringBuilder>.Shared.Rent();
 
-        while (true)
+        try
         {
-            typeName.Append(GetValue<Token.Identifier>(-1).Value);
-
-            if (Sequence(OperatorScoperesolution, Identifier))
+            builder.Clear();
+            while (true)
             {
-                if (Peek(OperatorScoperesolution) && Peek(Identifier, 1))
+                builder.Append(GetValue<Token.Identifier>(-1).Value);
+
+                if (Sequence(OperatorScoperesolution, Identifier))
                 {
-                    typeName.Append("::");
+                    if (Peek(OperatorScoperesolution) && Peek(Identifier, 1))
+                    {
+                        builder.Append("::");
+                    }
+                    else
+                    {
+                        var name = builder.ToString();
+                        if (!_types.ContainsKey(name))
+                        {
+                            throw new Exception($"cannot access scope of invalid type '{builder}'"); // -1
+                        }
+
+                        return Create(new ASTNodeScopeResolution(_types[name].Clone(),
+                            GetValue<Token.Identifier>(-1).Value));
+                    }
                 }
                 else
                 {
-                    var name = typeName.ToString();
-                    if (!_types.ContainsKey(name))
-                    {
-                        throw new Exception($"cannot access scope of invalid type '{typeName}'"); // -1
-                    }
-
-                    return Create(new ASTNodeScopeResolution(_types[name].Clone(),
-                        GetValue<Token.Identifier>(-1).Value));
+                    break;
                 }
             }
-            else
-            {
-                break;
-            }
-        }
 
-        throw new Exception("failed to parse scope resolution. Expected 'TypeName::Identifier'");
+            throw new Exception("failed to parse scope resolution. Expected 'TypeName::Identifier'");
+        }
+        finally
+        {
+            ObjectPool<StringBuilder>.Shared.Return(builder);
+        }
     }
 
     private ASTNode ParseRValue(ASTNodeRValue.Path path)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Types;
 
@@ -115,14 +116,23 @@ namespace HexControl.PatternLanguage.Literals
         public Literal Multiply(Literal other)
         {
             var times = other.ToInt128();
-            var sb = new StringBuilder();
 
-            for (var i = 0; i < times; i++)
+            var builder = ObjectPool<StringBuilder>.Shared.Rent();
+
+            try
             {
-                sb.Append(Value);
-            }
+                builder.Clear();
+                for (var i = 0; i < times; i++)
+                {
+                    builder.Append(Value);
+                }
 
-            return Create(sb.ToString());
+                return Create(builder.ToString());
+            }
+            finally
+            {
+                ObjectPool<StringBuilder>.Shared.Return(builder);
+            }
         }
 
         public Literal Subtract(Literal other)

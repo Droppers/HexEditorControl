@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HexControl.PatternLanguage.Patterns;
+using HexControl.PatternLanguage.Tokens;
 
 namespace HexControl.PatternLanguage.AST;
 
@@ -79,6 +79,6 @@ internal class ASTNodeBuiltinType : ASTNode
 
         pattern.TypeName = Token.GetTypeName(Type);
 
-        return new [] {pattern};
+        return new[] {pattern};
     }
 }

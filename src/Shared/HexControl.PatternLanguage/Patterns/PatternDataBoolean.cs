@@ -7,13 +7,7 @@ public class PatternDataBoolean : PatternData
 
     private PatternDataBoolean(PatternDataBoolean other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataBoolean(this);
-    }
-        
-    public override string GetFormattedName()
-    {
-        return "bool";
-    }
-};
+    public override PatternData Clone() => new PatternDataBoolean(this);
+
+    public override string GetFormattedName() => "bool";
+}

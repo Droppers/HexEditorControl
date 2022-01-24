@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HexControl.Core.Helpers;
-using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -34,7 +32,7 @@ internal class ASTNodeConditionalStatement : ASTNode
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
-        var scope = evaluator.GetScope(0).Entries;
+        var scope = evaluator.ScopeAt(0).Entries;
         var body = EvaluateCondition(evaluator) ? _trueBody : _falseBody;
 
         foreach (var node in body)
@@ -53,45 +51,23 @@ internal class ASTNodeConditionalStatement : ASTNode
     {
         var body = EvaluateCondition(evaluator) ? _trueBody : _falseBody;
 
-        var variables = evaluator.GetScope(0).Entries;
-        var startVariableCount = variables.Count;
-
-        evaluator.PushScope(null, variables);
+        var variables = evaluator.ScopeAt(0).Entries;
+        evaluator.PushScope(variables);
 
         foreach (var statement in body)
         {
             var result = statement.Execute(evaluator);
-            var ctrlStatement = evaluator.GetCurrentControlFlowStatement();
+            var ctrlStatement = evaluator.CurrentControlFlowStatement;
 
             if (ctrlStatement != ControlFlowStatement.None)
             {
-                CleanUpScope(evaluator, startVariableCount, variables.Count);
+                evaluator.PopScope(true);
                 return result;
             }
         }
 
-        CleanUpScope(evaluator, startVariableCount, variables.Count);
+        evaluator.PopScope(true);
         return null;
-    }
-
-    // TODO: modernize this
-    private static void CleanUpScope(Evaluator evaluator, int startVariableCount, int count)
-    {
-        var variables = evaluator.GetScope(0).Entries;
-        var stackSize = evaluator.GetStack().Count;
-        for (var i = startVariableCount; i < count; i++)
-        {
-            variables.RemoveAt(variables.Count - 1);
-            stackSize--;
-        }
-
-        if (stackSize < 0)
-        {
-            throw new Exception("stack pointer underflow!");
-        }
-
-        evaluator.GetStack().Shrink(stackSize);
-        evaluator.PopScope();
     }
 
     private bool EvaluateCondition(Evaluator evaluator)

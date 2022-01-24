@@ -30,10 +30,9 @@ public class MainWindow : Window
         Document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
         var parsed = LanguageParser.Parse(code);
         var eval = new Evaluator();
-        eval.SetBuffer(Document.Buffer);
-        eval.SetEvaluationDepth(9999);
-        eval.SetArrayLimit(100000);
-        var patterns = eval.Evaluate(parsed);
+        eval.EvaluationDepth = 9999;
+        eval.ArrayLimit = 100000;
+        var patterns = eval.Evaluate(Document.Buffer, parsed);
 
         var markers = new List<Marker>();
         foreach (var pattern in patterns)

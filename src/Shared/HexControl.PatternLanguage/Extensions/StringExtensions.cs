@@ -1,27 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace HexControl.PatternLanguage.Extensions
+namespace HexControl.PatternLanguage.Extensions;
+
+internal static class StringExtensions
 {
-    internal static class StringExtensions
+    public static string ReverseIt(this string str)
     {
-        public static string ReverseIt(this string str)
-        {
-            var array = str.ToCharArray();
-            Array.Reverse(array);
-            return new string(array);
-        } 
+        var array = str.ToCharArray();
+        Array.Reverse(array);
+        return new string(array);
+    }
 
-        public static void Shrink<T>(this List<T> list, int size)
+    public static void Shrink<T>(this List<T> list, int size)
+    {
+        var cur = list.Count;
+        if (size < cur)
         {
-            var cur = list.Count;
-            if (size < cur)
-            {
-                list.RemoveRange(size, cur - size);
-            }
+            list.RemoveRange(size, cur - size);
         }
     }
 }

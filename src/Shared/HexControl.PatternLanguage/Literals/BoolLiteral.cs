@@ -7,9 +7,6 @@ public class BoolLiteral : Literal<bool>, IEqualityOperations
 {
     public BoolLiteral(bool value) : base(value) { }
 
-    public override AsciiChar ToChar() => (AsciiChar)(byte)ToUInt128();
-    public override char ToChar16() => (char)ToUInt128();
-
     public BoolLiteral Equal(Literal other) => Value == other.ToBool();
 
     public BoolLiteral Greater(Literal other) => Value && !other.ToBool();
@@ -33,6 +30,9 @@ public class BoolLiteral : Literal<bool>, IEqualityOperations
     public BoolLiteral Or(Literal other) => Value || other.ToBool();
 
     public BoolLiteral Not(Literal other) => !Value && !other.ToBool();
+
+    public override AsciiChar ToChar() => (AsciiChar)(byte)ToUInt128();
+    public override char ToChar16() => (char)ToUInt128();
 
     public override double ToDouble() => Value ? 1 : 0;
 

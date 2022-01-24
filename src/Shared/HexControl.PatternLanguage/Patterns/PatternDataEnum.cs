@@ -17,17 +17,11 @@ public class PatternDataEnum : PatternData
         // TODO: should copy values?
     }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataEnum(this);
-    }
-
-    public override string GetFormattedName()
-    {
-        return $"enum {TypeName}";
-    }
-
     public IReadOnlyList<(Literal, string)> EnumValues { set; get; }
+
+    public override PatternData Clone() => new PatternDataEnum(this);
+
+    public override string GetFormattedName() => $"enum {TypeName}";
 
     public override bool Equals(object? obj)
     {

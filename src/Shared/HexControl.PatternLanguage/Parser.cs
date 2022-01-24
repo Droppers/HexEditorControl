@@ -5,127 +5,160 @@ using System.Linq;
 using System.Text;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
+using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
 using HexControl.PatternLanguage.Literals;
+using HexControl.PatternLanguage.Tokens;
 
 namespace HexControl.PatternLanguage;
 
 internal class Parser
 {
-    private static readonly Component KeywordStruct = new(Token.TokenType.Keyword, Token.Keyword.Struct);
-    private static readonly Component KeywordUnion = new(Token.TokenType.Keyword, Token.Keyword.Union);
-    private static readonly Component KeywordUsing = new(Token.TokenType.Keyword, Token.Keyword.Using);
-    private static readonly Component KeywordEnum = new(Token.TokenType.Keyword, Token.Keyword.Enum);
-    private static readonly Component KeywordBitfield = new(Token.TokenType.Keyword, Token.Keyword.Bitfield);
-    private static readonly Component KeywordLe = new(Token.TokenType.Keyword, Token.Keyword.LittleEndian);
-    private static readonly Component KeywordBe = new(Token.TokenType.Keyword, Token.Keyword.BigEndian);
-    private static readonly Component KeywordIf = new(Token.TokenType.Keyword, Token.Keyword.If);
-    private static readonly Component KeywordElse = new(Token.TokenType.Keyword, Token.Keyword.Else);
-    private static readonly Component KeywordParent = new(Token.TokenType.Keyword, Token.Keyword.Parent);
-    private static readonly Component KeywordThis = new(Token.TokenType.Keyword, Token.Keyword.This);
-    private static readonly Component KeywordWhile = new(Token.TokenType.Keyword, Token.Keyword.While);
-    private static readonly Component KeywordFor = new(Token.TokenType.Keyword, Token.Keyword.For);
-    private static readonly Component KeywordFunction = new(Token.TokenType.Keyword, Token.Keyword.Function);
-    private static readonly Component KeywordReturn = new(Token.TokenType.Keyword, Token.Keyword.Return);
-    private static readonly Component KeywordNamespace = new(Token.TokenType.Keyword, Token.Keyword.Namespace);
-    private static readonly Component KeywordIn = new(Token.TokenType.Keyword, Token.Keyword.In);
-    private static readonly Component KeywordOut = new(Token.TokenType.Keyword, Token.Keyword.Out);
-    private static readonly Component KeywordBreak = new(Token.TokenType.Keyword, Token.Keyword.Break);
-    private static readonly Component KeywordContinue = new(Token.TokenType.Keyword, Token.Keyword.Continue);
-    private static readonly Component Integer = new(Token.TokenType.Integer, (Literal)(ulong)0);
+    private static readonly Token KeywordStruct = CreateToken(Token.TokenType.Keyword, Token.Keyword.Struct);
+    private static readonly Token KeywordUnion = CreateToken(Token.TokenType.Keyword, Token.Keyword.Union);
+    private static readonly Token KeywordUsing = CreateToken(Token.TokenType.Keyword, Token.Keyword.Using);
+    private static readonly Token KeywordEnum = CreateToken(Token.TokenType.Keyword, Token.Keyword.Enum);
+    private static readonly Token KeywordBitfield = CreateToken(Token.TokenType.Keyword, Token.Keyword.Bitfield);
+    private static readonly Token KeywordLe = CreateToken(Token.TokenType.Keyword, Token.Keyword.LittleEndian);
+    private static readonly Token KeywordBe = CreateToken(Token.TokenType.Keyword, Token.Keyword.BigEndian);
+    private static readonly Token KeywordIf = CreateToken(Token.TokenType.Keyword, Token.Keyword.If);
+    private static readonly Token KeywordElse = CreateToken(Token.TokenType.Keyword, Token.Keyword.Else);
+    private static readonly Token KeywordParent = CreateToken(Token.TokenType.Keyword, Token.Keyword.Parent);
+    private static readonly Token KeywordThis = CreateToken(Token.TokenType.Keyword, Token.Keyword.This);
+    private static readonly Token KeywordWhile = CreateToken(Token.TokenType.Keyword, Token.Keyword.While);
+    private static readonly Token KeywordFor = CreateToken(Token.TokenType.Keyword, Token.Keyword.For);
+    private static readonly Token KeywordFunction = CreateToken(Token.TokenType.Keyword, Token.Keyword.Function);
+    private static readonly Token KeywordReturn = CreateToken(Token.TokenType.Keyword, Token.Keyword.Return);
+    private static readonly Token KeywordNamespace = CreateToken(Token.TokenType.Keyword, Token.Keyword.Namespace);
+    private static readonly Token KeywordIn = CreateToken(Token.TokenType.Keyword, Token.Keyword.In);
+    private static readonly Token KeywordOut = CreateToken(Token.TokenType.Keyword, Token.Keyword.Out);
+    private static readonly Token KeywordBreak = CreateToken(Token.TokenType.Keyword, Token.Keyword.Break);
+    private static readonly Token KeywordContinue = CreateToken(Token.TokenType.Keyword, Token.Keyword.Continue);
+    private static readonly Token Integer = CreateToken(Token.TokenType.Integer, (UInt128)0);
 
-    private static readonly Component
-        Identifier = new(Token.TokenType.Identifier, ""); // TODO: shouldn't this be Token.Identifier?
+    private static readonly Token
+        Identifier = CreateToken(Token.TokenType.Identifier, ""); // TODO: shouldn't this be Token.Identifier?
 
-    private static readonly Component String = new(Token.TokenType.String, (Literal)"");
-    private static readonly Component OperatorAt = new(Token.TokenType.Operator, Token.Operator.AtDeclaration);
-    private static readonly Component OperatorAssignment = new(Token.TokenType.Operator, Token.Operator.Assignment);
-    private static readonly Component OperatorInherit = new(Token.TokenType.Operator, Token.Operator.Inherit);
-    private static readonly Component OperatorPlus = new(Token.TokenType.Operator, Token.Operator.Plus);
-    private static readonly Component OperatorMinus = new(Token.TokenType.Operator, Token.Operator.Minus);
-    private static readonly Component OperatorStar = new(Token.TokenType.Operator, Token.Operator.Star);
-    private static readonly Component OperatorSlash = new(Token.TokenType.Operator, Token.Operator.Slash);
-    private static readonly Component OperatorPercent = new(Token.TokenType.Operator, Token.Operator.Percent);
-    private static readonly Component OperatorShiftleft = new(Token.TokenType.Operator, Token.Operator.ShiftLeft);
-    private static readonly Component OperatorShiftright = new(Token.TokenType.Operator, Token.Operator.ShiftRight);
-    private static readonly Component OperatorBitor = new(Token.TokenType.Operator, Token.Operator.BitOr);
-    private static readonly Component OperatorBitand = new(Token.TokenType.Operator, Token.Operator.BitAnd);
-    private static readonly Component OperatorBitxor = new(Token.TokenType.Operator, Token.Operator.BitXor);
-    private static readonly Component OperatorBitnot = new(Token.TokenType.Operator, Token.Operator.BitNot);
-    private static readonly Component OperatorBoolequals = new(Token.TokenType.Operator, Token.Operator.BoolEquals);
-    private static readonly Component OperatorBoolnotequals = new(Token.TokenType.Operator, Token.Operator.BoolNotEquals);
+    private static readonly Token String = CreateToken(Token.TokenType.String, (Literal)"");
+    private static readonly Token OperatorAt = CreateToken(Token.TokenType.Operator, Token.Operator.AtDeclaration);
+    private static readonly Token OperatorAssignment = CreateToken(Token.TokenType.Operator, Token.Operator.Assignment);
+    private static readonly Token OperatorInherit = CreateToken(Token.TokenType.Operator, Token.Operator.Inherit);
+    private static readonly Token OperatorPlus = CreateToken(Token.TokenType.Operator, Token.Operator.Plus);
+    private static readonly Token OperatorMinus = CreateToken(Token.TokenType.Operator, Token.Operator.Minus);
+    private static readonly Token OperatorStar = CreateToken(Token.TokenType.Operator, Token.Operator.Star);
+    private static readonly Token OperatorSlash = CreateToken(Token.TokenType.Operator, Token.Operator.Slash);
+    private static readonly Token OperatorPercent = CreateToken(Token.TokenType.Operator, Token.Operator.Percent);
+    private static readonly Token OperatorShiftleft = CreateToken(Token.TokenType.Operator, Token.Operator.ShiftLeft);
+    private static readonly Token OperatorShiftright = CreateToken(Token.TokenType.Operator, Token.Operator.ShiftRight);
+    private static readonly Token OperatorBitor = CreateToken(Token.TokenType.Operator, Token.Operator.BitOr);
+    private static readonly Token OperatorBitand = CreateToken(Token.TokenType.Operator, Token.Operator.BitAnd);
+    private static readonly Token OperatorBitxor = CreateToken(Token.TokenType.Operator, Token.Operator.BitXor);
+    private static readonly Token OperatorBitnot = CreateToken(Token.TokenType.Operator, Token.Operator.BitNot);
+    private static readonly Token OperatorBoolequals = CreateToken(Token.TokenType.Operator, Token.Operator.BoolEquals);
 
-    private static readonly Component
-        OperatorBoolgreaterthan = new(Token.TokenType.Operator, Token.Operator.BoolGreaterThan);
+    private static readonly Token OperatorBoolnotequals =
+        CreateToken(Token.TokenType.Operator, Token.Operator.BoolNotEquals);
 
-    private static readonly Component OperatorBoollessthan = new(Token.TokenType.Operator, Token.Operator.BoolLessThan);
+    private static readonly Token
+        OperatorBoolgreaterthan = CreateToken(Token.TokenType.Operator, Token.Operator.BoolGreaterThan);
 
-    private static readonly Component OperatorBoolgreaterthanorequals =
-        new(Token.TokenType.Operator, Token.Operator.BoolGreaterThanOrEquals);
+    private static readonly Token OperatorBoollessthan =
+        CreateToken(Token.TokenType.Operator, Token.Operator.BoolLessThan);
 
-    private static readonly Component OperatorBoollessthanorequals =
-        new(Token.TokenType.Operator, Token.Operator.BoolLessThanOrEquals);
+    private static readonly Token OperatorBoolgreaterthanorequals =
+        CreateToken(Token.TokenType.Operator, Token.Operator.BoolGreaterThanOrEquals);
 
-    private static readonly Component OperatorBooland = new(Token.TokenType.Operator, Token.Operator.BoolAnd);
-    private static readonly Component OperatorBoolor = new(Token.TokenType.Operator, Token.Operator.BoolOr);
-    private static readonly Component OperatorBoolxor = new(Token.TokenType.Operator, Token.Operator.BoolXor);
-    private static readonly Component OperatorBoolnot = new(Token.TokenType.Operator, Token.Operator.BoolNot);
+    private static readonly Token OperatorBoollessthanorequals =
+        CreateToken(Token.TokenType.Operator, Token.Operator.BoolLessThanOrEquals);
 
-    private static readonly Component OperatorTernaryconditional =
-        new(Token.TokenType.Operator, Token.Operator.TernaryConditional);
+    private static readonly Token OperatorBooland = CreateToken(Token.TokenType.Operator, Token.Operator.BoolAnd);
+    private static readonly Token OperatorBoolor = CreateToken(Token.TokenType.Operator, Token.Operator.BoolOr);
+    private static readonly Token OperatorBoolxor = CreateToken(Token.TokenType.Operator, Token.Operator.BoolXor);
+    private static readonly Token OperatorBoolnot = CreateToken(Token.TokenType.Operator, Token.Operator.BoolNot);
 
-    private static readonly Component OperatorDollar = new(Token.TokenType.Operator, Token.Operator.Dollar);
-    private static readonly Component OperatorAddressof = new(Token.TokenType.Operator, Token.Operator.AddressOf);
-    private static readonly Component OperatorSizeof = new(Token.TokenType.Operator, Token.Operator.SizeOf);
+    private static readonly Token OperatorTernaryconditional =
+        CreateToken(Token.TokenType.Operator, Token.Operator.TernaryConditional);
 
-    private static readonly Component
-        OperatorScoperesolution = new(Token.TokenType.Operator, Token.Operator.ScopeResolution);
-    
-    private static readonly Component ValuetypePadding = new(Token.TokenType.ValueType, Token.ValueType.Padding);
-    private static readonly Component ValuetypeAny = new(Token.TokenType.ValueType, Token.ValueType.Any);
+    private static readonly Token OperatorDollar = CreateToken(Token.TokenType.Operator, Token.Operator.Dollar);
+    private static readonly Token OperatorAddressof = CreateToken(Token.TokenType.Operator, Token.Operator.AddressOf);
+    private static readonly Token OperatorSizeof = CreateToken(Token.TokenType.Operator, Token.Operator.SizeOf);
 
-    private static readonly Component SeparatorRoundbracketopen =
-        new(Token.TokenType.Separator, Token.Separator.RoundBracketOpen);
+    private static readonly Token
+        OperatorScoperesolution = CreateToken(Token.TokenType.Operator, Token.Operator.ScopeResolution);
 
-    private static readonly Component SeparatorRoundbracketclose =
-        new(Token.TokenType.Separator, Token.Separator.RoundBracketClose);
+    private static readonly Token ValuetypePadding = CreateToken(Token.TokenType.ValueType, Token.ValueType.Padding);
+    private static readonly Token ValuetypeAny = CreateToken(Token.TokenType.ValueType, Token.ValueType.Any);
 
-    private static readonly Component SeparatorCurlybracketopen =
-        new(Token.TokenType.Separator, Token.Separator.CurlyBracketOpen);
+    private static readonly Token SeparatorRoundbracketopen =
+        CreateToken(Token.TokenType.Separator, Token.Separator.RoundBracketOpen);
 
-    private static readonly Component SeparatorCurlybracketclose =
-        new(Token.TokenType.Separator, Token.Separator.CurlyBracketClose);
+    private static readonly Token SeparatorRoundbracketclose =
+        CreateToken(Token.TokenType.Separator, Token.Separator.RoundBracketClose);
 
-    private static readonly Component SeparatorSquarebracketopen =
-        new(Token.TokenType.Separator, Token.Separator.SquareBracketOpen);
+    private static readonly Token SeparatorCurlybracketopen =
+        CreateToken(Token.TokenType.Separator, Token.Separator.CurlyBracketOpen);
 
-    private static readonly Component SeparatorSquarebracketclose =
-        new(Token.TokenType.Separator, Token.Separator.SquareBracketClose);
+    private static readonly Token SeparatorCurlybracketclose =
+        CreateToken(Token.TokenType.Separator, Token.Separator.CurlyBracketClose);
 
-    private static readonly Component SeparatorComma = new(Token.TokenType.Separator, Token.Separator.Comma);
-    private static readonly Component SeparatorDot = new(Token.TokenType.Separator, Token.Separator.Dot);
+    private static readonly Token SeparatorSquarebracketopen =
+        CreateToken(Token.TokenType.Separator, Token.Separator.SquareBracketOpen);
 
-    private static readonly Component SeparatorEndofexpression =
-        new(Token.TokenType.Separator, Token.Separator.EndOfExpression);
+    private static readonly Token SeparatorSquarebracketclose =
+        CreateToken(Token.TokenType.Separator, Token.Separator.SquareBracketClose);
 
-    private static readonly Component SeparatorEndofprogram = new(Token.TokenType.Separator, Token.Separator.EndOfProgram);
-    private List<Token> _tokens;
-    private int _tokenIndex;
+    private static readonly Token SeparatorComma = CreateToken(Token.TokenType.Separator, Token.Separator.Comma);
+    private static readonly Token SeparatorDot = CreateToken(Token.TokenType.Separator, Token.Separator.Dot);
+
+    private static readonly Token SeparatorEndofexpression =
+        CreateToken(Token.TokenType.Separator, Token.Separator.EndOfExpression);
+
+    private static readonly Token SeparatorEndofprogram =
+        CreateToken(Token.TokenType.Separator, Token.Separator.EndOfProgram);
+
     private readonly List<List<string>> _currentNamespace = new();
-    
+
+    private readonly Dictionary<string, ASTNode> _types = new();
+
     private bool _hasReset = true;
 
     private int _originalTokenIndex;
+    private int _tokenIndex;
+    private IReadOnlyList<Token> _tokens;
 
-    private readonly Dictionary<string, ASTNode> _types = new();
-    
+    public Parser()
+    {
+        _tokens = new List<Token>();
+    }
+
+    private static Token CreateToken(Token.TokenType type, Token.Separator separator) =>
+        CreateToken(type, new Token.EnumValue<Token.Separator>(separator));
+
+    private static Token CreateToken(Token.TokenType type, Token.Operator @operator) =>
+        CreateToken(type, new Token.EnumValue<Token.Operator>(@operator));
+
+    private static Token CreateToken(Token.TokenType type, Token.Keyword keyword) =>
+        CreateToken(type, new Token.EnumValue<Token.Keyword>(keyword));
+
+    private static Token CreateToken(Token.TokenType type, Token.ValueType valueType) =>
+        CreateToken(type, new Token.EnumValue<Token.ValueType>(valueType));
+
+    private static Token CreateToken<TType>(Token.TokenType type, TType value)
+        where TType : Token.ITokenValue, IEquatable<TType> => new Token<TType>(type, value, -1);
+
+    private static Token CreateToken(Token.TokenType type, Literal literal) =>
+        CreateToken(type, new Token.LiteralValue(literal));
+
+    private static Token CreateToken(Token.TokenType type, string str) =>
+        CreateToken(type, new Token.IdentifierValue(str));
+
     public List<ASTNode>? Parse(List<Token> tokens)
     {
         _types.Clear();
         _currentNamespace.Clear();
         _currentNamespace.Add(new List<string>());
         _tokens = tokens;
-        
+
         var program = ParseTillToken(SeparatorEndofprogram);
 
         if (program.Count == 0 || _tokenIndex != _tokens.Count)
@@ -135,7 +168,7 @@ internal class Parser
 
         return program;
     }
-    
+
     private int GetLineNumber(int index) => _tokens[_tokenIndex + index].LineNumber;
 
 
@@ -145,18 +178,28 @@ internal class Parser
         return node;
     }
 
-    private T GetValue<T>(int index)
+    private T GetValue<T>(int index) where T : notnull
     {
         var token = _tokens[_tokenIndex + index];
-        return token.Value switch
+        return token switch
         {
-            T identifier => identifier,
-            Token.EnumValue<T> enumValue => enumValue.Value,
-            Token.LiteralValue {Literal: T value} => value,
+            Token<Token.EnumValue<T>> enumValue => enumValue.Value.Value,
+            Token<Token.LiteralValue> {Value: {Literal: T literal}} => literal,
             _ => throw new Exception("failed to decode token. Invalid type.")
         };
     }
-    
+
+    private Token.IdentifierValue GetIdentifier(int index)
+    {
+        var token = _tokens[_tokenIndex + index];
+        if (token is Token<Token.IdentifierValue> identifier)
+        {
+            return identifier.Value;
+        }
+
+        throw new Exception("failed to decode token. Expected an identifier.");
+    }
+
     private string GetNamespacePrefixedName(string name)
     {
         var builder = ObjectPool<StringBuilder>.Shared.Rent();
@@ -232,7 +275,7 @@ internal class Parser
             builder.Clear();
             while (true)
             {
-                builder.Append(GetValue<Token.Identifier>(-1).Value);
+                builder.Append(GetIdentifier(-1).Value);
 
                 if (Sequence(OperatorScoperesolution, Identifier))
                 {
@@ -261,7 +304,7 @@ internal class Parser
             builder.Clear();
             while (true)
             {
-                builder.Append(GetValue<Token.Identifier>(-1).Value);
+                builder.Append(GetIdentifier(-1).Value);
 
                 if (Sequence(OperatorScoperesolution, Identifier))
                 {
@@ -278,7 +321,7 @@ internal class Parser
                         }
 
                         return Create(new ASTNodeScopeResolution(_types[name].Clone(),
-                            GetValue<Token.Identifier>(-1).Value));
+                            GetIdentifier(-1).Value));
                     }
                 }
                 else
@@ -299,7 +342,7 @@ internal class Parser
     {
         if (Peek(Identifier, -1))
         {
-            path.Values.Add(GetValue<Token.Identifier>(-1).Value);
+            path.Values.Add(GetIdentifier(-1).Value);
         }
         else if (Peek(KeywordParent, -1))
         {
@@ -498,7 +541,7 @@ internal class Parser
         var node = ParseShiftExpression();
 
         while (Sequence(OperatorBoolgreaterthan) || Sequence(OperatorBoollessthan) ||
-                       Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals))
+               Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals))
         {
             var op = GetValue<Token.Operator>(-1);
             node = Create(new ASTNodeMathematicalExpression(node, ParseShiftExpression(), op));
@@ -616,7 +659,7 @@ internal class Parser
 
     private ASTNode ParseFunctionDefinition()
     {
-        var functionName = GetValue<Token.Identifier>(-2).Value;
+        var functionName = GetIdentifier(-2).Value;
         var @params = new List<(string, ASTNode)>();
 
         // Parse parameter list
@@ -628,7 +671,7 @@ internal class Parser
 
             if (Sequence(Identifier))
             {
-                @params.Add((GetValue<Token.Identifier>(-1).Value, type));
+                @params.Add((GetIdentifier(-1).Value, type));
             }
             else
             {
@@ -679,7 +722,7 @@ internal class Parser
 
         if (Sequence(Identifier))
         {
-            var identifier = GetValue<Token.Identifier>(-1).Value;
+            var identifier = GetIdentifier(-1).Value;
             statement = ParseMemberVariable(type);
 
             if (Sequence(OperatorAssignment))
@@ -769,7 +812,7 @@ internal class Parser
 
     private ASTNode ParseFunctionVariableAssignment()
     {
-        var lvalue = GetValue<Token.Identifier>(-2).Value;
+        var lvalue = GetIdentifier(-2).Value;
 
         var rvalue = ParseMathematicalExpression();
 
@@ -905,7 +948,7 @@ internal class Parser
                 throw new Exception("expected attribute expression");
             }
 
-            var attribute = GetValue<Token.Identifier>(-1).Value;
+            var attribute = GetIdentifier(-1).Value;
 
             if (Sequence(SeparatorRoundbracketopen, String, SeparatorRoundbracketclose))
             {
@@ -1080,18 +1123,18 @@ internal class Parser
 
             do
             {
-                variables.Add(Create(new ASTNodeVariableDecl(GetValue<Token.Identifier>(-1).Value, type.Clone())));
+                variables.Add(Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type.Clone())));
             } while (Sequence(SeparatorComma, Identifier));
 
             return Create(new ASTNodeMultiVariableDecl(variables));
         }
 
-        return Create(new ASTNodeVariableDecl(GetValue<Token.Identifier>(-1).Value, type));
+        return Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type));
     }
 
     private ASTNode ParseMemberArrayVariable(ASTNodeTypeDecl type)
     {
-        var name = GetValue<Token.Identifier>(-2).Value;
+        var name = GetIdentifier(-2).Value;
 
         ASTNode? size = null;
 
@@ -1117,7 +1160,7 @@ internal class Parser
 
     private ASTNode ParseMemberPointerVariable(ASTNodeTypeDecl type)
     {
-        var name = GetValue<Token.Identifier>(-2).Value;
+        var name = GetIdentifier(-2).Value;
 
         var sizeType = ParseType();
         if (sizeType.Type is not ASTNodeBuiltinType builtinType || !Token.IsUnsigned(builtinType.Type))
@@ -1228,7 +1271,7 @@ internal class Parser
 
     private ASTNode ParseStruct()
     {
-        var typeName = GetValue<Token.Identifier>(-1).Value;
+        var typeName = GetIdentifier(-1).Value;
 
         var structNode = Create(new ASTNodeStruct());
         var typeDecl = AddType(typeName, structNode);
@@ -1239,7 +1282,7 @@ internal class Parser
 
             do
             {
-                var inheritedTypeName = GetValue<Token.Identifier>(-1).Value;
+                var inheritedTypeName = GetIdentifier(-1).Value;
                 if (!_types.ContainsKey(inheritedTypeName))
                 {
                     throw new Exception($"cannot inherit from unknown type '{inheritedTypeName}'");
@@ -1269,7 +1312,7 @@ internal class Parser
 
     private ASTNode ParseUnion()
     {
-        var typeName = GetValue<Token.Identifier>(-2).Value;
+        var typeName = GetIdentifier(-2).Value;
 
         var unionNode = Create(new ASTNodeUnion());
         var typeDecl = AddType(typeName, unionNode);
@@ -1284,7 +1327,7 @@ internal class Parser
 
     private ASTNode ParseEnum()
     {
-        var typeName = GetValue<Token.Identifier>(-2).Value;
+        var typeName = GetIdentifier(-2).Value;
 
         var underlyingType = ParseType();
         if (underlyingType.Endian is not null)
@@ -1307,7 +1350,7 @@ internal class Parser
         {
             if (Sequence(Identifier, OperatorAssignment))
             {
-                var name = GetValue<Token.Identifier>(-2).Value;
+                var name = GetIdentifier(-2).Value;
                 var value = ParseMathematicalExpression();
 
                 enumNode.AddEntry(name, value);
@@ -1316,8 +1359,8 @@ internal class Parser
             else if (Sequence(Identifier))
             {
                 ASTNode valueExpr;
-                var name = GetValue<Token.Identifier>(-1).Value;
-                if (enumNode.GetEntries().Count == 0 || lastEntry is null)
+                var name = GetIdentifier(-1).Value;
+                if (enumNode.Entries.Count == 0 || lastEntry is null)
                 {
                     valueExpr = lastEntry = Create(new ASTNodeLiteral((ulong)0));
                 }
@@ -1357,7 +1400,7 @@ internal class Parser
 
     private ASTNode ParseBitfield()
     {
-        var typeName = GetValue<Token.Identifier>(-2).Value;
+        var typeName = GetIdentifier(-2).Value;
 
         var bitfieldNode = Create(new ASTNodeBitfield());
         var typeDecl = AddType(typeName, bitfieldNode);
@@ -1366,7 +1409,7 @@ internal class Parser
         {
             if (Sequence(Identifier, OperatorInherit))
             {
-                var name = GetValue<Token.Identifier>(-2).Value;
+                var name = GetIdentifier(-2).Value;
                 bitfieldNode.AddEntry(name, ParseMathematicalExpression());
             }
             else if (Sequence(ValuetypePadding, OperatorInherit))
@@ -1406,7 +1449,7 @@ internal class Parser
         var inVariable = false;
         var outVariable = false;
 
-        var name = GetValue<Token.Identifier>(-1).Value;
+        var name = GetIdentifier(-1).Value;
 
         ASTNode? placementOffset = null;
         if (Sequence(OperatorAt))
@@ -1427,7 +1470,7 @@ internal class Parser
 
     private ASTNode ParseArrayVariablePlacement(ASTNodeTypeDecl type)
     {
-        var name = GetValue<Token.Identifier>(-2).Value;
+        var name = GetIdentifier(-2).Value;
 
         ASTNode? size = null;
 
@@ -1462,7 +1505,7 @@ internal class Parser
 
     private ASTNode ParsePointerVariablePlacement(ASTNodeTypeDecl type)
     {
-        var name = GetValue<Token.Identifier>(-2).Value;
+        var name = GetIdentifier(-2).Value;
 
         var sizeType = ParseType();
         if (sizeType.Type is not ASTNodeBuiltinType builtinType || !Token.IsUnsigned(builtinType.Type))
@@ -1518,7 +1561,7 @@ internal class Parser
 
         while (true)
         {
-            _currentNamespace.Last().Add(GetValue<Token.Identifier>(-1).Value);
+            _currentNamespace.Last().Add(GetIdentifier(-1).Value);
 
             if (!Sequence(OperatorScoperesolution, Identifier))
             {
@@ -1620,7 +1663,7 @@ internal class Parser
 
         return new List<ASTNode>(new[] {statement});
     }
-    
+
     private ASTNodeTypeDecl AddType(string name, ASTNode node, Endianess? endian = null)
     {
         var typeName = GetNamespacePrefixedName(name);
@@ -1636,13 +1679,13 @@ internal class Parser
         return typeDecl;
     }
 
-    private List<ASTNode> ParseTillToken(Component component) => ParseTillToken(component.Type, component.Value);
+    //private List<ASTNode> ParseTillToken(Token component) => ParseTillToken(component.Type, component.Value);
 
-    private List<ASTNode> ParseTillToken(Token.TokenType endTokenType, object value)
+    private List<ASTNode> ParseTillToken(Token token)
     {
         var program = new List<ASTNode>();
         //this->m_curr->type != endTokenType || (*this->m_curr) != value
-        while (_tokens[_tokenIndex].Type != endTokenType || !_tokens[_tokenIndex].TokenValueEquals(value))
+        while (_tokens[_tokenIndex].Type != token.Type || !_tokens[_tokenIndex].TokenValueEquals(token))
         {
             foreach (var statement in ParseStatements())
             {
@@ -1682,8 +1725,8 @@ internal class Parser
         _hasReset = true;
         _tokenIndex = _originalTokenIndex;
     }
-    
-    private bool Sequence(params Component[] components)
+
+    private bool Sequence(params Token[] components)
     {
         Begin();
 
@@ -1700,8 +1743,8 @@ internal class Parser
 
         return true;
     }
-    
-    private bool SequenceNot(params Component[] components)
+
+    private bool SequenceNot(params Token[] components)
     {
         for (var i = 0; i < components.Length; i++)
         {
@@ -1716,8 +1759,8 @@ internal class Parser
         Reset();
         return false;
     }
-    
-    private bool OneOf(params Component[] components)
+
+    private bool OneOf(params Token[] components)
     {
         Begin();
 
@@ -1734,8 +1777,8 @@ internal class Parser
         Reset();
         return false;
     }
-    
-    private bool Variant(Component c1, Component c2)
+
+    private bool Variant(Token c1, Token c2)
     {
         Begin();
 
@@ -1764,37 +1807,37 @@ internal class Parser
     //    return true;
     //}
 
-    private bool Peek(Component component, int index = 0) =>
+    private bool Peek(Token component, int index = 0) =>
         //return Peek(component.Type, component.Value, index);
-        _tokens[_tokenIndex + index].Type == component.Type && _tokens[_tokenIndex + index].TokenValueEquals(component.Value);
+        _tokens[_tokenIndex + index].Type == component.Type && _tokens[_tokenIndex + index].TokenValueEquals(component);
 
-    private record Component(Token.TokenType Type, Token.ITokenValue Value)
-    {
-        public Component(Token.TokenType type, Token.Separator separator) : this(type,
-            new Token.EnumValue<Token.Separator>(separator))
-        {
-        }
+    //private record Component(Token.TokenType Type, Token.ITokenValue Value)
+    //{
+    //    public Component(Token.TokenType type, Token.Separator separator) : this(type,
+    //        new Token.EnumValue<Token.Separator>(separator))
+    //    {
+    //    }
 
-        public Component(Token.TokenType type, Token.Keyword keyword) : this(type,
-            new Token.EnumValue<Token.Keyword>(keyword))
-        {
-        }
+    //    public Component(Token.TokenType type, Token.Keyword keyword) : this(type,
+    //        new Token.EnumValue<Token.Keyword>(keyword))
+    //    {
+    //    }
 
-        public Component(Token.TokenType type, Token.Operator @operator) : this(type,
-            new Token.EnumValue<Token.Operator>(@operator))
-        {
-        }
+    //    public Component(Token.TokenType type, Token.Operator @operator) : this(type,
+    //        new Token.EnumValue<Token.Operator>(@operator))
+    //    {
+    //    }
 
-        public Component(Token.TokenType type, Token.ValueType valueType) : this(type,
-            new Token.EnumValue<Token.ValueType>(valueType))
-        {
-        }
+    //    public Component(Token.TokenType type, Token.ValueType valueType) : this(type,
+    //        new Token.EnumValue<Token.ValueType>(valueType))
+    //    {
+    //    }
 
-        public Component(Token.TokenType type, Literal literal) : this(type,
-            new Token.LiteralValue(literal))
-        {
-        }
-    }
+    //    public Component(Token.TokenType type, Literal literal) : this(type,
+    //        new Token.LiteralValue(literal))
+    //    {
+    //    }
+    //}
 
     //private bool Peek(Token.Type type, object value, int index = 0)
     //{

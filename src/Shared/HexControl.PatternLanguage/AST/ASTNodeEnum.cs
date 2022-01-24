@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -19,13 +18,15 @@ internal class ASTNodeEnum : AttributableASTNode
     private ASTNodeEnum(ASTNodeEnum other) : base(other)
     {
         _entries = new Dictionary<string, ASTNode>();
-        foreach (var (name, entry) in other.GetEntries())
+        foreach (var (name, entry) in other.Entries)
         {
             _entries.Add(name, entry.Clone());
         }
 
         _underlyingType = other._underlyingType.Clone();
     }
+
+    public IReadOnlyDictionary<string, ASTNode> Entries => _entries;
 
     public override ASTNode Clone() => new ASTNodeEnum(this);
 
@@ -43,13 +44,11 @@ internal class ASTNodeEnum : AttributableASTNode
         pattern.EnumValues = enumEntries;
 
         var underlying = _underlyingType.CreatePatterns(evaluator)[0];
-        pattern.Size = (underlying.Size);
+        pattern.Size = underlying.Size;
         pattern.Endian = underlying.Endian;
 
-        return new [] {pattern};
+        return new[] {pattern};
     }
-
-    public Dictionary<string, ASTNode> GetEntries() => _entries;
 
     public void AddEntry(string name, ASTNode expression)
     {

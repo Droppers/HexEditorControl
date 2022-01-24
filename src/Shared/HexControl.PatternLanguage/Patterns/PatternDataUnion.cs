@@ -6,7 +6,7 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataUnion : PatternData, IInlinable
 {
-    public bool Inlined { get; set; }
+    private readonly List<PatternData> _members;
 
     public PatternDataUnion(long offset, long size, Evaluator evaluator, uint color = 0)
         : base(offset, size, evaluator, color)
@@ -19,19 +19,6 @@ public class PatternDataUnion : PatternData, IInlinable
         _members = other._members.Clone();
     }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataUnion(this);
-    }
-
-    public override void CreateMarkers(List<Marker> markers)
-    {
-        foreach (var member in Members)
-        {
-            member.CreateMarkers(markers);
-        }
-    }
-
     public override long Offset
     {
         get => base.Offset;
@@ -41,16 +28,12 @@ public class PatternDataUnion : PatternData, IInlinable
             {
                 foreach (var member in _members)
                 {
-                    member.Offset = (value + (member.Offset - Offset));
+                    member.Offset = value + (member.Offset - Offset);
                 }
             }
+
             base.Offset = value;
         }
-    }
-
-    public override string GetFormattedName()
-    {
-        return $"union {TypeName}";
     }
 
     public IReadOnlyList<PatternData> Members
@@ -72,6 +55,20 @@ public class PatternDataUnion : PatternData, IInlinable
             }
         }
     }
+
+    public bool Inlined { get; set; }
+
+    public override PatternData Clone() => new PatternDataUnion(this);
+
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        foreach (var member in Members)
+        {
+            member.CreateMarkers(markers);
+        }
+    }
+
+    public override string GetFormattedName() => $"union {TypeName}";
 
     public override bool Equals(object? obj)
     {
@@ -95,6 +92,4 @@ public class PatternDataUnion : PatternData, IInlinable
 
         return base.Equals(obj);
     }
-
-    private readonly List<PatternData> _members;
 }

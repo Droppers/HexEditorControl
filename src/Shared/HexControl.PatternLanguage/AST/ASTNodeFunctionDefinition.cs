@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
-using HexControl.PatternLanguage.Patterns;
 
 namespace HexControl.PatternLanguage.AST;
 
@@ -23,7 +22,7 @@ internal class ASTNodeFunctionDefinition : ASTNode
     private ASTNodeFunctionDefinition(ASTNodeFunctionDefinition other) : base(other)
     {
         _name = other._name;
-        
+
         var @params = new List<(string, ASTNode)>(other._params.Count);
         foreach (var (name, type) in other._params)
         {
@@ -40,7 +39,7 @@ internal class ASTNodeFunctionDefinition : ASTNode
     {
         Literal? Executor(Evaluator ctx, IReadOnlyList<Literal> @params)
         {
-            ctx.PushScope(null, new List<PatternData>());
+            ctx.PushScope();
 
             var paramIndex = 0;
             foreach (var (name, type) in _params)
@@ -55,12 +54,12 @@ internal class ASTNodeFunctionDefinition : ASTNode
             {
                 var result = statement.Execute(ctx);
 
-                if (ctx.GetCurrentControlFlowStatement() == ControlFlowStatement.None)
+                if (ctx.CurrentControlFlowStatement == ControlFlowStatement.None)
                 {
                     continue;
                 }
 
-                var willBreak = ctx.GetCurrentControlFlowStatement() switch
+                var willBreak = ctx.CurrentControlFlowStatement switch
                 {
                     ControlFlowStatement.Break => throw new Exception("break statement not within a loop"),
                     //ctx.getConsole().abortEvaluation("break statement not within a loop", statement);
@@ -73,7 +72,7 @@ internal class ASTNodeFunctionDefinition : ASTNode
                     break;
                 }
 
-                ctx.SetCurrentControlFlowStatement(ControlFlowStatement.None);
+                ctx.CurrentControlFlowStatement = ControlFlowStatement.None;
                 ctx.PopScope();
                 return result;
             }

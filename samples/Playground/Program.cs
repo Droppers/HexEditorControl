@@ -16,19 +16,19 @@ namespace Playground
             //var code = File.ReadAllText(@"Patterns\zip.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\heapview-2021.3.0.zip");
 
-            //var code = File.ReadAllText(@"Patterns\java_class.hexpat");
-            //var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
+            var code = File.ReadAllText(@"Patterns\java_class.hexpat");
+            var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
 
             //var code = File.ReadAllText(@"Patterns\pe.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
 
-            var code = File.ReadAllText(@"Patterns\elf.hexpat");
-            var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
+            //var code = File.ReadAllText(@"Patterns\elf.hexpat");
+            //var document = Document.FromFile(@"C:\Users\joery\Downloads\elf-Linux-ARM64-bash");
 
             //
             var buffer = document.Buffer;
 
-            //for (var i = 0; i < 100; i++)
+            //for (var i = 0; i < 200; i++)
             //{
                 var parsed = LanguageParser.Parse(code);
             //}
@@ -36,17 +36,16 @@ namespace Playground
             //for (var i = 0; i < 200; i++)
             //{
                 var eval = new Evaluator();
-                eval.SetBuffer(buffer);
-                eval.SetEvaluationDepth(9999);
-                eval.SetArrayLimit(100000);
-                //eval.SetDefaultEndian(Endianess.Big);
-                var patterns = eval.Evaluate(parsed);
+                eval.EvaluationDepth = 9999;
+                eval.ArrayLimit = 100000;
+                eval.DefaultEndian = Endianess.Big;
+                var patterns = eval.Evaluate(buffer, parsed);
 
-            var markers = new List<Marker>();
-            foreach(var pattern in patterns)
-            {
-                pattern.CreateMarkers(markers);
-            }
+                var markers = new List<Marker>();
+                foreach (var pattern in patterns)
+                {
+                    pattern.CreateMarkers(markers);
+                }
             //}
 
             //new ConsoleVisualizer().Visualize(patterns);

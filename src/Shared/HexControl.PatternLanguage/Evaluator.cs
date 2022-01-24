@@ -1,139 +1,162 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.PatternLanguage.Types;
 
-namespace HexControl.PatternLanguage
+namespace HexControl.PatternLanguage;
+
+public enum DangerousFunctionPermission
 {
-    public static class ListExtensions
-    {
+    Ask,
+    Deny,
+    Allow
+}
 
-        public static T? PopLast<T>(this IList<T> list)
+internal enum ControlFlowStatement
+{
+    None,
+    Continue,
+    Break,
+    Return
+}
+
+public class Evaluator
+{
+    private static readonly ObjectPool<List<PatternData>> ScopePool = new(10);
+
+    private readonly Dictionary<string, ContentRegistry.FunctionRegistry.Function> _customFunctions;
+
+    private readonly Dictionary<string, Literal> _envVariables;
+    private readonly Dictionary<string, Literal> _inVariables;
+    private readonly Dictionary<string, long> _outVariables;
+
+    private readonly List<Scope> _scopes;
+    private readonly List<Literal> _stack;
+
+    public Evaluator()
+    {
+        _customFunctions = new Dictionary<string, ContentRegistry.FunctionRegistry.Function>();
+        _envVariables = new Dictionary<string, Literal>();
+        _inVariables = new Dictionary<string, Literal>();
+        _outVariables = new Dictionary<string, long>();
+
+        _scopes = new List<Scope>();
+        _stack = new List<Literal>();
+    }
+
+    public BaseBuffer Buffer { get; private set; } = null!;
+    public long CurrentOffset { get; set; }
+
+    internal IReadOnlyList<Scope> Scopes => _scopes;
+
+    internal Scope GlobalScope => _scopes.First();
+
+    internal bool IsGlobalScope => _scopes.Count == 1;
+
+    private IReadOnlyDictionary<string, Literal> OutVariables
+    {
+        get
         {
-            var last = list.LastOrDefault();
-            if (last is null)
+            var result = new Dictionary<string, Literal>();
+
+            foreach (var (name, offset) in _outVariables)
             {
-                return default;
+                result.Add(name, _stack[(int)offset]);
             }
 
-            list.RemoveAt(list.Count - 1);
-            return last;
+            return result;
         }
     }
 
-    public enum DangerousFunctionPermission
+    public Endianess DefaultEndian { get; set; }
+
+    public long EvaluationDepth { get; set; }
+
+    public long ArrayLimit { get; set; }
+
+    public long PatternLimit { get; set; }
+
+    public long PatternCount { get; set; }
+
+    public long LoopLimit { get; set; }
+
+    public IReadOnlyList<Literal> Stack => _stack;
+
+    public bool HasDangerousFunctionBeenCalled { get; private set; }
+
+    public bool AllowDangerousFunctions
     {
-        Ask,
-        Deny,
-        Allow
-    };
-
-    internal enum ControlFlowStatement
-    {
-        None,
-        Continue,
-        Break,
-        Return
-    };
-
-    public class EvaluationContext
-    {
-        private List<Scope> _scopes;
-
-        private int _previousScopeSize;
-
-        public EvaluationContext()
+        get => DangerousFunctionPermission is DangerousFunctionPermission.Allow;
+        set
         {
-            _scopes = new List<Scope>();
-        }
-
-        public record Scope(PatternData? Parent, List<PatternData> Variables);
-
-        public Scope GlobalScope => _scopes[0];
-
-        public void PushScope(PatternData parent)
-        {
-            var variables = new List<PatternData>();
-            _scopes.Add(new Scope(parent, variables));
-        }
-
-        public void PushScope()
-        {
-            // TODO: objectpool
-            var variables = new List<PatternData>();
-            _scopes.Add(new Scope(null, variables));
-
-            _previousScopeSize = 0;
-        }
-
-        public void PopScope()
-        {
-            _scopes.RemoveAt(_scopes.Count - 1);
-            // TODO: handle _previousScopeSize
+            DangerousFunctionPermission = value ? DangerousFunctionPermission.Allow : DangerousFunctionPermission.Deny;
+            HasDangerousFunctionBeenCalled = false;
         }
     }
-    
-    public class Evaluator
+
+    public DangerousFunctionPermission DangerousFunctionPermission { get; private set; } =
+        DangerousFunctionPermission.Ask;
+
+    internal ControlFlowStatement CurrentControlFlowStatement { get; set; }
+
+    public IReadOnlyDictionary<string, ContentRegistry.FunctionRegistry.Function> CustomFunctions => _customFunctions;
+
+    public IEnumerable<PatternData>? Evaluate(BaseBuffer buffer, ParsedLanguage parsed)
     {
-        public IEnumerable<PatternData>? Evaluate(ParsedLanguage parsed)
+        Buffer = buffer;
+
+        _stack.Clear();
+        _customFunctions.Clear();
+        _scopes.Clear();
+
+        if (DangerousFunctionPermission is DangerousFunctionPermission.Deny)
         {
-            _stack.Clear();
-            _customFunctions.Clear();
-            _scopes.Clear();
-            _aborted = false;
+            DangerousFunctionPermission = DangerousFunctionPermission.Ask;
+        }
 
-            if (_allowDangerousFunctions == DangerousFunctionPermission.Deny)
+        HasDangerousFunctionBeenCalled = false;
+        CurrentOffset = 0;
+
+        var patterns = new List<PatternData>();
+
+        //try {
+        CurrentControlFlowStatement = ControlFlowStatement.None;
+        PushScope(null, patterns);
+
+        foreach (var node in parsed.Nodes)
+        {
+            switch (node)
             {
-                _allowDangerousFunctions = DangerousFunctionPermission.Ask;
-            }
-
-            _dangerousFunctionCalled = false;
-            
-            CurrentOffset = 0x00;
-            _currentPatternCount = 0;
-
-            _customFunctionDefinitions.Clear();
-
-            var patterns = new List<PatternData>();
-
-            //try {
-            SetCurrentControlFlowStatement(ControlFlowStatement.None);
-            PushScope(null, patterns);
-
-            foreach (var node in parsed.Nodes)
-            {
-                if (node is ASTNodeTypeDecl)
-                {
-                    ; // Don't create patterns from type declarations
-                }
-                else if (node is ASTNodeFunctionCall)
-                {
+                case ASTNodeTypeDecl:
+                    // Don't create patterns from type declarations
+                    break;
+                case ASTNodeFunctionCall:
+                case ASTNodeFunctionDefinition:
                     node.Evaluate(this);
-                }
-                else if (node is ASTNodeFunctionDefinition)
-                {
-                    _customFunctionDefinitions.Add(node.Evaluate(this));
-                }
-                else if (node is ASTNodeVariableDecl varDeclNode)
-                {
+                    break;
+                case ASTNodeVariableDecl varDeclNode:
                     var pattern = node.CreatePatterns(this)[0];
 
-                    if (varDeclNode.GetPlacementOffset() is null)
+                    if (varDeclNode.PlacementOffset is null)
                     {
                         var type = varDeclNode.Type.Evaluate(this);
 
                         var name = pattern.VariableName;
-                        CreateVariable(name, type, null, varDeclNode.IsOutVariable());
+                        if (name is null)
+                        {
+                            throw new Exception("Variable name cannot be null.");
+                        }
 
-                        if (varDeclNode.IsInVariable() && _inVariables.ContainsKey(name))
+                        CreateVariable(name, type, null, varDeclNode.IsOutVariable);
+
+                        if (varDeclNode.IsInVariable && _inVariables.ContainsKey(name))
                         {
                             SetVariable(name, _inVariables[name]);
                         }
@@ -142,494 +165,340 @@ namespace HexControl.PatternLanguage
                     {
                         patterns.Add(pattern);
                     }
-                }
-                else
-                {
+
+                    break;
+                default:
                     var newPatterns = node.CreatePatterns(this);
                     patterns.AddRange(newPatterns);
-                }
+                    break;
             }
+        }
 
-            if (_customFunctions.ContainsKey("main"))
+        if (_customFunctions.TryGetValue("main", out var mainFunction))
+        {
+            if (mainFunction.ParameterCount > 0)
             {
-                var mainFunction = _customFunctions["main"];
-
-                if (mainFunction.ParameterCount > 0)
-                {
-                    throw new Exception("main function may not accept any arguments");
-                }
-
-                var result = mainFunction.Body(this, Array.Empty<Literal>());
-                if (result is not null)
-                {
-                    var returnCode = result.ToInt128();
-
-                    if (returnCode != 0)
-                    {
-                        throw new Exception($"non-success value returned from main: {returnCode}");
-                    }
-                }
+                throw new Exception("main function may not accept any arguments");
             }
 
-            PopScope();
-
-            return patterns;
-        }
-        
-        public record struct Scope {
-            public PatternData? Parent { get; init; }
-            public List<PatternData> Entries { get; init; } = new();
-        };
-
-        public void PushScope(PatternData? parent, List<PatternData> scope)
-        {
-            if (_scopes.Count > GetEvaluationDepth())
+            var result = mainFunction.Body(this, Array.Empty<Literal>());
+            if (result is not null)
             {
-                //LogConsole.abortEvaluation($"evaluation depth exceeded set limit of {getEvaluationDepth()}");
-                throw new Exception($"evaluation depth exceeded set limit of {GetEvaluationDepth()}");
-            }
+                var returnCode = result.ToInt128();
 
-            HandleAbort();
-
-            _scopes.Add(new Scope { Parent = parent, Entries = scope });
-        }
-
-        public void PopScope()
-        {
-            _scopes.PopLast();
-        }
-
-        public Scope GetScope(int index)
-        {
-            return _scopes[_scopes.Count - 1 + index];
-        }
-
-        public Scope GetGlobalScope()
-        {
-            return _scopes.First();
-        }
-
-        public int GetScopeCount()
-        {
-            return _scopes.Count;
-        }
-
-        public bool IsGlobalScope()
-        {
-            return _scopes.Count == 1;
-        }
-
-        public void SetBuffer(BaseBuffer provider)
-        {
-            _buffer = provider;
-        }
-
-        public void SetInVariables(Dictionary<string, Literal> inVariables) {
-            _inVariables = inVariables;
-        }
-
-        private Dictionary<string, Literal> GetOutVariables() {
-            var result = new Dictionary<string, Literal>();
-
-            foreach (var (name, offset) in _outVariables) {
-                result.Add(name, GetStack()[(int)offset]);
-            }
-
-            return result;
-        }
-
-        public BaseBuffer GetBuffer() {
-            return _buffer;
-        }
-
-        public void SetDefaultEndian(Endianess endian)
-        {
-            _defaultEndian = endian;
-        }
-
-        public Endianess GetDefaultEndian() {
-            return _defaultEndian;
-        }
-
-        public void SetEvaluationDepth(long evalDepth)
-        {
-            _evalDepth = evalDepth;
-        }
-
-        public long GetEvaluationDepth() {
-            return _evalDepth;
-        }
-
-        public void SetArrayLimit(long arrayLimit)
-        {
-            _arrayLimit = arrayLimit;
-        }
-
-        public long GetArrayLimit() {
-            return _arrayLimit;
-        }
-
-        public void SetPatternLimit(long limit)
-        {
-            _patternLimit = limit;
-        }
-
-        public long GetPatternLimit()
-        {
-            return _patternLimit;
-        }
-
-        public long GetPatternCount()
-        {
-            return _currentPatternCount;
-        }
-
-        public void SetLoopLimit(long limit)
-        {
-            _loopLimit = limit;
-        }
-
-        public long GetLoopLimit()
-        {
-            return _loopLimit;
-        }
-
-        public long DataOffset() { return CurrentOffset; }
-
-        // TODO: custom function
-        public bool AddCustomFunction(string name, int numParams, PatternFunctionBody function)
-        {
-            _customFunctions.Add(name, new ContentRegistry.PatternLanguage.Function((uint)numParams, function, false));
-
-            return true;
-        }
-
-        public Dictionary<string, ContentRegistry.PatternLanguage.Function> GetCustomFunctions()
-        {
-            return _customFunctions;
-        }
-
-        public List<Literal> GetStack()
-        {
-            return _stack;
-        }
-
-        internal void CreateVariable(string name, ASTNode type, Literal? value = null, bool outVariable = false)
-        {
-            var variables = GetScope(0).Entries;
-            foreach (var variable in variables)
-            {
-                if (variable.VariableName == name)
+                if (returnCode != 0)
                 {
-                    throw new Exception($"variable with name '{name}' already exists");
+                    throw new Exception($"non-success value returned from main: {returnCode}");
                 }
             }
+        }
 
-            var startOffset = DataOffset();
-            var pattern = type.CreatePatterns(this).FirstOrDefault();
-            CurrentOffset = startOffset;
+        PopScope();
 
-            if (pattern is null)
+        return patterns;
+    }
+
+    internal Scope PushScope()
+    {
+        var entries = ScopePool.Rent();
+        entries.Clear();
+        return PushScope(null, entries, true);
+    }
+
+    internal Scope PushScope(PatternData? parent)
+    {
+        var entries = ScopePool.Rent();
+        entries.Clear();
+        return PushScope(parent, entries, true);
+    }
+
+    internal Scope PushScope(List<PatternData> entries) => PushScope(null, entries);
+
+    private Scope PushScope(PatternData? parent, List<PatternData> entries, bool rented = false)
+    {
+        if (_scopes.Count > EvaluationDepth)
+        {
+            throw new Exception($"evaluation depth exceeded set limit of {EvaluationDepth}");
+        }
+
+        HandleAbort();
+
+        var scope = new Scope {Parent = parent, Entries = entries, Rented = rented, InitialCount = entries.Count};
+        _scopes.Add(scope);
+        return scope;
+    }
+
+    internal void HandleAbort()
+    {
+        // TODO: cancellation token
+    }
+
+    public void PopScope(bool cleanup = false)
+    {
+        var scope = _scopes[^1];
+        try
+        {
+            _scopes.RemoveAt(_scopes.Count - 1);
+
+            if (!cleanup || scope.Entries.Count <= scope.InitialCount)
+            {
+                return;
+            }
+
+            var stackSize = _stack.Count;
+            for (var i = scope.InitialCount; i < scope.Entries.Count; i++)
+            {
+                if (stackSize < 0)
+                {
+                    throw new Exception("stack pointer underflow!");
+                }
+
+                scope.Entries.RemoveAt(scope.Entries.Count - 1);
+                _stack.RemoveAt(_stack.Count - 1);
+            }
+        }
+        finally
+        {
+            if (scope.Rented)
+            {
+                ScopePool.Return(scope.Entries);
+            }
+        }
+    }
+
+    internal Scope ScopeAt(int index) => _scopes[_scopes.Count - 1 + index];
+
+    public bool AddCustomFunction(string name, int numParams, PatternFunctionBody function)
+    {
+        _customFunctions.Add(name, new ContentRegistry.FunctionRegistry.Function((uint)numParams, function, false));
+
+        return true;
+    }
+
+    internal void CreateVariable(string name, ASTNode type, Literal? value = null, bool outVariable = false)
+    {
+        var variables = ScopeAt(0).Entries;
+        foreach (var variable in variables)
+        {
+            if (variable.VariableName == name)
+            {
+                throw new Exception($"variable with name '{name}' already exists");
+            }
+        }
+
+        var startOffset = CurrentOffset;
+        var pattern = type.CreatePatterns(this).FirstOrDefault();
+        CurrentOffset = startOffset;
+
+        if (pattern is null)
+        {
+            switch (value)
             {
                 // Handle auto variables
-                if (value is null)
-                {
+                case null:
                     throw new Exception("cannot determine type of auto variable"); // type
-                }
-
-                if (value is UInt128Literal)
-                {
+                case UInt128Literal:
                     pattern = new PatternDataUnsigned(0, sizeof(ulong), this);
-                }
-                else if (value is Int128Literal)
-                {
+                    break;
+                case Int128Literal:
                     pattern = new PatternDataSigned(0, sizeof(long), this);
-                }
-                else if (value is DoubleLiteral)
-                {
+                    break;
+                case DoubleLiteral:
                     pattern = new PatternDataFloat(0, sizeof(double), this);
-                }
-                else if (value is BoolLiteral)
-                {
+                    break;
+                case BoolLiteral:
                     pattern = new PatternDataBoolean(0, this);
-                }
-                else if (value is CharLiteral)
-                {
+                    break;
+                case CharLiteral:
+                case Char16Literal:
                     pattern = new PatternDataCharacter16(0, this);
-                }
-                else if (value is Char16Literal)
-                {
-                    pattern = new PatternDataCharacter16(0, this);
-                }
-                else if (value is PatternDataLiteral pat)
-                {
+                    break;
+                case PatternDataLiteral pat:
                     pattern = pat.Value.Clone();
-                }
-                else if (value is StringLiteral)
-                {
+                    break;
+                case StringLiteral:
                     pattern = new PatternDataString(0, 1, this);
-                }
-                else
-                {
+                    break;
+                default:
                     throw new Exception("builtin unreachable");
-                    //__builtin_unreachable();
-                }
-
-            }
-
-            pattern.VariableName = name;
-            pattern.Local = true;
-            pattern.Offset = GetStack().Count;
-
-            // TODO: what doe this do?
-            GetStack().Add(null!);
-            variables.Add(pattern);
-
-            if (outVariable)
-            {
-                _outVariables[name] = pattern.Offset;
             }
         }
 
-        public void SetVariable(string name, Literal value)
-        {
-            PatternData? pattern = null;
+        pattern.VariableName = name;
+        pattern.Local = true;
+        pattern.Offset = _stack.Count;
 
-            var variables = GetScope(0).Entries;
+        _stack.Add(null!);
+        variables.Add(pattern);
+
+        if (outVariable)
+        {
+            _outVariables[name] = pattern.Offset;
+        }
+    }
+
+    public void SetVariable(string name, Literal value)
+    {
+        PatternData? pattern = null;
+
+        var variables = ScopeAt(0).Entries;
+        foreach (var variable in variables)
+        {
+            if (variable.VariableName == name)
+            {
+                pattern = variable;
+                break;
+            }
+        }
+
+        if (pattern is null)
+        {
+            variables = GlobalScope.Entries;
             foreach (var variable in variables)
             {
                 if (variable.VariableName == name)
                 {
+                    if (!variable.Local)
+                    {
+                        throw new Exception(
+                            $"cannot modify global variable '{name}' which has been placed in memory");
+                    }
+
                     pattern = variable;
                     break;
                 }
             }
-
-            if (pattern is null)
-            {
-                variables = GetGlobalScope().Entries;
-                foreach (var variable in variables)
-                {
-                    if (variable.VariableName == name)
-                    {
-                        if (!variable.Local)
-                        {
-                            throw new Exception(
-                                $"cannot modify global variable '{name}' which has been placed in memory");
-                        }
-
-                        pattern = variable;
-                        break;
-                    }
-                }
-            }
-
-            if (pattern is null)
-            {
-                throw new Exception($"no variable with name '{name}' found");
-            }
-
-            //var val = value.Value;
-            Literal? castedLiteral = null;
-            if (value is DoubleLiteral doubleVal)
-            {
-                if (pattern is PatternDataUnsigned)
-                {
-                    castedLiteral = Bitmask(doubleVal.ToUInt128(), (byte)pattern.Size);
-                }
-                else if (pattern is PatternDataSigned)
-                {
-                    castedLiteral = Bitmask(doubleVal.ToInt128(), (byte)pattern.Size);
-                }
-                else if (pattern is PatternDataFloat)
-                {
-                    castedLiteral = pattern.Size == sizeof(float) ? (double)(float)doubleVal.Value : doubleVal;
-                }
-                else
-                {
-                    throw new Exception($"cannot cast type 'double' to type '{pattern.TypeName}'");
-                }
-            }
-            else if (value is StringLiteral stringVal)
-            {
-                if (pattern is PatternDataString)
-                {
-                    castedLiteral = stringVal;
-                }
-                else
-                {
-                    throw new Exception($"cannot cast type 'string' to type '{pattern.TypeName}'");
-                }
-            }
-            else if (value is PatternDataLiteral patternVal)
-            {
-                if (patternVal.Value.TypeName == pattern.TypeName)
-                {
-                    castedLiteral = patternVal;
-                }
-                else
-                {
-                    throw new Exception(
-                        $"cannot cast type '{patternVal.Value.TypeName}' to type '{pattern.TypeName}'");
-                }
-            }
-            else if (value is UInt128Literal or Int128Literal)
-            {
-                if (pattern is PatternDataUnsigned or PatternDataEnum)
-                {
-                    castedLiteral = Bitmask(value.ToUInt128(), (byte)pattern.Size);
-                }
-                else if (pattern is PatternDataSigned)
-                {
-                    castedLiteral = Bitmask(value.ToInt128(), (byte)pattern.Size);
-                }
-                else if (pattern is PatternDataCharacter)
-                {
-                    castedLiteral = (AsciiChar)(byte)value.ToUInt128();
-                }
-                else if (pattern is PatternDataCharacter16)
-                {
-                    castedLiteral = (char)value.ToUInt128();
-                }
-                else if (pattern is PatternDataBoolean)
-                {
-                    castedLiteral = value.ToInt128() != 0;
-                }
-                else if (pattern is PatternDataFloat)
-                {
-                    if (value is Int128Literal)
-                    {
-                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToInt128() : value.ToInt128();
-                    }
-                    else
-                    {
-                        castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToUInt128() : value.ToUInt128();
-                    }
-
-                }
-                else
-                {
-                    throw new Exception($"cannot cast integer literal to type '{pattern.TypeName}'");
-                }
-            }
-            
-            if (castedLiteral is null)
-            {
-                throw new Exception("casted literal is null");
-            }
-
-            GetStack()[(int)pattern.Offset] = castedLiteral;
         }
 
-        private static Int128 Bitmask(Int128 input, byte size)
+        if (pattern is null)
         {
-            var mask = Int128.MaxValue;
-            return input & (mask >> (128 - size * 8));
+            throw new Exception($"no variable with name '{name}' found");
         }
 
-        private static UInt128 Bitmask(UInt128 input, byte size)
+        Literal? castedLiteral = null;
+        if (value is DoubleLiteral doubleVal)
         {
-            var mask = UInt128.MaxValue;
-            return input & (mask >> (128 - size * 8));
-        }
-
-        public void Abort()
-        {
-            _aborted = true;
-        }
-
-        public void HandleAbort()
-        {
-            if (_aborted)
+            if (pattern is PatternDataUnsigned)
             {
-                //LogConsole.abortEvaluation("evaluation aborted by user");
-                throw new Exception("evaluation aborted by user");
+                castedLiteral = Bitmask(doubleVal.ToUInt128(), (byte)pattern.Size);
             }
-        }
-
-        public Literal? GetEnvVariable(string name) {
-            if (_envVariables.ContainsKey(name))
+            else if (pattern is PatternDataSigned)
             {
-                return _envVariables[name];
+                castedLiteral = Bitmask(doubleVal.ToInt128(), (byte)pattern.Size);
+            }
+            else if (pattern is PatternDataFloat)
+            {
+                castedLiteral = pattern.Size == sizeof(float) ? (double)(float)doubleVal.Value : doubleVal;
             }
             else
             {
-                return null;
+                throw new Exception($"cannot cast type 'double' to type '{pattern.TypeName}'");
+            }
+        }
+        else if (value is StringLiteral stringVal)
+        {
+            if (pattern is PatternDataString)
+            {
+                castedLiteral = stringVal;
+            }
+            else
+            {
+                throw new Exception($"cannot cast type 'string' to type '{pattern.TypeName}'");
+            }
+        }
+        else if (value is PatternDataLiteral patternVal)
+        {
+            if (patternVal.Value.TypeName == pattern.TypeName)
+            {
+                castedLiteral = patternVal;
+            }
+            else
+            {
+                throw new Exception(
+                    $"cannot cast type '{patternVal.Value.TypeName}' to type '{pattern.TypeName}'");
+            }
+        }
+        else if (value is UInt128Literal or Int128Literal)
+        {
+            if (pattern is PatternDataUnsigned or PatternDataEnum)
+            {
+                castedLiteral = Bitmask(value.ToUInt128(), (byte)pattern.Size);
+            }
+            else if (pattern is PatternDataSigned)
+            {
+                castedLiteral = Bitmask(value.ToInt128(), (byte)pattern.Size);
+            }
+            else if (pattern is PatternDataCharacter)
+            {
+                castedLiteral = (AsciiChar)(byte)value.ToUInt128();
+            }
+            else if (pattern is PatternDataCharacter16)
+            {
+                castedLiteral = (char)value.ToUInt128();
+            }
+            else if (pattern is PatternDataBoolean)
+            {
+                castedLiteral = value.ToInt128() != 0;
+            }
+            else if (pattern is PatternDataFloat)
+            {
+                if (value is Int128Literal)
+                {
+                    castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToInt128() : value.ToInt128();
+                }
+                else
+                {
+                    castedLiteral = pattern.Size == sizeof(float) ? (float)value.ToUInt128() : value.ToUInt128();
+                }
+            }
+            else
+            {
+                throw new Exception($"cannot cast integer literal to type '{pattern.TypeName}'");
             }
         }
 
-        public void SetEnvVariable(string name, Literal value)
+        if (castedLiteral is null)
         {
-            _envVariables[name] = value;
+            throw new Exception("casted literal is null");
         }
 
-        public bool HasDangerousFunctionBeenCalled() {
-            return _dangerousFunctionCalled;
-        }
+        _stack[(int)pattern.Offset] = castedLiteral;
+    }
 
-        public void DangerousFunctionCalled()
-        {
-            _dangerousFunctionCalled = true;
-        }
+    private static Int128 Bitmask(Int128 input, byte size)
+    {
+        var mask = Int128.MaxValue;
+        return input & (mask >> (128 - size * 8));
+    }
 
-        public void AllowDangerousFunctions(bool allow)
-        {
-            _allowDangerousFunctions = allow ? DangerousFunctionPermission.Allow : DangerousFunctionPermission.Deny;
-            _dangerousFunctionCalled = false;
-        }
+    private static UInt128 Bitmask(UInt128 input, byte size)
+    {
+        var mask = UInt128.MaxValue;
+        return input & (mask >> (128 - size * 8));
+    }
 
-        public DangerousFunctionPermission GetDangerousFunctionPermission() {
-            return _allowDangerousFunctions;
-        }
+    public void AddInVariable(string name, Literal value)
+    {
+        _inVariables[name] = value;
+    }
 
-        internal void SetCurrentControlFlowStatement(ControlFlowStatement statement)
-        {
-            _currentControlFlowStatement = statement;
-        }
+    public void AddEnvVariable(string name, Literal value)
+    {
+        _envVariables[name] = value;
+    }
 
-        internal ControlFlowStatement GetCurrentControlFlowStatement() {
-            return _currentControlFlowStatement;
-        }
+    public Literal? GetEnvVariable(string name) => _envVariables.TryGetValue(name, out var literal) ? literal : null;
 
-        public void PatternCreated()
-        {
+    public void DangerousFunctionCalled()
+    {
+        HasDangerousFunctionBeenCalled = true;
+    }
 
-        }
-        public void PatternDestroyed()
-        {
-
-        }
-
-        public long CurrentOffset { get; set; } = 0;
-
-        private BaseBuffer _buffer = null!;
-
-        private Endianess _defaultEndian = Endianess.Native;
-        private long _evalDepth;
-        private long _arrayLimit;
-        private long _patternLimit;
-        private long _loopLimit = 9999999;
-
-        private long _currentPatternCount;
-
-        private bool _aborted;
-
-        private readonly List<Scope> _scopes = new();
-        private readonly Dictionary<string, ContentRegistry.PatternLanguage.Function> _customFunctions = new();
-        private readonly List<ASTNode> _customFunctionDefinitions = new();
-        private readonly List<Literal> _stack = new();
-
-        private readonly Dictionary<string, Literal> _envVariables = new();
-        private Dictionary<string, Literal> _inVariables = new();
-        private readonly Dictionary<string, long> _outVariables = new();
-
-        private bool _dangerousFunctionCalled = false;
-        private DangerousFunctionPermission _allowDangerousFunctions = DangerousFunctionPermission.Ask;
-        private ControlFlowStatement _currentControlFlowStatement;
-
-        public class PatternCreationLimiter
-        {
-
-        }
+    internal record struct Scope
+    {
+        public PatternData? Parent { get; init; }
+        public List<PatternData> Entries { get; init; }
+        public bool Rented { get; init; }
+        public int InitialCount { get; init; }
     }
 }

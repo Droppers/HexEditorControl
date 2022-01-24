@@ -35,9 +35,7 @@ internal class ASTNodeBitfield : AttributableASTNode
         var pattern = new PatternDataBitfield(evaluator.CurrentOffset, 0, evaluator);
 
         byte bitOffset = 0;
-        var fields = new List<PatternData>();
-
-        evaluator.PushScope(pattern, fields);
+        var fields = evaluator.PushScope(pattern).Entries;
 
         foreach (var (name, bitSizeNode) in _entries)
         {
@@ -70,6 +68,6 @@ internal class ASTNodeBitfield : AttributableASTNode
 
         evaluator.CurrentOffset += pattern.Size;
 
-        return new [] {pattern};
+        return new[] {pattern};
     }
 }

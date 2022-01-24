@@ -7,11 +7,8 @@ public class PatternDataUnsigned : PatternData
 
     private PatternDataUnsigned(PatternDataUnsigned other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataUnsigned(this);
-    }
-        
+    public override PatternData Clone() => new PatternDataUnsigned(this);
+
     public override string GetFormattedName()
     {
         return Size switch
@@ -24,4 +21,4 @@ public class PatternDataUnsigned : PatternData
             _ => "Unsigned data"
         };
     }
-};
+}

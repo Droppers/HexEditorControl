@@ -10,15 +10,9 @@ public class PatternDataString : PatternData
 
     private PatternDataString(PatternDataString other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataString(this);
-    }
-        
-    public override string GetFormattedName()
-    {
-        return "String";
-    }
+    public override PatternData Clone() => new PatternDataString(this);
+
+    public override string GetFormattedName() => "String";
 
     public override string ToString(BaseBuffer buffer)
     {
@@ -32,4 +26,4 @@ public class PatternDataString : PatternData
 
         return Encoding.ASCII.GetString(bytes);
     }
-};
+}

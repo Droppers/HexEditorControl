@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Patterns;
 
@@ -30,9 +29,7 @@ internal class ASTNodeStruct : AttributableASTNode
         var pattern = new PatternDataStruct(evaluator.CurrentOffset, 0, evaluator);
 
         var startOffset = evaluator.CurrentOffset;
-        List<PatternData> memberPatterns = new();
-
-        evaluator.PushScope(pattern, memberPatterns);
+        var memberPatterns = evaluator.PushScope(pattern).Entries;
 
         foreach (var inheritance in _inheritance)
         {
@@ -57,9 +54,9 @@ internal class ASTNodeStruct : AttributableASTNode
         evaluator.PopScope();
 
         pattern.Members = memberPatterns;
-        pattern.Size = (evaluator.CurrentOffset - startOffset);
+        pattern.Size = evaluator.CurrentOffset - startOffset;
 
-        return new [] {pattern};
+        return new[] {pattern};
     }
 
     public void AddMember(ASTNode node)

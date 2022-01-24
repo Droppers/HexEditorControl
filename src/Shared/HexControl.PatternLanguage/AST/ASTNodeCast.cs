@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Linq;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Literals;
+using HexControl.PatternLanguage.Tokens;
 
 namespace HexControl.PatternLanguage.AST;
 

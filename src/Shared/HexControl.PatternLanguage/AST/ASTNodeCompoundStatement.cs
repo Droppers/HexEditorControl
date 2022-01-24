@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using HexControl.Core.Helpers;
-using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -55,18 +53,17 @@ internal class ASTNodeCompoundStatement : ASTNode
     {
         Literal? result = null;
 
-        var variables = evaluator.GetScope(0).Entries;
-        var startVariableCount = variables.Count;
+        var variables = evaluator.ScopeAt(0).Entries;
 
         if (_newScope)
         {
-            evaluator.PushScope(null, variables);
+            evaluator.PushScope(variables);
         }
 
         foreach (var statement in _statements)
         {
             result = statement.Execute(evaluator);
-            if (evaluator.GetCurrentControlFlowStatement() != ControlFlowStatement.None)
+            if (evaluator.CurrentControlFlowStatement != ControlFlowStatement.None)
             {
                 return result;
             }
@@ -74,20 +71,7 @@ internal class ASTNodeCompoundStatement : ASTNode
 
         if (_newScope)
         {
-            var stackSize = evaluator.GetStack().Count;
-            for (var i = startVariableCount; i < variables.Count; i++)
-            {
-                variables.RemoveAt(variables.Count - 1);
-                stackSize--;
-            }
-
-            if (stackSize < 0)
-            {
-                throw new Exception("stack pointer underflow!");
-            }
-
-            evaluator.GetStack().Shrink(stackSize);
-            evaluator.PopScope();
+            evaluator.PopScope(true);
         }
 
         return result;

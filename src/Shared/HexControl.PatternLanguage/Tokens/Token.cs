@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using HexControl.PatternLanguage.Literals;
 
-namespace HexControl.PatternLanguage;
+namespace HexControl.PatternLanguage.Tokens;
 
-internal class Token
+internal abstract class Token
 {
     public enum Keyword
     {
@@ -117,15 +117,16 @@ internal class Token
         Any = 0xFFFF
     }
 
-    public Token(TokenType type, ITokenValue value, int lineNumber)
+    protected Token(TokenType type, int lineNumber)
     {
         Type = type;
-        Value = value;
+        //Value = value;
         LineNumber = lineNumber;
     }
 
     public TokenType Type { get; }
-    public ITokenValue? Value { get; }
+
+    //public ITokenValue? Value { get; }
     public int LineNumber { get; }
 
     public static bool IsUnsigned(ValueType type) => ((int)type & 0x0F) == 0x00;
@@ -135,7 +136,7 @@ internal class Token
     public static bool IsFloatingPoint(ValueType type) => ((int)type & 0x0F) == 0x02;
 
     public static int GetTypeSize(ValueType type) => (int)type >> 4;
-    
+
     public static string GetTypeName(ValueType type)
     {
         return type switch
@@ -159,45 +160,65 @@ internal class Token
             _ => "< ??? >"
         };
     }
-    
-    public bool TokenValueEquals(object otherValue)
+
+    public bool TokenValueEquals(Token otherTokenValue)
     {
         switch (Type)
         {
             case TokenType.Integer or TokenType.Identifier or TokenType.String:
                 return true;
             case TokenType.ValueType:
-                if (Value is not EnumValue<ValueType> valueType || otherValue is not EnumValue<ValueType> otherValueType)
+                if (this is not Token<EnumValue<ValueType>> valueType ||
+                    otherTokenValue is not Token<EnumValue<ValueType>> otherValueType)
                 {
                     return false;
                 }
 
-                if (otherValueType.Value == valueType.Value)
+                var value = valueType.Value.Value;
+                var otherValue = otherValueType.Value.Value;
+
+                if (otherValue == value)
                 {
                     return true;
                 }
 
-                return (otherValueType.Value) switch
+                return otherValue switch
                 {
-                    ValueType.Any => valueType.Value != ValueType.CustomType && valueType.Value != ValueType.Padding,
-                    ValueType.Unsigned => IsUnsigned(valueType.Value),
-                    ValueType.Signed => IsSigned(valueType.Value),
-                    ValueType.FloatingPoint => IsFloatingPoint(valueType.Value),
-                    ValueType.Integer => IsUnsigned(valueType.Value) || IsSigned(valueType.Value),
-                    _ => Value?.Equals(otherValue) == true,
+                    ValueType.Any => value != ValueType.CustomType && value != ValueType.Padding,
+                    ValueType.Unsigned => IsUnsigned(value),
+                    ValueType.Signed => IsSigned(value),
+                    ValueType.FloatingPoint => IsFloatingPoint(value),
+                    ValueType.Integer => IsUnsigned(value) || IsSigned(value),
+                    _ => false
                 };
             default:
-                return Value?.Equals(otherValue) == true;
+                return CompareValue(otherTokenValue);
         }
     }
 
-    public override int GetHashCode() => HashCode.Combine(Type, Value);
+    protected abstract bool CompareValue(Token token);
 
-    public record struct Identifier(string Value) : ITokenValue;
+    public override int GetHashCode() => Type.GetHashCode();
 
     public interface ITokenValue { }
 
-    public readonly struct EnumValue<T> : ITokenValue
+    public readonly struct IdentifierValue : ITokenValue, IEquatable<IdentifierValue>
+    {
+        public string Value { get; }
+
+        public IdentifierValue(string value)
+        {
+            Value = value;
+        }
+
+        public bool Equals(IdentifierValue other) => Value == other.Value;
+
+        public override bool Equals(object? obj) => obj is IdentifierValue other && Equals(other);
+
+        public override int GetHashCode() => Value.GetHashCode();
+    }
+
+    public readonly struct EnumValue<T> : ITokenValue, IEquatable<EnumValue<T>> where T : notnull
     {
         public T Value { get; }
 
@@ -206,15 +227,14 @@ internal class Token
             Value = value;
         }
 
-        public override bool Equals(object? other)
-        {
-            return other is EnumValue<T> otherValue && EqualityComparer<T>.Default.Equals(Value, otherValue.Value);
-        }
+        public override bool Equals(object? other) => other is EnumValue<T> otherEnum && Equals(otherEnum);
 
-        public override int GetHashCode() => Value.GetHashCode();
+        public override int GetHashCode() => EqualityComparer<T>.Default.GetHashCode(Value);
+
+        public bool Equals(EnumValue<T> other) => EqualityComparer<T>.Default.Equals(Value, other.Value);
     }
 
-    public readonly struct LiteralValue : ITokenValue
+    public readonly struct LiteralValue : ITokenValue, IEquatable<LiteralValue>
     {
         public Literal Literal { get; }
 
@@ -223,16 +243,10 @@ internal class Token
             Literal = literal;
         }
 
-        public override bool Equals(object? other)
-        {
-            if (other is not LiteralValue otherValue)
-            {
-                return false;
-            }
-
-            return Literal.Equals(otherValue.Literal);
-        }
+        public override bool Equals(object? other) => other is LiteralValue otherLiteral && Equals(otherLiteral);
 
         public override int GetHashCode() => Literal.GetHashCode();
+
+        public bool Equals(LiteralValue other) => Literal.Equals(other.Literal);
     }
 }

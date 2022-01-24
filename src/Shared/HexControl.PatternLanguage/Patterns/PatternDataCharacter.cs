@@ -10,15 +10,9 @@ public class PatternDataCharacter : PatternData
 
     private PatternDataCharacter(PatternDataCharacter other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataCharacter(this);
-    }
-        
-    public override string GetFormattedName()
-    {
-        return "char";
-    }
+    public override PatternData Clone() => new PatternDataCharacter(this);
+
+    public override string GetFormattedName() => "char";
 
     public override string ToString(BaseBuffer buffer) => ((char)buffer.ReadUByte(Offset)).ToString();
-};
+}

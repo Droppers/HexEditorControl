@@ -108,12 +108,12 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
             //std::vector<u8> buffer(templatePattern->Size);
             while (true)
             {
-                if (evaluator.CurrentOffset >= evaluator.GetBuffer().Length - buffer.Length)
+                if (evaluator.CurrentOffset >= evaluator.Buffer.Length - buffer.Length)
                 {
                     throw new Exception("reached end of file before finding end of unsized array");
                 }
 
-                evaluator.GetBuffer().Read(evaluator.CurrentOffset, buffer);
+                evaluator.Buffer.Read(evaluator.CurrentOffset, buffer);
                 evaluator.CurrentOffset += buffer.Length;
 
                 entryCount++;
@@ -164,7 +164,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         outputPattern.Endian = templatePattern.Endian;
         outputPattern.Color = templatePattern.Color;
         outputPattern.TypeName = templatePattern.TypeName;
-        outputPattern.Size = (templatePattern.Size * entryCount);
+        outputPattern.Size = templatePattern.Size * entryCount;
 
         evaluator.CurrentOffset = startOffset + outputPattern.Size;
 
@@ -214,7 +214,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                     _ => (int)literalNode.Literal.ToInt128()
                 };
 
-                var limit = evaluator.GetArrayLimit();
+                var limit = evaluator.ArrayLimit;
                 if (entryCount > limit)
                 {
                     throw new Exception($"array grew past set limit of {limit}");
@@ -229,7 +229,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                         addEntry(patterns[0]);
                     }
 
-                    var ctrlFlow = evaluator.GetCurrentControlFlowStatement();
+                    var ctrlFlow = evaluator.CurrentControlFlowStatement;
                     if (ctrlFlow == ControlFlowStatement.Break)
                     {
                         break;
@@ -245,7 +245,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
             {
                 while (whileStatement.EvaluateCondition(evaluator))
                 {
-                    var limit = evaluator.GetArrayLimit();
+                    var limit = evaluator.ArrayLimit;
                     if (entryIndex > limit)
                     {
                         throw new Exception($"array grew past set limit of {limit}");
@@ -258,7 +258,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                         addEntry(patterns[0]);
                     }
 
-                    var ctrlFlow = evaluator.GetCurrentControlFlowStatement();
+                    var ctrlFlow = evaluator.CurrentControlFlowStatement;
                     if (ctrlFlow == ControlFlowStatement.Break)
                     {
                         break;
@@ -275,7 +275,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         {
             while (true)
             {
-                var limit = evaluator.GetArrayLimit();
+                var limit = evaluator.ArrayLimit;
                 if (entryIndex > limit)
                 {
                     throw new Exception($"array grew past set limit of {limit}");
@@ -289,14 +289,14 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     var buffer = new byte[pattern.Size];
 
-                    if (evaluator.CurrentOffset >= evaluator.GetBuffer().Length - buffer.Length)
+                    if (evaluator.CurrentOffset >= evaluator.Buffer.Length - buffer.Length)
                     {
                         throw new Exception("reached end of file before finding end of unsized array");
                     }
 
                     addEntry(pattern);
 
-                    var ctrlFlow = evaluator.GetCurrentControlFlowStatement();
+                    var ctrlFlow = evaluator.CurrentControlFlowStatement;
                     if (ctrlFlow == ControlFlowStatement.Break)
                     {
                         break;
@@ -308,7 +308,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                         continue;
                     }
 
-                    evaluator.GetBuffer().Read(evaluator.CurrentOffset - pattern.Size, buffer);
+                    evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
                     var reachedEnd = true;
                     foreach (var @byte in buffer)
                     {
@@ -328,7 +328,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         }
 
         arrayPattern.Entries = entries;
-        arrayPattern.Size = (size);
+        arrayPattern.Size = size;
 
         var tmpEntries = arrayPattern.Entries;
         if (tmpEntries.Count > 0)

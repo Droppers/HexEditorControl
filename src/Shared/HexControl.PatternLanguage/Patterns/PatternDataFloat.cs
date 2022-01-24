@@ -7,10 +7,7 @@ public class PatternDataFloat : PatternData
 
     private PatternDataFloat(PatternDataFloat other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataFloat(this);
-    }
+    public override PatternData Clone() => new PatternDataFloat(this);
 
     public override string GetFormattedName()
     {

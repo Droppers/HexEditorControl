@@ -42,29 +42,27 @@ internal class ASTNodeRValue : ASTNode
         Literal literal;
         if (pattern is PatternDataUnsigned or PatternDataEnum)
         {
-            literal = ReadValue<UInt128>(evaluator, pattern) ?? 0;
+            literal = ReadValue<UInt128>(evaluator, pattern);
         }
         else if (pattern is PatternDataSigned)
         {
-            literal = ReadValue<Int128>(evaluator, pattern) ?? 0L;
+            literal = ReadValue<Int128>(evaluator, pattern);
             //value = hex::signExtend(pattern.Size * 8, value); // TODO: impl
         }
         else if (pattern is PatternDataFloat)
         {
             if (pattern.Size == sizeof(ushort))
             {
-                //ushort value = 0;
-                //ReadValue(value, pattern);
-                //literal = double(float16ToFloat32(value));
-                literal = ReadValue<double>(evaluator, pattern) ?? 0d;
+                // TODO: float16
+                literal = ReadValue<float>(evaluator, pattern);
             }
             else if (pattern.Size == sizeof(float))
             {
-                literal = ReadValue<double>(evaluator, pattern) ?? 0d;
+                literal = ReadValue<float>(evaluator, pattern);
             }
             else if (pattern.Size == sizeof(double))
             {
-                literal = ReadValue<double>(evaluator, pattern) ?? 0d;
+                literal = ReadValue<double>(evaluator, pattern);
             }
             else
             {
@@ -75,23 +73,23 @@ internal class ASTNodeRValue : ASTNode
         }
         else if (pattern is PatternDataCharacter)
         {
-            literal = ReadValue<AsciiChar>(evaluator, pattern) ?? (AsciiChar)0;
+            literal = ReadValue<AsciiChar>(evaluator, pattern);
         }
         else if (pattern is PatternDataCharacter16)
         {
-            literal = ReadValue<char>(evaluator, pattern) ?? (char)0;
+            literal = ReadValue<char>(evaluator, pattern);
         }
         else if (pattern is PatternDataBoolean)
         {
             //bool value = false;
-            literal = ReadValue<bool>(evaluator, pattern) ?? false;
+            literal = ReadValue<bool>(evaluator, pattern);
             //literal = value;
         }
         else if (pattern is PatternDataString)
         {
             if (pattern.Local)
             {
-                var literalVar = evaluator.GetStack()[(int)pattern.Offset];
+                var literalVar = evaluator.Stack[(int)pattern.Offset];
                 if (literalVar is not StringLiteral or CharLiteral or Char16Literal)
                 {
                     throw new Exception($"cannot assign '{pattern.TypeName}' to string");
@@ -103,13 +101,13 @@ internal class ASTNodeRValue : ASTNode
             else
             {
                 var buffer = new byte[pattern.Size];
-                evaluator.GetBuffer().Read(pattern.Offset, buffer);
+                evaluator.Buffer.Read(pattern.Offset, buffer);
                 literal = Encoding.UTF8.GetString(buffer);
             }
         }
         else if (pattern is PatternDataBitfieldField bitfieldFieldPattern)
         {
-            var value = ReadValue<long>(evaluator, pattern) ?? 0;
+            var value = ReadValue<Int128>(evaluator, pattern);
             //literal = u128(hex::extract(bitfieldFieldPattern->getBitOffset() + (bitfieldFieldPattern->getBitSize() - 1), bitfieldFieldPattern->getBitOffset(), value));
             literal = value & (1 << bitfieldFieldPattern.BitOffset);
         }
@@ -134,12 +132,12 @@ internal class ASTNodeRValue : ASTNode
         PatternData? currentPattern = null;
         var scopeIndex = 0;
 
-        if (!evaluator.IsGlobalScope())
+        if (!evaluator.IsGlobalScope)
         {
-            initialSearchScope.AddRange(evaluator.GetGlobalScope().Entries);
+            initialSearchScope.AddRange(evaluator.GlobalScope.Entries);
         }
 
-        initialSearchScope.AddRange(evaluator.GetScope(scopeIndex).Entries);
+        initialSearchScope.AddRange(evaluator.ScopeAt(scopeIndex).Entries);
 
         // Readonly for safety
         IReadOnlyList<PatternData> searchScope = initialSearchScope;
@@ -153,21 +151,22 @@ internal class ASTNodeRValue : ASTNode
                 {
                     scopeIndex--;
 
-                    if (-scopeIndex >= evaluator.GetScopeCount())
+                    if (-scopeIndex >= evaluator.Scopes.Count)
                     {
                         throw new Exception("cannot access parent of global scope"); //this
                     }
 
-                    searchScope = evaluator.GetScope(scopeIndex).Entries;
-                    currentPattern = evaluator.GetScope(scopeIndex).Parent;
+                    searchScope = evaluator.ScopeAt(scopeIndex).Entries;
+                    currentPattern = evaluator.ScopeAt(scopeIndex).Parent;
                     continue;
                 }
 
                 if (name == "this")
                 {
-                    searchScope = evaluator.GetScope(scopeIndex).Entries;
-                    var currentParent = evaluator.GetScope(0).Parent;
-                    currentPattern = currentParent ?? throw new Exception("invalid use of 'this' outside of struct-like type");
+                    searchScope = evaluator.ScopeAt(scopeIndex).Entries;
+                    var currentParent = evaluator.ScopeAt(0).Parent;
+                    currentPattern = currentParent ??
+                                     throw new Exception("invalid use of 'this' outside of struct-like type");
                     continue;
                 }
 
@@ -227,8 +226,8 @@ internal class ASTNodeRValue : ASTNode
                             {
                                 shouldClone = false;
                                 var newPattern = searchScope.First().Clone();
-                                newPattern.Offset = (staticArrayPattern.Offset +
-                                                     arrayIndex * staticArrayPattern.Template.Size);
+                                newPattern.Offset = staticArrayPattern.Offset +
+                                                    arrayIndex * staticArrayPattern.Template.Size;
 
                                 currentPattern = newPattern;
                                 break;
@@ -255,14 +254,14 @@ internal class ASTNodeRValue : ASTNode
             PatternData? indexPattern;
             if (currentPattern.Local)
             {
-                var stackLiteral = evaluator.GetStack()[(int)currentPattern.Offset];
+                var stackLiteral = evaluator.Stack[(int)currentPattern.Offset];
                 if (stackLiteral is PatternDataLiteral stackPattern)
                 {
                     indexPattern = stackPattern.Value;
                 }
                 else
                 {
-                    return new [] {currentPattern};
+                    return new[] {currentPattern};
                 }
             }
             else
@@ -299,16 +298,16 @@ internal class ASTNodeRValue : ASTNode
         }
 
         var pattern = shouldClone ? currentPattern.Clone() : currentPattern;
-        return new [] {pattern};
+        return new[] {pattern};
     }
 
 
-    private static Literal ReadLocal(Evaluator evaluator, long offset) => evaluator.GetStack()[(int)offset];
+    private static Literal ReadLocal(Evaluator evaluator, long offset) => evaluator.Stack[(int)offset];
 
-    private static T? ReadValue<T>(Evaluator evaluator, PatternData data) where T : struct
+    private static T ReadValue<T>(Evaluator evaluator, PatternData data) where T : struct
     {
-        T? value = null;
-        var buffer = evaluator.GetBuffer();
+        T? value;
+        var buffer = evaluator.Buffer;
         var offset = data.Offset;
         var size = (int)data.Size;
         var endian = data.Endian;
@@ -340,16 +339,20 @@ internal class ASTNodeRValue : ASTNode
                 ? ReadLocal(evaluator, offset).ToChar16()
                 : buffer.ReadChar(offset, endian));
         }
+        else
+        {
+            throw new NotSupportedException($"Cannot read value of type '{typeof(T).Name}'.");
+        }
 
         if (value is null)
         {
             throw new Exception("Literal is null.");
         }
 
-        return value;
+        return value.Value;
     }
 
-    public class Path
+    public struct Path
     {
         public Path()
         {
@@ -358,7 +361,7 @@ internal class ASTNodeRValue : ASTNode
 
         public Path(string path) : this()
         {
-            Values.Add(path);
+            Values!.Add(path);
         }
 
         public List<object> Values { get; }

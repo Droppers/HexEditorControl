@@ -7,13 +7,7 @@ public class PatternDataPadding : PatternData
 
     private PatternDataPadding(PatternDataPadding other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataPadding(this);
-    }
+    public override PatternData Clone() => new PatternDataPadding(this);
 
-    public override string GetFormattedName()
-    {
-        return "";
-    }
-};
+    public override string GetFormattedName() => "";
+}

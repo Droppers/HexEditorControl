@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
+using HexControl.PatternLanguage.Tokens;
 
 namespace HexControl.PatternLanguage.AST;
 
@@ -46,42 +46,34 @@ internal class ASTNodeFunctionCall : ASTNode
             evaluatedParams[index] = literal.Literal;
         }
 
-        var customFunctions = evaluator.GetCustomFunctions();
-        var functions = ContentRegistry.PatternLanguage.GetFunctions();
-
-        // TODO: why is this here
-        foreach (var (name, func) in customFunctions)
-        {
-            functions[name] = func;
-        }
-
-        if (!functions.ContainsKey(_functionName))
+        ContentRegistry.FunctionRegistry.Function? standardFunction = null;
+        if (!evaluator.CustomFunctions.TryGetValue(_functionName, out var customFunction) &&
+            !ContentRegistry.FunctionRegistry.Functions.TryGetValue(_functionName, out standardFunction))
         {
             throw new Exception($"call to unknown function '{_functionName}'");
-            //LogConsole.abortEvaluation($"call to unknown function '{this.m_functionName}'", this);
         }
 
-        var (parameterCount, body, dangerous) = functions[_functionName];
-        if (parameterCount == ContentRegistry.PatternLanguage.UnlimitedParameters)
+        var (parameterCount, body, dangerous) = (customFunction ?? standardFunction)!;
+        if (parameterCount == ContentRegistry.FunctionRegistry.UnlimitedParameters)
         {
             // Don't check parameter count
         }
-        else if ((parameterCount & ContentRegistry.PatternLanguage.LessParametersThan) != 0)
+        else if ((parameterCount & ContentRegistry.FunctionRegistry.LessParametersThan) != 0)
         {
-            if (evaluatedParams.Length >= (parameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan))
+            if (evaluatedParams.Length >= (parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan))
             {
                 //LogConsole.abortEvaluation($"too many parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan}", this);
                 throw new Exception(
-                    $"too many parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan}");
+                    $"too many parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan}");
             }
         }
-        else if ((parameterCount & ContentRegistry.PatternLanguage.MoreParametersThan) != 0)
+        else if ((parameterCount & ContentRegistry.FunctionRegistry.MoreParametersThan) != 0)
         {
-            if (evaluatedParams.Length <= (parameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan))
+            if (evaluatedParams.Length <= (parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan))
             {
                 //LogConsole.abortEvaluation($"too few parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan}", this);
                 throw new Exception(
-                    $"too few parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan}");
+                    $"too few parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan}");
             }
         }
         else if (parameterCount != evaluatedParams.Length)
@@ -93,16 +85,16 @@ internal class ASTNodeFunctionCall : ASTNode
 
         try
         {
-            if (dangerous && evaluator.GetDangerousFunctionPermission() != DangerousFunctionPermission.Allow)
+            if (dangerous && evaluator.DangerousFunctionPermission is not DangerousFunctionPermission.Allow)
             {
                 evaluator.DangerousFunctionCalled();
 
-                while (evaluator.GetDangerousFunctionPermission() == DangerousFunctionPermission.Ask)
+                while (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Ask)
                 {
                     Thread.Sleep(100); // TODO: actually ask, don't just block lol!
                 }
 
-                if (evaluator.GetDangerousFunctionPermission() == DangerousFunctionPermission.Deny)
+                if (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Deny)
                 {
                     //LogConsole.abortEvaluation($"calling of dangerous function '{this.m_functionName}' is not allowed", this);
                     throw new Exception($"calling of dangerous function '{_functionName}' is not allowed");
@@ -120,11 +112,8 @@ internal class ASTNodeFunctionCall : ASTNode
         }
         catch (Exception ex)
         {
-            //LogConsole.abortEvaluation(ex.ToString(), this);
             throw new Exception("function call failed", ex);
         }
-
-        //return null;
     }
 
     public override Literal? Execute(Evaluator evaluator)

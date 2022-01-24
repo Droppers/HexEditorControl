@@ -28,7 +28,7 @@ internal class ASTNodeScopeResolution : ASTNode
 
         if (type is ASTNodeEnum enumType)
         {
-            foreach (var (name, value) in enumType.GetEntries())
+            foreach (var (name, value) in enumType.Entries)
             {
                 if (name == _name)
                 {

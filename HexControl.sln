@@ -39,9 +39,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.WinForms", "src\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Controls", "Controls", "{4B298E79-CC0D-4D62-9EEB-DAFC154E2709}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexControl.PatternLanguage", "src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj", "{2947B2DE-E9AA-4FB0-903B-D8AD2D9EFBA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.PatternLanguage", "src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj", "{2947B2DE-E9AA-4FB0-903B-D8AD2D9EFBA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "samples\Playground\Playground.csproj", "{E3DCC941-6017-4D85-89CF-BAFB0B71DEAD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Playground", "samples\Playground\Playground.csproj", "{E3DCC941-6017-4D85-89CF-BAFB0B71DEAD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

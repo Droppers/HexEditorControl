@@ -1,11 +1,11 @@
-﻿using HexControl.Core;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using HexControl.Core;
 
 namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataStaticArray : PatternData, IInlinable
 {
-    public bool Inlined { get; set; }
+    private readonly PatternData _template = null!;
 
     public PatternDataStaticArray(long offset, long size, Evaluator evaluator, uint color = 0)
         : base(offset, size, evaluator, color)
@@ -20,10 +20,29 @@ public class PatternDataStaticArray : PatternData, IInlinable
         EntryCount = other.EntryCount;
     }
 
-    public override PatternData Clone()
+    public PatternData Template
     {
-        return new PatternDataStaticArray(this);
+        get => _template;
+        init
+        {
+            _template = value;
+
+            if (_template is null)
+            {
+                return;
+            }
+
+            _template.Endian = value.Endian;
+            _template.Parent = this;
+
+            Color = _template.Color;
+        }
     }
+
+    public int EntryCount { get; init; }
+    public bool Inlined { get; set; }
+
+    public override PatternData Clone() => new PatternDataStaticArray(this);
 
     public override void CreateMarkers(List<Marker> markers)
     {
@@ -36,31 +55,7 @@ public class PatternDataStaticArray : PatternData, IInlinable
         }
     }
 
-    public override string GetFormattedName()
-    {
-        return $"{Template.TypeName}[{EntryCount}]";
-    }
-
-    private readonly PatternData _template = null!;
-    public PatternData Template
-    {
-        get => _template;
-        init
-        {
-            _template = value;
-
-            if (_template is null)
-            {
-                return;
-            }
-            _template.Endian = value.Endian;
-            _template.Parent = this;
-
-            Color = _template.Color;
-        }
-    }
-
-    public int EntryCount { get; init; }
+    public override string GetFormattedName() => $"{Template.TypeName}[{EntryCount}]";
 
     public override bool Equals(object? obj)
     {

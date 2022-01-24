@@ -5,6 +5,8 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataBitfield : PatternData
 {
+    private readonly List<PatternData> _fields;
+
     public PatternDataBitfield(long offset, long size, Evaluator evaluator, uint color = 0)
         : base(offset, size, evaluator, color)
     {
@@ -14,17 +16,6 @@ public class PatternDataBitfield : PatternData
     private PatternDataBitfield(PatternDataBitfield other) : base(other)
     {
         _fields = other._fields.Clone();
-    }
-
-
-    public override PatternData Clone()
-    {
-        return new PatternDataBitfield(this);
-    }
-
-    public override string GetFormattedName()
-    {
-        return $"bitfield {TypeName}";
     }
 
     public IReadOnlyList<PatternData> Fields
@@ -43,6 +34,11 @@ public class PatternDataBitfield : PatternData
             }
         }
     }
+
+
+    public override PatternData Clone() => new PatternDataBitfield(this);
+
+    public override string GetFormattedName() => $"bitfield {TypeName}";
 
     public override bool Equals(object? obj)
     {
@@ -66,7 +62,4 @@ public class PatternDataBitfield : PatternData
 
         return base.Equals(obj);
     }
-
-
-    private readonly List<PatternData> _fields;
-};
+}

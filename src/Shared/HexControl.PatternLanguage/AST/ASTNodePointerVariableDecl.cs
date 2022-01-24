@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
@@ -50,11 +49,11 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         var startOffset = evaluator.CurrentOffset;
         var sizePattern = _sizeType.CreatePatterns(evaluator)[0];
         var endOffset = evaluator.CurrentOffset;
-        
+
         var size = sizePattern.Size;
-        var pointerAddress = evaluator.GetBuffer()
+        var pointerAddress = evaluator.Buffer
             .ReadInt128(startOffset, (int)size, sizePattern.Endian);
-        
+
         var pattern = new PatternDataPointer(startOffset, size, evaluator)
         {
             PointedAtAddress = (long)pointerAddress,
@@ -69,6 +68,6 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         pattern.PointedAtPattern = _type.CreatePatterns(evaluator)[0];
         evaluator.CurrentOffset = endOffset;
 
-        return new [] {pattern};
+        return new[] {pattern};
     }
 }

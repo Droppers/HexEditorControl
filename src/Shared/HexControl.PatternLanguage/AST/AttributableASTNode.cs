@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using HexControl.Core.Buffers.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -91,7 +90,7 @@ internal abstract class AttributableASTNode : ASTNode
             }
             else if (name == "format" && requiresValue())
             {
-                var functions = evaluator.GetCustomFunctions();
+                var functions = evaluator.CustomFunctions;
                 if (!functions.ContainsKey(value!))
                 {
                     throw new Exception($"cannot find formatter function '{value}'"); // pass node
@@ -107,7 +106,7 @@ internal abstract class AttributableASTNode : ASTNode
             }
             else if (name == "transform" && requiresValue())
             {
-                var functions = evaluator.GetCustomFunctions();
+                var functions = evaluator.CustomFunctions;
                 if (!functions.ContainsKey(value!))
                 {
                     throw new Exception($"cannot find transform function '{value}'"); // pass node
@@ -124,7 +123,7 @@ internal abstract class AttributableASTNode : ASTNode
             }
             else if (name == "pointer_base" && requiresValue())
             {
-                var functions = evaluator.GetCustomFunctions();
+                var functions = evaluator.CustomFunctions;
                 if (!functions.ContainsKey(value!))
                 {
                     throw new Exception($"cannot find pointer base function '{value}'"); // pass node

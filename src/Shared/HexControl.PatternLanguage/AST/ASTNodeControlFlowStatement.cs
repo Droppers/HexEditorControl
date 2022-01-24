@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -35,7 +34,7 @@ internal class ASTNodeControlFlowStatement : ASTNode
 
     public override Literal? Execute(Evaluator evaluator)
     {
-        evaluator.SetCurrentControlFlowStatement(_type);
+        evaluator.CurrentControlFlowStatement = _type;
 
         if (_returnValue is null)
         {

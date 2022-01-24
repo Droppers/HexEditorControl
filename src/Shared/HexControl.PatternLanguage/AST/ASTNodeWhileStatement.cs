@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using HexControl.Core.Helpers;
-using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.AST;
@@ -36,56 +35,37 @@ internal class ASTNodeWhileStatement : ASTNode
         {
             evaluator.HandleAbort();
 
-            var variables = evaluator.GetScope(0).Entries;
-            var startVariableCount = variables.Count;
-            //ON_SCOPE_EXIT {
-            //    s64 stackSize = evaluator->getStack().size();
-            //    for (u32 i = startVariableCount; i < variables.size(); i++)
-            //    {
-            //        stackSize--;
-            //        delete variables[i];
-            //    }
-            //    if (stackSize < 0) LogConsole::abortEvaluation("stack pointer underflow!", this);
-            //    evaluator->getStack().resize(stackSize);
-            //};
-
-            evaluator.PushScope(null, variables);
-            //ON_SCOPE_EXIT { evaluator->popScope(); };
+            var variables = evaluator.PushScope(evaluator.ScopeAt(0).Entries).Entries;
 
             var ctrlFlow = ControlFlowStatement.None;
             foreach (var statement in _body)
             {
                 var result = statement.Execute(evaluator);
 
-                ctrlFlow = evaluator.GetCurrentControlFlowStatement();
-                evaluator.SetCurrentControlFlowStatement(ControlFlowStatement.None);
+                ctrlFlow = evaluator.CurrentControlFlowStatement;
+                evaluator.CurrentControlFlowStatement = ControlFlowStatement.None;
                 if (ctrlFlow == ControlFlowStatement.Return)
                 {
-                    CleanUpScope(evaluator, startVariableCount, variables.Count);
+                    evaluator.PopScope(true);
                     return result;
                 }
 
                 if (ctrlFlow != ControlFlowStatement.None)
                 {
-                    CleanUpScope(evaluator, startVariableCount, variables.Count);
+                    evaluator.PopScope(true);
                     break;
                 }
             }
 
-            if (_postExpression is not null)
-            {
-                _postExpression.Execute(evaluator);
-            }
+            _postExpression?.Execute(evaluator);
 
             loopIterations++;
-            if (loopIterations >= evaluator.GetLoopLimit())
+            if (loopIterations >= evaluator.LoopLimit)
             {
-                throw new Exception($"loop iterations exceeded limit of {evaluator.GetLoopLimit()}");
+                throw new Exception($"loop iterations exceeded limit of {evaluator.LoopLimit}");
             }
 
-            evaluator.HandleAbort();
-
-            CleanUpScope(evaluator, startVariableCount, variables.Count);
+            evaluator.PopScope(true);
 
             if (ctrlFlow == ControlFlowStatement.Break)
             {
@@ -96,26 +76,6 @@ internal class ASTNodeWhileStatement : ASTNode
         }
 
         return null;
-    }
-
-    // TODO: abit bad
-    private static void CleanUpScope(Evaluator evaluator, int startVariableCount, int count)
-    {
-        var variables = evaluator.GetScope(0).Entries;
-        var stackSize = evaluator.GetStack().Count;
-        for (var i = startVariableCount; i < count; i++)
-        {
-            variables.RemoveAt(variables.Count - 1);
-            stackSize--;
-        }
-
-        if (stackSize < 0)
-        {
-            throw new Exception("stack pointer underflow!");
-        }
-
-        evaluator.GetStack().Shrink(stackSize);
-        evaluator.PopScope();
     }
 
     public bool EvaluateCondition(Evaluator evaluator)

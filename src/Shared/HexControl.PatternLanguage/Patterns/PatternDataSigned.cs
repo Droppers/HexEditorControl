@@ -7,11 +7,8 @@ public class PatternDataSigned : PatternData
 
     private PatternDataSigned(PatternDataSigned other) : base(other) { }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataSigned(this);
-    }
-        
+    public override PatternData Clone() => new PatternDataSigned(this);
+
     public override string GetFormattedName()
     {
         return Size switch
@@ -24,4 +21,4 @@ public class PatternDataSigned : PatternData
             _ => "Signed data"
         };
     }
-};
+}

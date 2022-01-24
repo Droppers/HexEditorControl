@@ -24,7 +24,8 @@ internal abstract class ASTNode : ICloneable<ASTNode>
 
     public virtual ASTNode Evaluate(Evaluator evaluator) => Clone();
 
-    public virtual IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator) => Array.Empty<PatternData>().ToList();
+    public virtual IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator) =>
+        Array.Empty<PatternData>().ToList();
 
     public virtual Literal? Execute(Evaluator evaluator) => throw
         //LogConsole.abortEvaluation("cannot Execute non-function statement", this);

@@ -6,7 +6,7 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataDynamicArray : PatternData, IInlinable
 {
-    public bool Inlined { get; set; }
+    private readonly List<PatternData> _entries;
 
     public PatternDataDynamicArray(long offset, long size, Evaluator evaluator, uint color = 0) : base(offset, size,
         evaluator, color)
@@ -19,19 +19,6 @@ public class PatternDataDynamicArray : PatternData, IInlinable
         _entries = other._entries.Clone();
     }
 
-    public override PatternData Clone()
-    {
-        return new PatternDataDynamicArray(this);
-    }
-
-    public override void CreateMarkers(List<Marker> markers)
-    {
-        foreach (var entry in _entries)
-        {
-            entry.CreateMarkers(markers);
-        }
-    }
-
     public override long Offset
     {
         get => base.Offset;
@@ -41,17 +28,12 @@ public class PatternDataDynamicArray : PatternData, IInlinable
             {
                 foreach (var entry in _entries)
                 {
-                    entry.Offset = (value + (entry.Offset - Offset));
+                    entry.Offset = value + (entry.Offset - Offset);
                 }
             }
 
             base.Offset = value;
         }
-    }
-        
-    public override string GetFormattedName()
-    {
-        return $"{(_entries.Count is 0 ? "unknown" : _entries[0].TypeName)}[{_entries.Count}]";
     }
 
     public IReadOnlyList<PatternData> Entries
@@ -69,6 +51,21 @@ public class PatternDataDynamicArray : PatternData, IInlinable
         }
         get => _entries;
     }
+
+    public bool Inlined { get; set; }
+
+    public override PatternData Clone() => new PatternDataDynamicArray(this);
+
+    public override void CreateMarkers(List<Marker> markers)
+    {
+        foreach (var entry in _entries)
+        {
+            entry.CreateMarkers(markers);
+        }
+    }
+
+    public override string GetFormattedName() =>
+        $"{(_entries.Count is 0 ? "unknown" : _entries[0].TypeName)}[{_entries.Count}]";
 
     public override bool Equals(object? obj)
     {
@@ -92,6 +89,4 @@ public class PatternDataDynamicArray : PatternData, IInlinable
 
         return base.Equals(obj);
     }
-
-    private readonly List<PatternData> _entries;
 }

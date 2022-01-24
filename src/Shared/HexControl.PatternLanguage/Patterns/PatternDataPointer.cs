@@ -1,10 +1,12 @@
-﻿using HexControl.Core;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using HexControl.Core;
 
 namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataPointer : PatternData
 {
+    private PatternData _pointedAt;
+
     public PatternDataPointer(long offset, long size, Evaluator evaluator, uint color = 0) : base(offset, size,
         evaluator, color)
     {
@@ -16,10 +18,19 @@ public class PatternDataPointer : PatternData
         _pointedAt = other._pointedAt.Clone();
     }
 
-    public override PatternData Clone()
+    public PatternData PointedAtPattern
     {
-        return new PatternDataPointer(this);
+        get => _pointedAt;
+        set
+        {
+            _pointedAt = value;
+            _pointedAt.VariableName = $"*({VariableName})";
+        }
     }
+
+    public long PointedAtAddress { get; set; }
+
+    public override PatternData Clone() => new PatternDataPointer(this);
 
     public override void CreateMarkers(List<Marker> markers)
     {
@@ -51,18 +62,4 @@ public class PatternDataPointer : PatternData
 
         return result;
     }
-
-    public PatternData PointedAtPattern
-    {
-        get => _pointedAt;
-        set
-        {
-            _pointedAt = value;
-            _pointedAt.VariableName = $"*({VariableName})";
-        }
-    }
-
-    public long PointedAtAddress { get; set; }
-
-    private PatternData _pointedAt;
-};
+}

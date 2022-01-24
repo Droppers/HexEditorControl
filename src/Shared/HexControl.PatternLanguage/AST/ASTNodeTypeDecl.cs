@@ -39,7 +39,7 @@ internal class ASTNodeTypeDecl : AttributableASTNode
                 pattern.TypeName = Name;
             }
 
-            pattern.Endian = Endian ?? evaluator.GetDefaultEndian();
+            pattern.Endian = Endian ?? evaluator.DefaultEndian;
         }
 
         return patterns;

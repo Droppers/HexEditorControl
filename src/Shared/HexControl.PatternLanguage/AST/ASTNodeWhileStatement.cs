@@ -38,8 +38,9 @@ internal class ASTNodeWhileStatement : ASTNode
             var variables = evaluator.PushScope(evaluator.ScopeAt(0).Entries).Entries;
 
             var ctrlFlow = ControlFlowStatement.None;
-            foreach (var statement in _body)
+            for (var i = 0; i < _body.Count; i++)
             {
+                var statement = _body[i];
                 var result = statement.Execute(evaluator);
 
                 ctrlFlow = evaluator.CurrentControlFlowStatement;

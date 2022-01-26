@@ -25,8 +25,9 @@ internal class ASTNodeMultiVariableDecl : ASTNode
     {
         var patterns = new List<PatternData>(_variables.Count);
 
-        foreach (var node in _variables)
+        for (var i = 0; i < _variables.Count; i++)
         {
+            var node = _variables[i];
             var newPatterns = node.CreatePatterns(evaluator);
             patterns.AddRange(newPatterns);
         }
@@ -36,8 +37,9 @@ internal class ASTNodeMultiVariableDecl : ASTNode
 
     public override Literal? Execute(Evaluator evaluator)
     {
-        foreach (var variable in _variables)
+        for (var i = 0; i < _variables.Count; i++)
         {
+            var variable = _variables[i];
             var variableDecl = (ASTNodeVariableDecl)variable;
 
             evaluator.CreateVariable(variableDecl.Name, variableDecl.Type.Evaluate(evaluator));

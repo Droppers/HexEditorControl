@@ -27,8 +27,9 @@ internal class ASTNodeTypeDecl : AttributableASTNode
     {
         var patterns = Type.CreatePatterns(evaluator);
 
-        foreach (var pattern in patterns)
+        for (var i = 0; i < patterns.Count; i++)
         {
+            var pattern = patterns[i];
             if (pattern is null)
             {
                 continue;

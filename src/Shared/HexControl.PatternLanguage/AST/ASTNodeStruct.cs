@@ -7,7 +7,6 @@ namespace HexControl.PatternLanguage.AST;
 internal class ASTNodeStruct : AttributableASTNode
 {
     private readonly List<ASTNode> _inheritance;
-
     private readonly List<ASTNode> _members;
 
     public ASTNodeStruct()
@@ -31,22 +30,29 @@ internal class ASTNodeStruct : AttributableASTNode
         var startOffset = evaluator.CurrentOffset;
         var memberPatterns = evaluator.PushScope(pattern).Entries;
 
-        foreach (var inheritance in _inheritance)
+        for (var i = 0; i < _inheritance.Count; i++)
         {
+            var inheritance = _inheritance[i];
             var inheritancePatterns = inheritance.CreatePatterns(evaluator)[0];
-            if (inheritancePatterns is PatternDataStruct structPattern)
+            if (inheritancePatterns is not PatternDataStruct structPattern)
             {
-                foreach (var member in structPattern.Members)
-                {
-                    memberPatterns.Add(member.Clone());
-                }
+                continue;
+            }
+
+            for (var j = 0; j < structPattern.Members.Count; j++)
+            {
+                var member = structPattern.Members[j];
+                memberPatterns.Add(member.Clone());
             }
         }
 
-        foreach (var member in _members)
+        for (var i = 0; i < _members.Count; i++)
         {
-            foreach (var memberPattern in member.CreatePatterns(evaluator))
+            var member = _members[i];
+            var list = member.CreatePatterns(evaluator);
+            for (var j = 0; j < list.Count; j++)
             {
+                var memberPattern = list[j];
                 memberPatterns.Add(memberPattern);
             }
         }

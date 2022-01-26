@@ -42,8 +42,9 @@ public class PatternDataDynamicArray : PatternData, IInlinable
         {
             _entries.Clear();
 
-            foreach (var entry in value)
+            for (var index = 0; index < value.Count; index++)
             {
+                var entry = value[index];
                 _entries.Add(entry);
                 entry.Color = Color;
                 entry.Parent = this;

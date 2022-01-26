@@ -17,8 +17,9 @@ internal class ASTNodeBitfield : AttributableASTNode
     private ASTNodeBitfield(ASTNodeBitfield other) : base(other)
     {
         _entries = new List<(string, ASTNode)>(other._entries.Count);
-        foreach (var (name, entry) in other._entries)
+        for (var i = 0; i < other._entries.Count; i++)
         {
+            var (name, entry) = other._entries[i];
             _entries.Add((name, entry.Clone()));
         }
     }
@@ -37,8 +38,9 @@ internal class ASTNodeBitfield : AttributableASTNode
         byte bitOffset = 0;
         var fields = evaluator.PushScope(pattern).Entries;
 
-        foreach (var (name, bitSizeNode) in _entries)
+        for (var i = 0; i < _entries.Count; i++)
         {
+            var (name, bitSizeNode) = _entries[i];
             var literalNode = (ASTNodeLiteral)bitSizeNode.Evaluate(evaluator);
             var bitSize = literalNode.Literal switch
             {

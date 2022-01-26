@@ -43,14 +43,9 @@ public class PatternDataStruct : PatternData, IInlinable
         {
             _members.Clear();
 
-            foreach (var member in value)
+            for (var index = 0; index < value.Count; index++)
             {
-                // TODO: Was this safe to remove?
-                //if (member is null)
-                //{
-                //    continue;
-                //}
-
+                var member = value[index];
                 _members.Add(member);
                 member.Parent = this;
             }

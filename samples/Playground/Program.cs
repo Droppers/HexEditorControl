@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using HexControl.Core;
 using HexControl.Core.Buffers;
@@ -38,6 +39,9 @@ namespace Playground
 
             //for (var i = 0; i < 200; i++)
             //{
+            var sw = new Stopwatch();
+            sw.Start();
+            
                 var eval = new Evaluator();
                 eval.EvaluationDepth = 9999;
                 eval.ArrayLimit = 1000000000;
@@ -45,11 +49,14 @@ namespace Playground
                 //eval.DefaultEndian = Endianess.Big;
                 var patterns = eval.Evaluate(buffer, parsed);
 
-                var markers = new List<Marker>();
-                foreach (var pattern in patterns)
-                {
-                    pattern.CreateMarkers(markers);
-                }
+                sw.Stop();
+                Console.WriteLine($"Time: {sw.ElapsedMilliseconds}");
+
+                //var markers = new List<Marker>();
+                //foreach (var pattern in patterns)
+                //{
+                //    pattern.CreateMarkers(markers);
+                //}
             //}
 
             //new ConsoleVisualizer().Visualize(patterns);

@@ -7,6 +7,7 @@ using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
+using HexControl.PatternLanguage.Exceptions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Tokens;
 

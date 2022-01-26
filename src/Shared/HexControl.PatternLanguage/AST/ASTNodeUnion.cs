@@ -29,10 +29,13 @@ internal class ASTNodeUnion : AttributableASTNode
         var startOffset = evaluator.CurrentOffset;
 
         var memberPatterns = evaluator.PushScope(pattern).Entries;
-        foreach (var member in _members)
+        for (var i = 0; i < _members.Count; i++)
         {
-            foreach (var memberPattern in member.CreatePatterns(evaluator))
+            var member = _members[i];
+            var patterns = member.CreatePatterns(evaluator);
+            for (var j = 0; j < patterns.Count; j++)
             {
+                var memberPattern = patterns[j];
                 memberPattern.Offset = startOffset;
                 memberPatterns.Add(memberPattern);
                 size = Math.Max(memberPattern.Size, size);

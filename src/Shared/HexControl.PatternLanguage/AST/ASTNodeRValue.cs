@@ -143,8 +143,9 @@ internal class ASTNodeRValue : ASTNode
         IReadOnlyList<PatternData> searchScope = initialSearchScope;
 
         var shouldClone = true;
-        foreach (var part in _path.Values)
+        for (var i = 0; i < _path.Values.Count; i++)
         {
+            var part = _path.Values[i];
             if (part is string name)
             {
                 if (name == "parent")
@@ -172,8 +173,9 @@ internal class ASTNodeRValue : ASTNode
 
                 var found = false;
 
-                foreach (var entry in searchScope)
+                for (var j = 0; j < searchScope.Count; j++)
                 {
+                    var entry = searchScope[j];
                     if (entry.VariableName == name)
                     {
                         currentPattern = entry;

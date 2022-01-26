@@ -14,7 +14,6 @@ internal abstract class ASTNode : ICloneable<ASTNode>
 
     protected ASTNode(ASTNode node)
     {
-        Debug.WriteLine($"Cloned pattern: {node.GetType().Name}");
         LineNumber = node.LineNumber;
     }
 

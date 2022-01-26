@@ -28,8 +28,9 @@ internal class ASTNodeCompoundStatement : ASTNode
     {
         ASTNode? result = null;
 
-        foreach (var statement in _statements)
+        for (var i = 0; i < _statements.Count; i++)
         {
+            var statement = _statements[i];
             result = statement.Evaluate(evaluator);
         }
 
@@ -40,8 +41,9 @@ internal class ASTNodeCompoundStatement : ASTNode
     {
         List<PatternData> result = new();
 
-        foreach (var statement in _statements)
+        for (var i = 0; i < _statements.Count; i++)
         {
+            var statement = _statements[i];
             var patterns = statement.CreatePatterns(evaluator);
             result.AddRange(patterns);
         }
@@ -60,8 +62,9 @@ internal class ASTNodeCompoundStatement : ASTNode
             evaluator.PushScope(variables);
         }
 
-        foreach (var statement in _statements)
+        for (var i = 0; i < _statements.Count; i++)
         {
+            var statement = _statements[i];
             result = statement.Execute(evaluator);
             if (evaluator.CurrentControlFlowStatement != ControlFlowStatement.None)
             {

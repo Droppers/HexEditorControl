@@ -34,8 +34,9 @@ internal abstract class AttributableASTNode : ASTNode
         var endOffset = evaluator.CurrentOffset;
         evaluator.CurrentOffset = pattern.Offset;
 
-        foreach (var attribute in attributable._attributes)
+        for (var i = 0; i < attributable._attributes.Count; i++)
         {
+            var attribute = attributable._attributes[i];
             // TODOO: amazingly bad code
             var name = attribute.Attribute;
             var value = attribute.Value;

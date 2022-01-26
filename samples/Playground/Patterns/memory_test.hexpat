@@ -5,7 +5,7 @@
 };
 
 struct ContentBlockInformation {
-	u32 hash test;
+	u32 hash;
 	u32 directory_index;
 	u32 file_index;
 	u32 content_container_index;

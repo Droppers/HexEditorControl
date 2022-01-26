@@ -35,11 +35,13 @@ internal class ASTNodeConditionalStatement : ASTNode
         var scope = evaluator.ScopeAt(0).Entries;
         var body = EvaluateCondition(evaluator) ? _trueBody : _falseBody;
 
-        foreach (var node in body)
+        for (var i = 0; i < body.Count; i++)
         {
+            var node = body[i];
             var newPatterns = node.CreatePatterns(evaluator);
-            foreach (var pattern in newPatterns)
+            for (var j = 0; j < newPatterns.Count; j++)
             {
+                var pattern = newPatterns[j];
                 scope.Add(pattern.Clone());
             }
         }
@@ -54,8 +56,9 @@ internal class ASTNodeConditionalStatement : ASTNode
         var variables = evaluator.ScopeAt(0).Entries;
         evaluator.PushScope(variables);
 
-        foreach (var statement in body)
+        for (var i = 0; i < body.Count; i++)
         {
+            var statement = body[i];
             var result = statement.Execute(evaluator);
             var ctrlStatement = evaluator.CurrentControlFlowStatement;
 

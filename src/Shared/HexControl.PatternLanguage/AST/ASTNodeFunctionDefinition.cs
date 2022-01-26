@@ -24,8 +24,9 @@ internal class ASTNodeFunctionDefinition : ASTNode
         _name = other._name;
 
         var @params = new List<(string, ASTNode)>(other._params.Count);
-        foreach (var (name, type) in other._params)
+        for (var i = 0; i < other._params.Count; i++)
         {
+            var (name, type) = other._params[i];
             @params.Add((name, type.Clone()));
         }
 
@@ -42,16 +43,18 @@ internal class ASTNodeFunctionDefinition : ASTNode
             ctx.PushScope();
 
             var paramIndex = 0;
-            foreach (var (name, type) in _params)
+            for (var i = 0; i < _params.Count; i++)
             {
+                var (name, type) = _params[i];
                 ctx.CreateVariable(name, type, @params[paramIndex]);
                 ctx.SetVariable(name, @params[paramIndex]);
 
                 paramIndex++;
             }
 
-            foreach (var statement in _body)
+            for (var i = 0; i < _body.Count; i++)
             {
+                var statement = _body[i];
                 var result = statement.Execute(ctx);
 
                 if (ctx.CurrentControlFlowStatement == ControlFlowStatement.None)

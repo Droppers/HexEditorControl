@@ -63,47 +63,12 @@ internal class ASTNodeFunctionCall : ASTNode
             throw new Exception($"Invalid parameter count for function '{_functionName}': {e.Message}");
         }
 
-        //if (parameterCount == ContentRegistry.FunctionRegistry.UnlimitedParameters)
-        //{
-        //    // Don't check parameter count
-        //}
-        //else if ((parameterCount & ContentRegistry.FunctionRegistry.LessParametersThan) != 0)
-        //{
-        //    if (evaluatedParams.Length >= (parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan))
-        //    {
-        //        //LogConsole.abortEvaluation($"too many parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan}", this);
-        //        throw new Exception(
-        //            $"too many parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan}");
-        //    }
-        //}
-        //else if ((parameterCount & ContentRegistry.FunctionRegistry.MoreParametersThan) != 0)
-        //{
-        //    if (evaluatedParams.Length <= (parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan))
-        //    {
-        //        //LogConsole.abortEvaluation($"too few parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan}", this);
-        //        throw new Exception(
-        //            $"too few parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan}");
-        //    }
-        //}
-        //else if (parameterCount != evaluatedParams.Length)
-        //{
-        //    //LogConsole.abortEvaluation($"invalid number of parameters for function '{m_functionName}'. Expected {function.ParameterCount}", this);
-        //    throw new Exception(
-        //        $"invalid number of parameters for function '{_functionName}'. Expected {parameterCount}");
-        //}
-
         try
         {
             if (function.Dangerous && evaluator.DangerousFunctionPermission is not DangerousFunctionPermission.Allow)
             {
                 evaluator.DangerousFunctionCalled();
-
-                //while (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Ask)
-                //{
-                //    evaluator
-                //    Thread.Sleep(100); // TODO: actually ask, don't just block lol!
-                //}
-
+                
                 if (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Deny)
                 {
                     //LogConsole.abortEvaluation($"calling of dangerous function '{this.m_functionName}' is not allowed", this);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using HexControl.Core.Events;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.Tokens;
@@ -117,17 +118,20 @@ internal abstract class Token
         Any = 0xFFFF
     }
 
-    protected Token(TokenType type, int lineNumber)
+    protected Token(TokenType type, int length, int lineNumber, int column)
     {
         Type = type;
-        //Value = value;
+        Length = length;
         LineNumber = lineNumber;
+        Column = column;
     }
 
     public TokenType Type { get; }
+    public int Length { get; }
 
     //public ITokenValue? Value { get; }
     public int LineNumber { get; }
+    public int Column { get; }
 
     public static bool IsUnsigned(ValueType type) => ((int)type & 0x0F) == 0x00;
 

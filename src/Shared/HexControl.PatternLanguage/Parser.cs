@@ -144,7 +144,7 @@ internal class Parser
         CreateToken(type, new Token.EnumValue<Token.ValueType>(valueType));
 
     private static Token CreateToken<TType>(Token.TokenType type, TType value)
-        where TType : Token.ITokenValue, IEquatable<TType> => new Token<TType>(type, value, -1);
+        where TType : Token.ITokenValue, IEquatable<TType> => new Token<TType>(type, value, -1, -1, -1);
 
     private static Token CreateToken(Token.TokenType type, Literal literal) =>
         CreateToken(type, new Token.LiteralValue(literal));

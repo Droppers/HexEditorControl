@@ -4,7 +4,7 @@ namespace HexControl.PatternLanguage.Tokens;
 
 internal class Token<TValue> : Token where TValue : IEquatable<TValue>
 {
-    public Token(TokenType type, TValue value, int lineNumber) : base(type, lineNumber)
+    public Token(TokenType type, TValue value, int length, int lineNumber, int column) : base(type, length, lineNumber, column)
     {
         Value = value;
     }

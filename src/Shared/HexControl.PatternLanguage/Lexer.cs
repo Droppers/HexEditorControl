@@ -37,8 +37,6 @@ internal static class CharExtensions
 
 internal class Lexer
 {
-    private int _lineNumber;
-
     private static string MatchTillInvalid(ReadOnlySpan<char> characters, Func<char, bool> predicate)
     {
         var builder = ObjectPool<StringBuilder>.Shared.Rent();
@@ -66,7 +64,7 @@ internal class Lexer
         }
     }
 
-    private static int? FindFirstNotOf(ReadOnlySpan<char> source, string chars)
+    private static int FindFirstNotOf(ReadOnlySpan<char> source, string chars)
     {
         for (var i = 0; i < source.Length; i++)
         {
@@ -76,7 +74,7 @@ internal class Lexer
             }
         }
 
-        return null;
+        return -1;
     }
 
     private static int CountOccurrences(string source, char needle)
@@ -93,7 +91,7 @@ internal class Lexer
         return count;
     }
 
-    private static int? GetIntegerLiteralLength(ReadOnlySpan<char> source)
+    private static int GetIntegerLiteralLength(ReadOnlySpan<char> source)
     {
         const string chars = "0123456789ABCDEFabcdef.xUL";
         return FindFirstNotOf(source, chars);
@@ -106,7 +104,7 @@ internal class Lexer
         ushort @base;
 
         var endPos = GetIntegerLiteralLength(value);
-        var numberData = endPos is not null ? value[..endPos.Value] : value;
+        var numberData = endPos is not -1 ? value[..endPos] : value;
         //auto numberData = /*std::string_view(literal)*/.substr(0, endPos);
 
         if (numberData.EndsWith("U"))
@@ -138,7 +136,7 @@ internal class Lexer
                 return null;
             }
 
-            if (FindFirstNotOf(numberData, "0123456789ABCDEFabcdef") is not null)
+            if (FindFirstNotOf(numberData, "0123456789ABCDEFabcdef") is not -1)
             {
                 return null;
             }
@@ -153,7 +151,7 @@ internal class Lexer
                 return null;
             }
 
-            if (FindFirstNotOf(numberData, "01") is not null)
+            if (FindFirstNotOf(numberData, "01") is not -1)
             {
                 return null;
             }
@@ -167,7 +165,7 @@ internal class Lexer
             }
 
             if (CountOccurrences(numberData.ToString(), '.') > 1 ||
-                FindFirstNotOf(numberData, "0123456789.") is not null)
+                FindFirstNotOf(numberData, "0123456789.") is not -1)
             {
                 return null;
             }
@@ -181,7 +179,7 @@ internal class Lexer
         {
             @base = 10;
 
-            if (FindFirstNotOf(numberData, "0123456789") is not null)
+            if (FindFirstNotOf(numberData, "0123456789") is not -1)
             {
                 return null;
             }
@@ -396,32 +394,69 @@ internal class Lexer
         return (c, charSize + 2);
     }
 
-    private Token CreateToken(Token.TokenType type, Token.Separator separator) =>
-        CreateToken(type, new Token.EnumValue<Token.Separator>(separator));
+    private void Add(Token.TokenType type, Token.Separator separator, int length) =>
+        Add(type, new Token.EnumValue<Token.Separator>(separator), length);
 
-    private Token CreateToken(Token.TokenType type, Token.Operator @operator) =>
-        CreateToken(type, new Token.EnumValue<Token.Operator>(@operator));
+    private void Add(Token.TokenType type, Token.Operator @operator, int length) =>
+        Add(type, new Token.EnumValue<Token.Operator>(@operator), length);
 
-    private Token CreateToken(Token.TokenType type, Token.Keyword keyword) =>
-        CreateToken(type, new Token.EnumValue<Token.Keyword>(keyword));
+    private void Add(Token.TokenType type, Token.Keyword keyword, int length) =>
+        Add(type, new Token.EnumValue<Token.Keyword>(keyword), length);
 
-    private Token CreateToken(Token.TokenType type, Token.ValueType valueType) =>
-        CreateToken(type, new Token.EnumValue<Token.ValueType>(valueType));
+    private void Add(Token.TokenType type, Token.ValueType valueType, int length) =>
+        Add(type, new Token.EnumValue<Token.ValueType>(valueType), length);
 
-    private Token CreateToken<TType>(Token.TokenType type, TType value)
-        where TType : Token.ITokenValue, IEquatable<TType> => new Token<TType>(type, value, _lineNumber);
+    private void Add<TType>(Token.TokenType type, TType value, int length)
+        where TType : Token.ITokenValue, IEquatable<TType>
+    {
+        var token = new Token<TType>(type, value, length, _lineNumber, _column);
+        _tokens.Add(token);
 
-    private Token CreateToken(Token.TokenType type, Literal literal) =>
-        CreateToken(type, new Token.LiteralValue(literal));
+        Offset += length;
+    }
+
+    private void Add(Token.TokenType type, Literal literal, int length) =>
+        Add(type, new Token.LiteralValue(literal), length);
+
+    public Lexer()
+    {
+        _tokens = new List<Token>();
+    }
+
+    private List<Token> _tokens;
+    private int _offset;
+    private int _column;
+
+    private int Offset
+    {
+        get => _offset;
+        set
+        {
+            _column += value - _offset;
+            _offset = value;
+        }
+    }
+
+    private int _lineNumber;
+
+    private int LineNumber
+    {
+        get => _lineNumber;
+        set
+        {
+            _column = 0;
+            _lineNumber = value;
+        }
+    }
 
     public List<Token> Lex(ReadOnlySpan<char> code)
     {
         var tokens = new List<Token>();
-        var offset = 0;
+        _tokens = tokens;
 
-        while (offset < code.Length)
+        while (Offset < code.Length)
         {
-            var c = code[offset];
+            var c = code[Offset];
 
             if (c == 0x00)
             {
@@ -430,391 +465,350 @@ internal class Lexer
 
             if (char.IsWhiteSpace(c))
             {
-                if (code[offset] == '\n')
+                if (code[Offset] == '\n')
                 {
-                    _lineNumber++;
+                    Offset += 1;
+                    LineNumber++;
                 }
-
-                offset += 1;
+                else
+                {
+                    Offset += 1;
+                }
             }
             else if (c == ';')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.EndOfExpression));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.EndOfExpression, 1);
             }
             else if (c == '(')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.RoundBracketOpen));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.RoundBracketOpen, 1);
             }
             else if (c == ')')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.RoundBracketClose));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.RoundBracketClose, 1);
             }
             else if (c == '{')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.CurlyBracketOpen));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.CurlyBracketOpen, 1);
             }
             else if (c == '}')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.CurlyBracketClose));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.CurlyBracketClose, 1);
             }
             else if (c == '[')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.SquareBracketOpen));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.SquareBracketOpen, 1);
             }
             else if (c == ']')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.SquareBracketClose));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.SquareBracketClose, 1);
             }
             else if (c == ',')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.Comma));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.Comma, 1);
             }
             else if (c == '.')
             {
-                tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.Dot));
-                offset += 1;
+                Add(Token.TokenType.Separator, Token.Separator.Dot, 1);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("::"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("::"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.ScopeResolution));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.ScopeResolution, 2);
             }
             else if (c == '@')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.AtDeclaration));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.AtDeclaration, 1);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("=="))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("=="))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolEquals));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolEquals, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("!="))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("!="))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolNotEquals));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolNotEquals, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual(">="))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual(">="))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolGreaterThanOrEquals));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolGreaterThanOrEquals, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("<="))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("<="))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolLessThanOrEquals));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolLessThanOrEquals, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("&&"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("&&"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolAnd));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolAnd, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("||"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("||"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolOr));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolOr, 2);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("^^"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("^^"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolXor));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.BoolXor, 2);
             }
             else if (c == '=')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Assignment));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Assignment, 1);
             }
             else if (c == ':')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Inherit));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Inherit, 1);
             }
             else if (c == '+')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Plus));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Plus, 1);
             }
             else if (c == '-')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Minus));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Minus, 1);
             }
             else if (c == '*')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Star));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Star, 1);
             }
             else if (c == '/')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Slash));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Slash, 1);
             }
             else if (c == '%')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Percent));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Percent, 1);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual("<<"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual("<<"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.ShiftLeft));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.ShiftLeft, 1);
             }
-            else if (code.SafeSubString(offset, 2).SequenceEqual(">>"))
+            else if (code.SafeSubString(Offset, 2).SequenceEqual(">>"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.ShiftRight));
-                offset += 2;
+                Add(Token.TokenType.Operator, Token.Operator.ShiftRight, 1);
             }
             else if (c == '>')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolGreaterThan));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BoolGreaterThan, 1);
             }
             else if (c == '<')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolLessThan));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BoolLessThan, 1);
             }
             else if (c == '!')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BoolNot));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BoolNot, 1);
             }
             else if (c == '|')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BitOr));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BitOr, 1);
             }
             else if (c == '&')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BitAnd));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BitAnd, 1);
             }
             else if (c == '^')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BitXor));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BitXor, 1);
             }
             else if (c == '~')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.BitNot));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.BitNot, 1);
             }
             else if (c == '?')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.TernaryConditional));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.TernaryConditional, 1);
             }
             else if (c == '$')
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.Dollar));
-                offset += 1;
+                Add(Token.TokenType.Operator, Token.Operator.Dollar, 1);
             }
-            else if (code.SafeSubString(offset, 9).SequenceEqual("addressof"))
+            else if (code.SafeSubString(Offset, 9).SequenceEqual("addressof"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.AddressOf));
-                offset += 9;
+                Add(Token.TokenType.Operator, Token.Operator.AddressOf, 9);
             }
-            else if (code.SafeSubString(offset, 6).SequenceEqual("sizeof"))
+            else if (code.SafeSubString(Offset, 6).SequenceEqual("sizeof"))
             {
-                tokens.Add(CreateToken(Token.TokenType.Operator, Token.Operator.SizeOf));
-                offset += 6;
+                Add(Token.TokenType.Operator, Token.Operator.SizeOf, 6);
             }
             else if (c == '\'')
             {
-                var character = GetCharacterLiteral(code.SafeSubString(offset));
+                var character = GetCharacterLiteral(code.SafeSubString(Offset));
 
                 if (character is null)
                 {
-                    throw new Exception($"invalid character literal: {_lineNumber}");
+                    throw new Exception($"invalid character literal: {LineNumber}");
                 }
 
                 var (c2, charSize) = character.Value;
 
                 // TODO: char16 or char?
-                tokens.Add(CreateToken(Token.TokenType.Integer, Literal.Create((AsciiChar)(byte)c2)));
-                offset += charSize;
+                Add(Token.TokenType.Integer, Literal.Create((AsciiChar)(byte)c2), charSize);
             }
             else if (c == '\"')
             {
-                var @string = GetStringLiteral(code.SafeSubString(offset));
+                var @string = GetStringLiteral(code.SafeSubString(Offset));
 
                 if (@string is null)
                 {
-                    throw new Exception($"invalid string literal: {_lineNumber}");
+                    throw new Exception($"invalid string literal: {LineNumber}");
                 }
 
                 var (s, stringSize) = @string.Value;
 
-                tokens.Add(CreateToken(Token.TokenType.String, s));
-                offset += stringSize;
+                Add(Token.TokenType.String, s, stringSize);
             }
             else if (c.IsAlpha() || c is '_')
             {
-                var identifier = MatchTillInvalid(code.SafeSubString(offset),
+                var identifier = MatchTillInvalid(code.SafeSubString(Offset),
                     newChar => newChar.IsAlphaNumeric() || newChar == '_');
+                var length = identifier.Length;
 
                 // Check for reserved keywords
-
-                // TODO: Convert to switch expression
                 switch (identifier)
                 {
                     case "struct":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Struct));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Struct, length);
                         break;
                     case "union":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Union));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Union, length);
                         break;
                     case "using":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Using));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Using, length);
                         break;
                     case "enum":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Enum));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Enum, length);
                         break;
                     case "bitfield":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Bitfield));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Bitfield, length);
                         break;
                     case "be":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.BigEndian));
+                        Add(Token.TokenType.Keyword, Token.Keyword.BigEndian, length);
                         break;
                     case "le":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.LittleEndian));
+                        Add(Token.TokenType.Keyword, Token.Keyword.LittleEndian, length);
                         break;
                     case "if":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.If));
+                        Add(Token.TokenType.Keyword, Token.Keyword.If, length);
                         break;
                     case "else":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Else));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Else, length);
                         break;
                     case "false":
-                        tokens.Add(CreateToken(Token.TokenType.Integer, false));
+                        Add(Token.TokenType.Integer, false, length);
                         break;
                     case "true":
-                        tokens.Add(CreateToken(Token.TokenType.Integer, true));
+                        Add(Token.TokenType.Integer, true, length);
                         break;
                     case "parent":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Parent));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Parent, length);
                         break;
                     case "this":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.This));
+                        Add(Token.TokenType.Keyword, Token.Keyword.This, length);
                         break;
                     case "while":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.While));
+                        Add(Token.TokenType.Keyword, Token.Keyword.While, length);
                         break;
                     case "for":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.For));
+                        Add(Token.TokenType.Keyword, Token.Keyword.For, length);
                         break;
                     case "fn":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Function));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Function, length);
                         break;
                     case "return":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Return));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Return, length);
                         break;
                     case "namespace":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Namespace));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Namespace, length);
                         break;
                     case "in":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.In));
+                        Add(Token.TokenType.Keyword, Token.Keyword.In, length);
                         break;
                     case "out":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Out));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Out, length);
                         break;
                     case "break":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Break));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Break, length);
                         break;
                     case "continue":
-                        tokens.Add(CreateToken(Token.TokenType.Keyword, Token.Keyword.Continue));
+                        Add(Token.TokenType.Keyword, Token.Keyword.Continue, length);
                         break;
                     // Check for built-in types
                     case "u8":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Unsigned8Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Unsigned8Bit, length);
                         break;
                     case "s8":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Signed8Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Signed8Bit, length);
                         break;
                     case "u16":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Unsigned16Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Unsigned16Bit, length);
                         break;
                     case "s16":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Signed16Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Signed16Bit, length);
                         break;
                     case "u32":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Unsigned32Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Unsigned32Bit, length);
                         break;
                     case "s32":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Signed32Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Signed32Bit, length);
                         break;
                     case "u64":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Unsigned64Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Unsigned64Bit, length);
                         break;
                     case "s64":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Signed64Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Signed64Bit, length);
                         break;
                     case "u128":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Unsigned128Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Unsigned128Bit, length);
                         break;
                     case "s128":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Signed128Bit));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Signed128Bit, length);
                         break;
                     case "float":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Float));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Float, length);
                         break;
                     case "double":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Double));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Double, length);
                         break;
                     case "char":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Character));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Character, length);
                         break;
                     case "char16":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Character16));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Character16, length);
                         break;
                     case "bool":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Boolean));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Boolean, length);
                         break;
                     case "str":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.String));
+                        Add(Token.TokenType.ValueType, Token.ValueType.String, length);
                         break;
                     case "padding":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Padding));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Padding, length);
                         break;
                     case "auto":
-                        tokens.Add(CreateToken(Token.TokenType.ValueType, Token.ValueType.Auto));
+                        Add(Token.TokenType.ValueType, Token.ValueType.Auto, length);
                         break;
                     // If it's not a keyword and a builtin type, it has to be an identifier
                     default:
-                        tokens.Add(CreateToken(Token.TokenType.Identifier, new Token.IdentifierValue(identifier)));
+                        Add(Token.TokenType.Identifier, new Token.IdentifierValue(identifier), length);
                         break;
                 }
-
-                offset += identifier.Length;
             }
             else if (char.IsDigit(c))
             {
-                var integer = ParseIntegerLiteral(code.SafeSubString(offset));
+                var integer = ParseIntegerLiteral(code.SafeSubString(Offset));
 
                 if (integer is null)
                 {
-                    throw new Exception($"invalid integer literal: {_lineNumber}");
+                    throw new Exception($"invalid integer literal: {LineNumber}");
                 }
 
-
-                tokens.Add(CreateToken(Token.TokenType.Integer, integer));
-                offset += GetIntegerLiteralLength(code.SafeSubString(offset)) ?? 1;
+                var length = GetIntegerLiteralLength(code.SafeSubString(Offset));
+                Add(Token.TokenType.Integer, integer, length);
             }
             else
             {
-                throw new Exception($"unknown token: {c} at {_lineNumber}");
+                throw new Exception($"unknown token: {c} at {LineNumber}");
             }
         }
 
-        tokens.Add(CreateToken(Token.TokenType.Separator, Token.Separator.EndOfProgram));
+        Add(Token.TokenType.Separator, Token.Separator.EndOfProgram, 0);
 
         return tokens;
     }

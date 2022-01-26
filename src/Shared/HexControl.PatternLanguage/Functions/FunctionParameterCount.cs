@@ -29,7 +29,8 @@ public readonly struct FunctionParameterCount : IEquatable<FunctionParameterCoun
 
     public static FunctionParameterCount AtMost(int count) => new(RestrictionType.AtMost, count);
 
-    public static FunctionParameterCount Exactly(int count) => new(RestrictionType.Exactly, count);
+    public static FunctionParameterCount Exactly(int count) =>
+        count is 0 ? None : new FunctionParameterCount(RestrictionType.Exactly, count);
 
     internal bool ThrowIfInvalidParameterCount(int count)
     {

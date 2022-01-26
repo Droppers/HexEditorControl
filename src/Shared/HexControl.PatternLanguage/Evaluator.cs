@@ -276,14 +276,7 @@ public class Evaluator
     }
 
     internal Scope ScopeAt(int index) => _scopes[_scopes.Count - 1 + index];
-
-    //public bool AddCustomFunction(string name, int numParams, FunctionBody function)
-    //{
-    //    _customFunctions.Add(name, new ContentRegistry.FunctionRegistry.Function((uint)numParams, function, false));
-
-    //    return true;
-    //}
-
+    
     internal void CreateVariable(string name, ASTNode type, Literal? value = null, bool outVariable = false)
     {
         var variables = ScopeAt(0).Entries;

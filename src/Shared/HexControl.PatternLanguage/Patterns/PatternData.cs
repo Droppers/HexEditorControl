@@ -5,6 +5,7 @@ using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
+using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.Patterns;

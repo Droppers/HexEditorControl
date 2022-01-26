@@ -17,7 +17,7 @@ public class FunctionNamespace
         var sb = new StringBuilder();
         for (var i = 0; i < Name.Count; i++)
         {
-            sb.Append(Name);
+            sb.Append(Name[i]);
 
             if (i != Name.Count - 1)
             {

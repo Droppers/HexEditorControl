@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
+using HexControl.PatternLanguage.Exceptions;
 using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Tokens;
@@ -37,6 +38,38 @@ internal static class CharExtensions
 
 internal class Lexer
 {
+    private int _lineNumber;
+    private int _offset;
+
+    private List<Token> _tokens;
+
+    public Lexer()
+    {
+        _tokens = new List<Token>();
+    }
+
+    internal int Column { get; private set; }
+
+    internal int Offset
+    {
+        get => _offset;
+        private set
+        {
+            Column += value - _offset;
+            _offset = value;
+        }
+    }
+
+    internal int LineNumber
+    {
+        get => _lineNumber;
+        private set
+        {
+            Column = 0;
+            _lineNumber = value;
+        }
+    }
+
     private static string MatchTillInvalid(ReadOnlySpan<char> characters, Func<char, bool> predicate)
     {
         var builder = ObjectPool<StringBuilder>.Shared.Rent();
@@ -409,7 +442,7 @@ internal class Lexer
     private void Add<TType>(Token.TokenType type, TType value, int length)
         where TType : Token.ITokenValue, IEquatable<TType>
     {
-        var token = new Token<TType>(type, value, length, _lineNumber, _column);
+        var token = new Token<TType>(type, value, length, _lineNumber, Column);
         _tokens.Add(token);
 
         Offset += length;
@@ -417,37 +450,6 @@ internal class Lexer
 
     private void Add(Token.TokenType type, Literal literal, int length) =>
         Add(type, new Token.LiteralValue(literal), length);
-
-    public Lexer()
-    {
-        _tokens = new List<Token>();
-    }
-
-    private List<Token> _tokens;
-    private int _offset;
-    private int _column;
-
-    private int Offset
-    {
-        get => _offset;
-        set
-        {
-            _column += value - _offset;
-            _offset = value;
-        }
-    }
-
-    private int _lineNumber;
-
-    private int LineNumber
-    {
-        get => _lineNumber;
-        set
-        {
-            _column = 0;
-            _lineNumber = value;
-        }
-    }
 
     public List<Token> Lex(ReadOnlySpan<char> code)
     {
@@ -633,7 +635,7 @@ internal class Lexer
 
                 if (character is null)
                 {
-                    throw new Exception($"Invalid character literal at line {_lineNumber}, column: {_column}");
+                    throw new LexerException(this, "Invalid character literal");
                 }
 
                 var (c2, charSize) = character.Value;
@@ -647,7 +649,7 @@ internal class Lexer
 
                 if (@string is null)
                 {
-                    throw new Exception($"Invalid string literal at line {_lineNumber}, column: {_column}");
+                    throw new LexerException(this, "Invalid string literal");
                 }
 
                 var (s, stringSize) = @string.Value;
@@ -796,7 +798,7 @@ internal class Lexer
 
                 if (integer is null)
                 {
-                    throw new Exception($"Invalid integer literal at line {_lineNumber}, column: {_column}");
+                    throw new LexerException(this, "Invalid integer literal");
                 }
 
                 var length = GetIntegerLiteralLength(code.SafeSubString(Offset));
@@ -804,7 +806,7 @@ internal class Lexer
             }
             else
             {
-                throw new Exception($"Unknown token '{c}' at line {_lineNumber}, column: {_column}");
+                throw new LexerException(this, $"Unknown token '{c}'");
             }
         }
 

@@ -16,8 +16,11 @@ namespace Playground
             //var code = File.ReadAllText(@"Patterns\zip.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\heapview-2021.3.0.zip");
 
-            var code = File.ReadAllText(@"Patterns\java_class.hexpat");
-            var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
+            //var code = File.ReadAllText(@"Patterns\java_class.hexpat");
+            //var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
+
+            var code = File.ReadAllText(@"Patterns\memory_test.hexpat");
+            var document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
 
             //var code = File.ReadAllText(@"Patterns\pe.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
@@ -37,8 +40,9 @@ namespace Playground
             //{
                 var eval = new Evaluator();
                 eval.EvaluationDepth = 9999;
-                eval.ArrayLimit = 100000;
-                eval.DefaultEndian = Endianess.Big;
+                eval.ArrayLimit = 1000000000;
+                eval.PatternLimit = 99999999999999;
+                //eval.DefaultEndian = Endianess.Big;
                 var patterns = eval.Evaluate(buffer, parsed);
 
                 var markers = new List<Marker>();

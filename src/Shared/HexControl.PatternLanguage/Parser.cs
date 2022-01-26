@@ -131,6 +131,8 @@ internal class Parser
         _tokens = new List<Token>();
     }
 
+    public Token GetToken(int offset) => _tokens[_tokenIndex + offset];
+
     private static Token CreateToken(Token.TokenType type, Token.Separator separator) =>
         CreateToken(type, new Token.EnumValue<Token.Separator>(separator));
 
@@ -152,7 +154,7 @@ internal class Parser
     private static Token CreateToken(Token.TokenType type, string str) =>
         CreateToken(type, new Token.IdentifierValue(str));
 
-    public List<ASTNode>? Parse(List<Token> tokens)
+    public List<ASTNode> Parse(List<Token> tokens)
     {
         _types.Clear();
         _currentNamespace.Clear();
@@ -163,7 +165,7 @@ internal class Parser
 
         if (program.Count == 0 || _tokenIndex != _tokens.Count)
         {
-            throw new Exception("program is empty!");
+            throw new ParserException(this, "program is empty!");
         }
 
         return program;
@@ -180,12 +182,12 @@ internal class Parser
 
     private T GetValue<T>(int index) where T : notnull
     {
-        var token = _tokens[_tokenIndex + index];
+        var token = GetToken(index);
         return token switch
         {
             Token<Token.EnumValue<T>> enumValue => enumValue.Value.Value,
             Token<Token.LiteralValue> {Value: {Literal: T literal}} => literal,
-            _ => throw new Exception("failed to decode token. Invalid type.")
+            _ => throw new ParserException(this, "failed to decode token, invalid type", index)
         };
     }
 
@@ -197,7 +199,7 @@ internal class Parser
             return identifier.Value;
         }
 
-        throw new Exception("failed to decode token. Expected an identifier.");
+        throw new ParserException(this, "failed to decode token, expected an identifier", index);
     }
 
     private string GetNamespacePrefixedName(string name)
@@ -228,7 +230,7 @@ internal class Parser
 
         if (!Sequence(SeparatorRoundbracketopen))
         {
-            throw new Exception("expected '(' after function name");
+            throw new ParserException(this, "expected '(' after function name");
         }
 
         var @params = new List<ASTNode>();
@@ -239,7 +241,7 @@ internal class Parser
 
             if (Sequence(SeparatorComma, SeparatorRoundbracketclose))
             {
-                throw new Exception("unexpected ',' at end of function parameter list");
+                throw new ParserException(this, "unexpected ',' at end of function parameter list");
             }
 
             if (Sequence(SeparatorRoundbracketclose))
@@ -249,7 +251,7 @@ internal class Parser
 
             if (!Sequence(SeparatorComma))
             {
-                throw new Exception("missing ',' between parameters");
+                throw new ParserException(this, "missing ',' between parameters");
             }
         }
 
@@ -317,7 +319,7 @@ internal class Parser
                         var name = builder.ToString();
                         if (!_types.ContainsKey(name))
                         {
-                            throw new Exception($"cannot access scope of invalid type '{builder}'"); // -1
+                            throw new ParserException(this, $"cannot access scope of invalid type '{builder}'", -1);
                         }
 
                         return Create(new ASTNodeScopeResolution(_types[name].Clone(),
@@ -330,7 +332,7 @@ internal class Parser
                 }
             }
 
-            throw new Exception("failed to parse scope resolution. Expected 'TypeName::Identifier'");
+            throw new ParserException(this, "failed to parse scope resolution, expected 'TypeName::Identifier'");
         }
         finally
         {
@@ -358,7 +360,7 @@ internal class Parser
             path.Values.Add(ParseMathematicalExpression());
             if (!Sequence(SeparatorSquarebracketclose))
             {
-                throw new Exception("expected closing ']' at end of array indexing");
+                throw new ParserException(this, "expected closing ']' at end of array indexing");
             }
         }
 
@@ -369,7 +371,7 @@ internal class Parser
                 return ParseRValue(path);
             }
 
-            throw new Exception("expected member name or 'parent' keyword"); // -1
+            throw new ParserException(this, "expected member name or 'parent' keyword", -1);
         }
 
         return Create(new ASTNodeRValue(path));
@@ -382,7 +384,7 @@ internal class Parser
             var literal = GetValue<Literal>(-1);
             if (literal is null)
             {
-                throw new Exception("previous token was not a literal"); // -1
+                throw new ParserException(this, "previous token was not a literal", -1);
             }
 
             return new ASTNodeLiteral(literal);
@@ -398,7 +400,7 @@ internal class Parser
             var node = ParseMathematicalExpression();
             if (!Sequence(SeparatorRoundbracketclose))
             {
-                throw new Exception("expected closing parenthesis");
+                throw new ParserException(this, "expected closing parenthesis");
             }
 
             return node;
@@ -441,19 +443,19 @@ internal class Parser
 
             if (!OneOf(Identifier, KeywordParent, KeywordThis))
             {
-                throw new Exception("expected rvalue identifier");
+                throw new ParserException(this, "expected rvalue identifier");
             }
 
             var node = Create(new ASTNodeTypeOperator(op, ParseRValue(new ASTNodeRValue.Path())));
             if (!Sequence(SeparatorRoundbracketclose))
             {
-                throw new Exception("expected closing parenthesis");
+                throw new ParserException(this, "expected closing parenthesis");
             }
 
             return node;
         }
 
-        throw new Exception("expected value or parenthesis");
+        throw new ParserException(this, "expected value or parenthesis");
     }
 
     private ASTNode ParseCastExpression()
@@ -464,12 +466,12 @@ internal class Parser
 
             if (type.Type is not ASTNodeBuiltinType)
             {
-                throw new Exception("invalid type used for pointer size");
+                throw new ParserException(this, "invalid type used for pointer size");
             }
 
             if (!Peek(SeparatorRoundbracketopen))
             {
-                throw new Exception("expected '(' before cast expression");
+                throw new ParserException(this, "expected '(' before cast expression");
             }
 
             var node = ParseFactor();
@@ -645,7 +647,7 @@ internal class Parser
 
             if (!Sequence(OperatorInherit))
             {
-                throw new Exception("expected ':' in ternary expression");
+                throw new ParserException(this, "expected ':' in ternary expression");
             }
 
             var third = ParseBooleanOr();
@@ -686,7 +688,7 @@ internal class Parser
                     break;
                 }
 
-                throw new Exception("expected closing ')' after parameter list");
+                throw new ParserException(this, "expected closing ')' after parameter list");
             }
         }
 
@@ -694,13 +696,13 @@ internal class Parser
         {
             if (!Sequence(SeparatorRoundbracketclose))
             {
-                throw new Exception("expected closing ')' after parameter list");
+                throw new ParserException(this, "expected closing ')' after parameter list");
             }
         }
 
         if (!Sequence(SeparatorCurlybracketopen))
         {
-            throw new Exception("expected opening '{' after function definition");
+            throw new ParserException(this, "expected opening '{' after function definition");
         }
 
 
@@ -735,7 +737,7 @@ internal class Parser
         }
         else
         {
-            throw new Exception("invalid variable declaration");
+            throw new ParserException(this, "invalid variable declaration");
         }
 
         return statement;
@@ -792,19 +794,19 @@ internal class Parser
         }
         else
         {
-            throw new Exception("invalid sequence"); //0
+            throw new ParserException(this, "invalid sequence");
         }
 
         if (needsSemicolon && !Sequence(SeparatorEndofexpression))
         {
-            throw new Exception("missing ';' at end of expression"); // -1
+            throw new ParserException(this, "missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
         while (needsSemicolon && Sequence(SeparatorEndofexpression))
         {
-            ;
+            // ignore
         }
 
         return statement;
@@ -836,7 +838,7 @@ internal class Parser
         }
         else
         {
-            throw new Exception("invalid control flow statement. Expected 'return', 'break' or 'continue'");
+            throw new ParserException(this, "invalid control flow statement. Expected 'return', 'break' or 'continue'");
         }
 
         if (Peek(SeparatorEndofexpression))
@@ -872,7 +874,7 @@ internal class Parser
 
         if (!Sequence(SeparatorRoundbracketclose))
         {
-            throw new Exception("expected closing ')' after statement head");
+            throw new ParserException(this, "expected closing ')' after statement head");
         }
 
         var trueBody = ParseStatementBody();
@@ -892,7 +894,7 @@ internal class Parser
 
         if (!Sequence(SeparatorRoundbracketclose))
         {
-            throw new Exception("expected closing ')' after statement head");
+            throw new ParserException(this, "expected closing ')' after statement head");
         }
 
         var body = ParseStatementBody();
@@ -906,26 +908,26 @@ internal class Parser
 
         if (!Sequence(SeparatorComma))
         {
-            throw new Exception("expected ',' after for loop variable declaration");
+            throw new ParserException(this, "expected ',' after for loop variable declaration");
         }
 
         var condition = ParseMathematicalExpression();
 
         if (!Sequence(SeparatorComma))
         {
-            throw new Exception("expected ',' after for loop condition");
+            throw new ParserException(this, "expected ',' after for loop condition");
         }
 
         if (!Sequence(Identifier, OperatorAssignment))
         {
-            throw new Exception("expected for loop variable assignment");
+            throw new ParserException(this, "expected for loop variable assignment");
         }
 
         var postExpression = ParseFunctionVariableAssignment();
 
         if (!Sequence(SeparatorRoundbracketclose))
         {
-            throw new Exception("expected closing ')' after statement head");
+            throw new ParserException(this, "expected closing ')' after statement head");
         }
 
         var body = ParseStatementBody();
@@ -938,14 +940,14 @@ internal class Parser
     {
         if (currentNode is null)
         {
-            throw new Exception("tried to apply attribute to invalid statement");
+            throw new ParserException(this, "tried to apply attribute to invalid statement");
         }
 
         do
         {
             if (!Sequence(Identifier))
             {
-                throw new Exception("expected attribute expression");
+                throw new ParserException(this, "expected attribute expression");
             }
 
             var attribute = GetIdentifier(-1).Value;
@@ -953,7 +955,6 @@ internal class Parser
             if (Sequence(SeparatorRoundbracketopen, String, SeparatorRoundbracketclose))
             {
                 var value = GetValue<Literal>(-2);
-                //auto string = std::get_if < std::string> (&value);
 
                 if (value is StringLiteral valueStr)
                 {
@@ -961,7 +962,7 @@ internal class Parser
                 }
                 else
                 {
-                    throw new Exception("expected string attribute argument");
+                    throw new ParserException(this, "expected string attribute argument");
                 }
             }
             else
@@ -972,7 +973,7 @@ internal class Parser
 
         if (!Sequence(SeparatorSquarebracketclose, SeparatorSquarebracketclose))
         {
-            throw new Exception("unfinished attribute. Expected ']]'");
+            throw new ParserException(this, "expected ']]' to finish attribute");
         }
     }
 
@@ -995,7 +996,7 @@ internal class Parser
         }
         else
         {
-            throw new Exception("expected body of conditional statement");
+            throw new ParserException(this, "expected body of conditional statement");
         }
 
         if (Sequence(KeywordElse, SeparatorCurlybracketopen))
@@ -1019,7 +1020,7 @@ internal class Parser
 
         if (!Sequence(SeparatorRoundbracketclose))
         {
-            throw new Exception("expected closing ')' after while head");
+            throw new ParserException(this, "expected closing ')' after while head");
         }
 
         return Create(new ASTNodeWhileStatement(condition, Array.Empty<ASTNode>())); // TODO: should NOT be null
@@ -1057,7 +1058,7 @@ internal class Parser
                     endian));
             }
 
-            throw new Exception($"unknown type '{typeName}'");
+            throw new ParserException(this, $"unknown type '{typeName}'");
         }
 
         if (Sequence(ValuetypeAny))
@@ -1068,19 +1069,19 @@ internal class Parser
             {
                 if (type == Token.ValueType.String)
                 {
-                    throw new Exception("cannot use 'str' in this context. Use a character array instead");
+                    throw new ParserException(this, "cannot use 'str' in this context. Use a character array instead");
                 }
 
                 if (type == Token.ValueType.Auto)
                 {
-                    throw new Exception("cannot use 'auto' in this context");
+                    throw new ParserException(this, "cannot use 'auto' in this context");
                 }
             }
 
             return Create(new ASTNodeTypeDecl(string.Empty, new ASTNodeBuiltinType(type), endian));
         }
 
-        throw new Exception("failed to parse type. Expected identifier or builtin type");
+        throw new ParserException(this, "failed to parse type. Expected identifier or builtin type");
     }
 
     private ASTNode ParseUsingDeclaration()
@@ -1089,13 +1090,13 @@ internal class Parser
 
         if (!Sequence(OperatorAssignment))
         {
-            throw new Exception("expected '=' after type name of using declaration");
+            throw new ParserException(this, "expected '=' after type name of using declaration");
         }
 
         var type = ParseType();
         if (type is null)
         {
-            throw new Exception("invalid type used in variable declaration");
+            throw new ParserException(this, "invalid type used in variable declaration");
         }
 
         return AddType(name, type, type.Endian);
@@ -1107,7 +1108,7 @@ internal class Parser
 
         if (!Sequence(SeparatorSquarebracketclose))
         {
-            throw new Exception("expected closing ']' at end of array declaration"); // -1
+            throw new ParserException(this, "expected closing ']' at end of array declaration", -1); // -1
         }
 
         // TODO: not null!! ???
@@ -1151,7 +1152,7 @@ internal class Parser
 
             if (!Sequence(SeparatorSquarebracketclose))
             {
-                throw new Exception("expected closing ']' at end of array declaration"); //-1
+                throw new ParserException(this, "expected closing ']' at end of array declaration", -1);
             }
         }
 
@@ -1165,11 +1166,8 @@ internal class Parser
         var sizeType = ParseType();
         if (sizeType.Type is not ASTNodeBuiltinType builtinType || !Token.IsUnsigned(builtinType.Type))
         {
-            throw new Exception("invalid type used for pointer size");
-            //throwParseError("invalid type used for pointer size", -1);
+            throw new ParserException(this, "invalid type used for pointer size", -1);
         }
-        //if (builtinType is nullptr || !Token::isUnsigned(builtinType->getType()))
-        //    throwParseError("invalid type used for pointer size", -1);
 
         return Create(new ASTNodePointerVariableDecl(name, type, sizeType));
     }
@@ -1181,7 +1179,6 @@ internal class Parser
         if (Peek(KeywordBe) || Peek(KeywordLe) || Peek(ValuetypeAny) || Peek(Identifier))
         {
             // Some kind of variable definition
-
             var isFunction = false;
 
             if (Peek(Identifier))
@@ -1220,7 +1217,7 @@ internal class Parser
                 }
                 else
                 {
-                    throw new Exception("invalid variable declaration");
+                    throw new ParserException(this, "invalid variable declaration");
                 }
             }
         }
@@ -1234,13 +1231,11 @@ internal class Parser
         }
         else if (Sequence(SeparatorEndofprogram))
         {
-            throw new Exception("unexpected end of program");
-            //throwParseError("unexpected end of program", -2);
+            throw new ParserException(this, "unexpected end of program", -2);
         }
         else
         {
-            throw new Exception("invalid struct member");
-            //throwParseError("invalid struct member", 0);
+            throw new ParserException(this, "invalid struct member");
         }
 
         if (Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen))
@@ -1250,20 +1245,20 @@ internal class Parser
 
         if (!Sequence(SeparatorEndofexpression))
         {
-            throw new Exception("missing ';' at end of expression");
-            //throwParseError("missing ';' at end of expression", -1);
+            throw new ParserException(this, "Missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
         while (Sequence(SeparatorEndofexpression))
         {
-            ;
+            // do nothing
         }
 
         if (member is null)
         {
-            throw new Exception("could not parse member");
+            // TODO: wrong token index
+            throw new ParserException(this, "could not parse member");
         }
 
         return member;
@@ -1285,8 +1280,7 @@ internal class Parser
                 var inheritedTypeName = GetIdentifier(-1).Value;
                 if (!_types.ContainsKey(inheritedTypeName))
                 {
-                    throw new Exception($"cannot inherit from unknown type '{inheritedTypeName}'");
-                    //throwParseError(hex::format("cannot inherit from unknown type '{}'", inheritedTypeName), -1);
+                    throw new ParserException(this, $"cannot inherit from unknown type '{inheritedTypeName}'", -1);
                 }
 
                 structNode.AddInheritance(_types[inheritedTypeName].Clone());
@@ -1294,12 +1288,12 @@ internal class Parser
         }
         else if (Sequence(OperatorInherit, ValuetypeAny))
         {
-            throw new Exception("cannot inherit from builtin type");
+            throw new ParserException(this, "cannot inherit from builtin type");
         }
 
         if (!Sequence(SeparatorCurlybracketopen))
         {
-            throw new Exception("expected '{' after struct definition"); // -1
+            throw new ParserException(this, "expected '{' after struct definition", -1);
         }
 
         while (!Sequence(SeparatorCurlybracketclose))
@@ -1332,8 +1326,7 @@ internal class Parser
         var underlyingType = ParseType();
         if (underlyingType.Endian is not null)
         {
-            throw new Exception("underlying type may not have an endian specification");
-            //throwParseError("underlying type may not have an endian specification", -2);
+            throw new ParserException(this, "underlying type may not have an endian specification", -2);
         }
 
         var enumNode = Create(new ASTNodeEnum(underlyingType));
@@ -1341,8 +1334,7 @@ internal class Parser
 
         if (!Sequence(SeparatorCurlybracketopen))
         {
-            throw new Exception("expected '{' after enum definition");
-            //throwParseError("expected '{' after enum definition", -1);
+            throw new ParserException(this, "expected '{' after enum definition", -1);
         }
 
         ASTNode? lastEntry = null;
@@ -1374,13 +1366,11 @@ internal class Parser
             }
             else if (Sequence(SeparatorEndofprogram))
             {
-                throw new Exception("unexpected end of program");
-                //throwParseError("unexpected end of program", -2); // -2
+                throw new ParserException(this, "unexpected end of program", -1);
             }
             else
             {
-                throw new Exception("invalid enum entry");
-                //throwParseError("invalid enum entry", -1); // -1
+                throw new ParserException(this, "invalid enum entry", -1);
             }
 
             if (!Sequence(SeparatorComma))
@@ -1390,8 +1380,7 @@ internal class Parser
                     break;
                 }
 
-                throw new Exception("missing ',' between enum entries");
-                //throwParseError("missing ',' between enum entries", -1); // -1
+                throw new ParserException(this, "missing ',' between enum entries", -1);
             }
         }
 
@@ -1418,26 +1407,23 @@ internal class Parser
             }
             else if (Sequence(SeparatorEndofprogram))
             {
-                throw new Exception("unexpected end of program");
-                //throwParseError("unexpected end of program", -2);
+                throw new ParserException(this, "unexpected end of program", -2);
             }
             else
             {
-                throw new Exception("invalid bitfield member");
-                //throwParseError("invalid bitfield member", 0);
+                throw new ParserException(this, "invalid bitfield member");
             }
 
             if (!Sequence(SeparatorEndofexpression))
             {
-                throw new Exception("missing ';' at end of expression");
-                //throwParseError("missing ';' at end of expression", -1);
+                throw new ParserException(this, "missing ';' at end of expression", -1);
             }
 
             // Consume superfluous semicolons
             // ReSharper disable once EmptyEmbeddedStatement
             while (Sequence(SeparatorEndofexpression))
             {
-                ;
+                // ignore
             }
         }
 
@@ -1487,15 +1473,13 @@ internal class Parser
 
             if (!Sequence(SeparatorSquarebracketclose))
             {
-                throw new Exception("expected closing ']' at end of array declaration");
-                //throwParseError("expected closing ']' at end of array declaration", -1);
+                throw new ParserException(this, "expected closing ']' at end of array declaration", -1);
             }
         }
 
         if (!Sequence(OperatorAt))
         {
-            throw new Exception("expected placement instruction");
-            //throwParseError("expected placement instruction", -1);
+            throw new ParserException(this, "expected placement instruction", -1);
         }
 
         var placementOffset = ParseMathematicalExpression();
@@ -1510,14 +1494,12 @@ internal class Parser
         var sizeType = ParseType();
         if (sizeType.Type is not ASTNodeBuiltinType builtinType || !Token.IsUnsigned(builtinType.Type))
         {
-            throw new Exception("invalid type used for pointer size");
-            //throwParseError("invalid type used for pointer size", -1);
+            throw new ParserException(this, "invalid type used for pointer size", -1);
         }
 
         if (!Sequence(OperatorAt))
         {
-            throw new Exception("expected placement instruction");
-            //throwParseError("expected placement instruction", -1);
+            throw new ParserException(this, "expected placement instruction", -1);
         }
 
         var placementOffset = ParseMathematicalExpression();
@@ -1543,8 +1525,7 @@ internal class Parser
             return ParsePointerVariablePlacement(type);
         }
 
-        throw new Exception("invalid sequence");
-        //throwParseError("invalid sequence", 0);
+        throw new ParserException(this, "invalid sequence");
     }
 
     private List<ASTNode> ParseNamespace()
@@ -1553,7 +1534,7 @@ internal class Parser
 
         if (!Sequence(Identifier))
         {
-            throw new Exception("expected namespace identifier");
+            throw new ParserException(this, "expected namespace identifier");
         }
 
         // TODO: right? -> was m_currNamespace.Last() originally?
@@ -1571,7 +1552,7 @@ internal class Parser
 
         if (!Sequence(SeparatorCurlybracketopen))
         {
-            throw new Exception("expected '{' at start of namespace");
+            throw new ParserException(this, "expected '{' at start of namespace");
         }
 
         while (!Sequence(SeparatorCurlybracketclose))
@@ -1641,7 +1622,7 @@ internal class Parser
         }
         else
         {
-            throw new Exception("invalid sequence"); // 0
+            throw new ParserException(this, "invalid sequence");
         }
 
         if (Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen))
@@ -1651,14 +1632,14 @@ internal class Parser
 
         if (!Sequence(SeparatorEndofexpression))
         {
-            throw new Exception("missing ';' at end of expression"); // -1
+            throw new ParserException(this, "missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
         while (Sequence(SeparatorEndofexpression))
         {
-            ;
+            // ignore
         }
 
         return new List<ASTNode>(new[] {statement});
@@ -1670,7 +1651,7 @@ internal class Parser
 
         if (_types.ContainsKey(typeName))
         {
-            throw new Exception($"redefinition of type '{typeName}'");
+            throw new ParserException(this, $"redefinition of type '{typeName}'");
         }
 
         var typeDecl = Create(new ASTNodeTypeDecl(typeName, node, endian));

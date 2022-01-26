@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using HexControl.Core.Events;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.Tokens;
@@ -204,6 +203,8 @@ internal abstract class Token
 
     public override int GetHashCode() => Type.GetHashCode();
 
+    public override string ToString() => Type.ToString();
+
     public interface ITokenValue { }
 
     public readonly struct IdentifierValue : ITokenValue, IEquatable<IdentifierValue>
@@ -220,6 +221,8 @@ internal abstract class Token
         public override bool Equals(object? obj) => obj is IdentifierValue other && Equals(other);
 
         public override int GetHashCode() => Value.GetHashCode();
+
+        public override string ToString() => Value;
     }
 
     public readonly struct EnumValue<T> : ITokenValue, IEquatable<EnumValue<T>> where T : notnull
@@ -236,6 +239,8 @@ internal abstract class Token
         public override int GetHashCode() => EqualityComparer<T>.Default.GetHashCode(Value);
 
         public bool Equals(EnumValue<T> other) => EqualityComparer<T>.Default.Equals(Value, other.Value);
+
+        public override string ToString() => Value.ToString()!;
     }
 
     public readonly struct LiteralValue : ITokenValue, IEquatable<LiteralValue>
@@ -252,5 +257,7 @@ internal abstract class Token
         public override int GetHashCode() => Literal.GetHashCode();
 
         public bool Equals(LiteralValue other) => Literal.Equals(other.Literal);
+
+        public override string ToString() => Literal is StringLiteral ? $"\"{Literal}\"" : Literal.ToString()!;
     }
 }

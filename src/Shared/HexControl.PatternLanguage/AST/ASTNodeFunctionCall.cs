@@ -68,7 +68,7 @@ internal class ASTNodeFunctionCall : ASTNode
             if (function.Dangerous && evaluator.DangerousFunctionPermission is not DangerousFunctionPermission.Allow)
             {
                 evaluator.DangerousFunctionCalled();
-                
+
                 if (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Deny)
                 {
                     //LogConsole.abortEvaluation($"calling of dangerous function '{this.m_functionName}' is not allowed", this);

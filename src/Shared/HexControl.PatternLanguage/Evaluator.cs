@@ -276,7 +276,7 @@ public class Evaluator
     }
 
     internal Scope ScopeAt(int index) => _scopes[_scopes.Count - 1 + index];
-    
+
     internal void CreateVariable(string name, ASTNode type, Literal? value = null, bool outVariable = false)
     {
         var variables = ScopeAt(0).Entries;

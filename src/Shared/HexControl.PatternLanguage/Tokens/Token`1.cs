@@ -4,7 +4,8 @@ namespace HexControl.PatternLanguage.Tokens;
 
 internal class Token<TValue> : Token where TValue : IEquatable<TValue>
 {
-    public Token(TokenType type, TValue value, int length, int lineNumber, int column) : base(type, length, lineNumber, column)
+    public Token(TokenType type, TValue value, int length, int lineNumber, int column) : base(type, length, lineNumber,
+        column)
     {
         Value = value;
     }
@@ -15,4 +16,6 @@ internal class Token<TValue> : Token where TValue : IEquatable<TValue>
         other is Token<TValue> otherValue && Value.Equals(otherValue.Value);
 
     public override int GetHashCode() => HashCode.Combine(Type, Value);
+
+    public override string ToString() => $"{base.ToString()}{{{Value.ToString()}}}";
 }

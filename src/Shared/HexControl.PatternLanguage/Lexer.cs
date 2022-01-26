@@ -633,7 +633,7 @@ internal class Lexer
 
                 if (character is null)
                 {
-                    throw new Exception($"invalid character literal: {LineNumber}");
+                    throw new Exception($"Invalid character literal at line {_lineNumber}, column: {_column}");
                 }
 
                 var (c2, charSize) = character.Value;
@@ -647,7 +647,7 @@ internal class Lexer
 
                 if (@string is null)
                 {
-                    throw new Exception($"invalid string literal: {LineNumber}");
+                    throw new Exception($"Invalid string literal at line {_lineNumber}, column: {_column}");
                 }
 
                 var (s, stringSize) = @string.Value;
@@ -796,7 +796,7 @@ internal class Lexer
 
                 if (integer is null)
                 {
-                    throw new Exception($"invalid integer literal: {LineNumber}");
+                    throw new Exception($"Invalid integer literal at line {_lineNumber}, column: {_column}");
                 }
 
                 var length = GetIntegerLiteralLength(code.SafeSubString(Offset));
@@ -804,7 +804,7 @@ internal class Lexer
             }
             else
             {
-                throw new Exception($"unknown token: {c} at {LineNumber}");
+                throw new Exception($"Unknown token '{c}' at line {_lineNumber}, column: {_column}");
             }
         }
 

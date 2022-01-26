@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
+using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.PatternLanguage.Types;
@@ -31,8 +33,6 @@ public class Evaluator
 {
     private static readonly ObjectPool<List<PatternData>> ScopePool = new(10);
 
-    private readonly Dictionary<string, ContentRegistry.FunctionRegistry.Function> _customFunctions;
-
     private readonly Dictionary<string, Literal> _envVariables;
     private readonly Dictionary<string, Literal> _inVariables;
     private readonly Dictionary<string, long> _outVariables;
@@ -42,7 +42,7 @@ public class Evaluator
 
     public Evaluator()
     {
-        _customFunctions = new Dictionary<string, ContentRegistry.FunctionRegistry.Function>();
+        CustomFunctions = new FunctionRegistry();
         _envVariables = new Dictionary<string, Literal>();
         _inVariables = new Dictionary<string, Literal>();
         _outVariables = new Dictionary<string, long>();
@@ -87,6 +87,8 @@ public class Evaluator
 
     public long LoopLimit { get; set; } = 20000;
 
+    public Func<DangerousFunctionPermission>? AskDangerousFunctionExecution { get; set; }
+
     public IReadOnlyList<Literal> Stack => _stack;
 
     public bool HasDangerousFunctionBeenCalled { get; private set; }
@@ -106,14 +108,21 @@ public class Evaluator
 
     internal ControlFlowStatement CurrentControlFlowStatement { get; set; }
 
-    public IReadOnlyDictionary<string, ContentRegistry.FunctionRegistry.Function> CustomFunctions => _customFunctions;
+    public FunctionRegistry CustomFunctions { get; }
+
+    public IEnumerable<PatternData>? Evaluate(Document document, ParsedLanguage parsed)
+    {
+        var patterns = Evaluate(document.Buffer, parsed);
+        throw new NotImplementedException();
+        return patterns;
+    }
 
     public IEnumerable<PatternData>? Evaluate(BaseBuffer buffer, ParsedLanguage parsed)
     {
         Buffer = buffer;
 
         _stack.Clear();
-        _customFunctions.Clear();
+        CustomFunctions.Clear();
         _scopes.Clear();
 
         if (DangerousFunctionPermission is DangerousFunctionPermission.Deny)
@@ -174,9 +183,9 @@ public class Evaluator
             }
         }
 
-        if (_customFunctions.TryGetValue("main", out var mainFunction))
+        if (CustomFunctions.Functions.TryGetValue("main", out var mainFunction))
         {
-            if (mainFunction.ParameterCount > 0)
+            if (mainFunction.ParameterCount != FunctionParameterCount.None)
             {
                 throw new Exception("main function may not accept any arguments");
             }
@@ -268,12 +277,12 @@ public class Evaluator
 
     internal Scope ScopeAt(int index) => _scopes[_scopes.Count - 1 + index];
 
-    public bool AddCustomFunction(string name, int numParams, PatternFunctionBody function)
-    {
-        _customFunctions.Add(name, new ContentRegistry.FunctionRegistry.Function((uint)numParams, function, false));
+    //public bool AddCustomFunction(string name, int numParams, FunctionBody function)
+    //{
+    //    _customFunctions.Add(name, new ContentRegistry.FunctionRegistry.Function((uint)numParams, function, false));
 
-        return true;
-    }
+    //    return true;
+    //}
 
     internal void CreateVariable(string name, ASTNode type, Literal? value = null, bool outVariable = false)
     {
@@ -491,6 +500,11 @@ public class Evaluator
 
     public void DangerousFunctionCalled()
     {
+        if (AskDangerousFunctionExecution is not null)
+        {
+            DangerousFunctionPermission = AskDangerousFunctionExecution.Invoke();
+        }
+
         HasDangerousFunctionBeenCalled = true;
     }
 

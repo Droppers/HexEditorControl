@@ -81,9 +81,9 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     private Evaluator Evaluator { get; }
 
-    public PatternFunctionBody? TransformFunction { set; get; }
+    public FunctionBody? TransformFunction { set; get; }
 
-    public PatternFunctionBody? FormatterFunction { set; get; }
+    public FunctionBody? FormatterFunction { set; get; }
 
     public bool Local { get; set; }
 

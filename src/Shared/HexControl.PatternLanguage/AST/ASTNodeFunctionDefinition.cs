@@ -81,9 +81,7 @@ internal class ASTNodeFunctionDefinition : ASTNode
             return null;
         }
 
-        ;
-
-        evaluator.AddCustomFunction(_name, _params.Count, Executor);
+        evaluator.CustomFunctions.Register(_name, _params.Count, Executor);
 
         return null;
     }

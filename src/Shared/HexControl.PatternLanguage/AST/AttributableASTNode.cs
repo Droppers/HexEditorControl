@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -91,13 +92,13 @@ internal abstract class AttributableASTNode : ASTNode
             else if (name == "format" && requiresValue())
             {
                 var functions = evaluator.CustomFunctions;
-                if (!functions.ContainsKey(value!))
+
+                if (!functions.Functions.TryGetValue(value!, out var function))
                 {
                     throw new Exception($"cannot find formatter function '{value}'"); // pass node
                 }
 
-                var function = functions[value!];
-                if (function.ParameterCount != 1)
+                if (function.ParameterCount != FunctionParameterCount.Exactly(1))
                 {
                     throw new Exception("formatter function needs exactly one parameter"); // pass node
                 }
@@ -107,13 +108,12 @@ internal abstract class AttributableASTNode : ASTNode
             else if (name == "transform" && requiresValue())
             {
                 var functions = evaluator.CustomFunctions;
-                if (!functions.ContainsKey(value!))
+                if (!functions.Functions.TryGetValue(value!, out var function))
                 {
                     throw new Exception($"cannot find transform function '{value}'"); // pass node
                 }
 
-                var function = functions[value!];
-                if (function.ParameterCount != 1)
+                if (function.ParameterCount != FunctionParameterCount.Exactly(1))
                 {
                     throw new Exception("transform function needs exactly one parameter"); // pass node
                 }
@@ -124,13 +124,12 @@ internal abstract class AttributableASTNode : ASTNode
             else if (name == "pointer_base" && requiresValue())
             {
                 var functions = evaluator.CustomFunctions;
-                if (!functions.ContainsKey(value!))
+                if (!functions.Functions.TryGetValue(value!, out var function))
                 {
                     throw new Exception($"cannot find pointer base function '{value}'"); // pass node
                 }
 
-                var function = functions[value!];
-                if (function.ParameterCount != 1)
+                if (function.ParameterCount != FunctionParameterCount.Exactly(1))
                 {
                     throw new Exception("pointer base function needs exactly one parameter"); // pass node
                 }

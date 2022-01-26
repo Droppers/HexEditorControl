@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using HexControl.Core.Helpers;
+using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.PatternLanguage.Tokens;
@@ -46,53 +46,63 @@ internal class ASTNodeFunctionCall : ASTNode
             evaluatedParams[index] = literal.Literal;
         }
 
-        ContentRegistry.FunctionRegistry.Function? standardFunction = null;
-        if (!evaluator.CustomFunctions.TryGetValue(_functionName, out var customFunction) &&
-            !ContentRegistry.FunctionRegistry.Functions.TryGetValue(_functionName, out standardFunction))
+        FunctionDefinition? standardFunction = null;
+        if (!evaluator.CustomFunctions.Functions.TryGetValue(_functionName, out var customFunction) &&
+            !FunctionRegistry.Standard.Functions.TryGetValue(_functionName, out standardFunction))
         {
             throw new Exception($"call to unknown function '{_functionName}'");
         }
 
-        var (parameterCount, body, dangerous) = (customFunction ?? standardFunction)!;
-        if (parameterCount == ContentRegistry.FunctionRegistry.UnlimitedParameters)
+        var function = (customFunction ?? standardFunction)!;
+        try
         {
-            // Don't check parameter count
+            function.ParameterCount.ThrowIfInvalidParameterCount(evaluatedParams.Length);
         }
-        else if ((parameterCount & ContentRegistry.FunctionRegistry.LessParametersThan) != 0)
+        catch (Exception e)
         {
-            if (evaluatedParams.Length >= (parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan))
-            {
-                //LogConsole.abortEvaluation($"too many parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan}", this);
-                throw new Exception(
-                    $"too many parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan}");
-            }
+            throw new Exception($"Invalid parameter count for function '{_functionName}': {e.Message}");
         }
-        else if ((parameterCount & ContentRegistry.FunctionRegistry.MoreParametersThan) != 0)
-        {
-            if (evaluatedParams.Length <= (parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan))
-            {
-                //LogConsole.abortEvaluation($"too few parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan}", this);
-                throw new Exception(
-                    $"too few parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan}");
-            }
-        }
-        else if (parameterCount != evaluatedParams.Length)
-        {
-            //LogConsole.abortEvaluation($"invalid number of parameters for function '{m_functionName}'. Expected {function.ParameterCount}", this);
-            throw new Exception(
-                $"invalid number of parameters for function '{_functionName}'. Expected {parameterCount}");
-        }
+
+        //if (parameterCount == ContentRegistry.FunctionRegistry.UnlimitedParameters)
+        //{
+        //    // Don't check parameter count
+        //}
+        //else if ((parameterCount & ContentRegistry.FunctionRegistry.LessParametersThan) != 0)
+        //{
+        //    if (evaluatedParams.Length >= (parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan))
+        //    {
+        //        //LogConsole.abortEvaluation($"too many parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.LessParametersThan}", this);
+        //        throw new Exception(
+        //            $"too many parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.LessParametersThan}");
+        //    }
+        //}
+        //else if ((parameterCount & ContentRegistry.FunctionRegistry.MoreParametersThan) != 0)
+        //{
+        //    if (evaluatedParams.Length <= (parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan))
+        //    {
+        //        //LogConsole.abortEvaluation($"too few parameters for function '{m_functionName}'. Expected {function.ParameterCount & ~ContentRegistry.PatternLanguage.MoreParametersThan}", this);
+        //        throw new Exception(
+        //            $"too few parameters for function '{_functionName}'. Expected {parameterCount & ~ContentRegistry.FunctionRegistry.MoreParametersThan}");
+        //    }
+        //}
+        //else if (parameterCount != evaluatedParams.Length)
+        //{
+        //    //LogConsole.abortEvaluation($"invalid number of parameters for function '{m_functionName}'. Expected {function.ParameterCount}", this);
+        //    throw new Exception(
+        //        $"invalid number of parameters for function '{_functionName}'. Expected {parameterCount}");
+        //}
 
         try
         {
-            if (dangerous && evaluator.DangerousFunctionPermission is not DangerousFunctionPermission.Allow)
+            if (function.Dangerous && evaluator.DangerousFunctionPermission is not DangerousFunctionPermission.Allow)
             {
                 evaluator.DangerousFunctionCalled();
 
-                while (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Ask)
-                {
-                    Thread.Sleep(100); // TODO: actually ask, don't just block lol!
-                }
+                //while (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Ask)
+                //{
+                //    evaluator
+                //    Thread.Sleep(100); // TODO: actually ask, don't just block lol!
+                //}
 
                 if (evaluator.DangerousFunctionPermission is DangerousFunctionPermission.Deny)
                 {
@@ -101,7 +111,7 @@ internal class ASTNodeFunctionCall : ASTNode
                 }
             }
 
-            var result = body.Invoke(evaluator, evaluatedParams);
+            var result = function.Body.Invoke(evaluator, evaluatedParams);
 
             if (result is not null)
             {

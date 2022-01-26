@@ -70,14 +70,23 @@ public abstract class BaseBuffer : IBuffer
         long readOffset,
         byte[] buffer,
         List<ModifiedRange>? modifications = null,
-        CancellationToken? cancellationToken = null)
+        CancellationToken cancellationToken = default)
     {
-        cancellationToken ??= CancellationToken.None;
-
-        var (node, currentOffset) = GetNodeAt(readOffset);
         if (readOffset > Length)
         {
             return 0;
+        }
+
+        var (node, currentOffset) = GetNodeAt(readOffset);
+
+        // Shortcut for in case all data can be read from the current node
+        if (node is not null && readOffset + buffer.Length < currentOffset + node.Value.Length)
+        {
+            if (node.Value is MemoryChunk)
+            {
+                modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
+            }
+            return await node.Value.ReadAsync(buffer, readOffset, buffer.Length, cancellationToken);
         }
 
         var readLength = buffer.Length;
@@ -85,7 +94,7 @@ public abstract class BaseBuffer : IBuffer
         var modificationStart = -1L;
         while (node != null && readLength - actualRead > 0)
         {
-            cancellationToken.Value.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
             var chunk = node.Value;
             var isLastChunk = node.Next is null || chunk.Length >= readLength - actualRead;
@@ -104,7 +113,7 @@ public abstract class BaseBuffer : IBuffer
             var relativeOffset = readOffset + actualRead - currentOffset;
             var length = Math.Min(readLength - actualRead, chunk.Length - relativeOffset);
             var readBuffer = _arrayPool.Rent((int)length);
-            var bufferLength = await chunk.ReadAsync(readBuffer, relativeOffset, length, cancellationToken.Value);
+            var bufferLength = await chunk.ReadAsync(readBuffer, relativeOffset, length, cancellationToken);
             Array.Copy(readBuffer, 0, buffer, actualRead, bufferLength);
             _arrayPool.Return(readBuffer);
 
@@ -117,7 +126,7 @@ public abstract class BaseBuffer : IBuffer
     }
 
     public async Task<byte[]> ReadAsync(long readOffset, long readLength, List<ModifiedRange>? modifiedRanges = null,
-        CancellationToken? cancellationToken = null)
+        CancellationToken cancellationToken = default)
     {
         var buffer = new byte[readLength];
         await ReadAsync(readOffset, buffer, modifiedRanges);
@@ -270,14 +279,24 @@ public abstract class BaseBuffer : IBuffer
         byte[] buffer,
         List<ModifiedRange>? modifications = null)
     {
-        var (node, currentOffset) = GetNodeAt(readOffset);
         if (readOffset > Length)
         {
             return 0;
         }
 
-        var readLength = buffer.Length;
+        var (node, currentOffset) = GetNodeAt(readOffset);
+        
+        // Shortcut for in case all data can be read from the current node
+        if (node is not null && readOffset + buffer.Length < currentOffset + node.Value.Length)
+        {
+            if (node.Value is MemoryChunk)
+            {
+                modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
+            }
+            return node.Value.Read(buffer, readOffset, buffer.Length);
+        }
 
+        var readLength = buffer.Length;
         var actualRead = 0L;
         var modificationStart = -1L;
         while (node != null && readLength - actualRead > 0)
@@ -285,12 +304,12 @@ public abstract class BaseBuffer : IBuffer
             var chunk = node.Value;
 
             var isLastChunk = node.Next is null || chunk.Length >= readLength - actualRead;
-            if (chunk is MemoryChunk && modificationStart == -1)
+            if (chunk is MemoryChunk && modificationStart is -1)
             {
                 modificationStart = currentOffset;
             }
 
-            if ((chunk is not MemoryChunk || isLastChunk) && modificationStart != -1)
+            if ((chunk is not MemoryChunk || isLastChunk) && modificationStart is not -1)
             {
                 modifications?.Add(new ModifiedRange(modificationStart, node.Next is null ? Length : currentOffset));
                 modificationStart = -1;

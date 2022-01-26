@@ -17,7 +17,7 @@ internal class MemoryChunk : Chunk
     }
 
     protected override Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         InternalRead(readBuffer, sourceReadOffset, readLength);
         return Task.CompletedTask;

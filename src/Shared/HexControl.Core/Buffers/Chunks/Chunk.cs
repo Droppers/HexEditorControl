@@ -12,7 +12,7 @@ public abstract class Chunk : IChunk
     public long SourceOffset { get; set; }
     public long Length { get; set; }
 
-    public async Task<byte[]> ReadAsync(long readOffset, long readLength, CancellationToken cancellationToken)
+    public async Task<byte[]> ReadAsync(long readOffset, long readLength, CancellationToken cancellationToken = default)
     {
         (readOffset, readLength) = TranslateOffsetLength(readOffset, readLength);
 
@@ -22,7 +22,7 @@ public abstract class Chunk : IChunk
     }
 
     public async Task<long> ReadAsync(byte[] readBuffer, long readOffset, long readLength,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         (readOffset, readLength) = TranslateOffsetLength(readOffset, readLength);
 
@@ -58,7 +58,7 @@ public abstract class Chunk : IChunk
     }
 
     protected abstract Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 
     protected abstract void InternalRead(byte[] readBuffer, long sourceReadOffset, long readLength);
 }

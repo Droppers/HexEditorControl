@@ -75,17 +75,17 @@ public class Evaluator
         }
     }
 
-    public Endianess DefaultEndian { get; set; }
+    public Endianess DefaultEndian { get; set; } = Endianess.Native;
 
-    public long EvaluationDepth { get; set; }
+    public long EvaluationDepth { get; set; } = 20000;
 
-    public long ArrayLimit { get; set; }
+    public long ArrayLimit { get; set; } = 20000;
 
     public long PatternLimit { get; set; }
 
     public long PatternCount { get; set; }
 
-    public long LoopLimit { get; set; }
+    public long LoopLimit { get; set; } = 20000;
 
     public IReadOnlyList<Literal> Stack => _stack;
 

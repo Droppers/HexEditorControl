@@ -25,8 +25,8 @@ public interface IBuffer
         long readOffset,
         byte[] readBuffer,
         List<ModifiedRange>? modifiedRanges = null,
-        CancellationToken? cancellationToken = null);
+        CancellationToken cancellationToken = default);
 
     Task<byte[]> ReadAsync(long readOffset, long readLength, List<ModifiedRange>? modifiedRanges = null,
-        CancellationToken? cancellationToken = null);
+        CancellationToken cancellationToken = default);
 }

@@ -23,6 +23,9 @@
     <None Update="Patterns\pe.hexpat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Patterns\playground.hexpat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Patterns\zip.hexpat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

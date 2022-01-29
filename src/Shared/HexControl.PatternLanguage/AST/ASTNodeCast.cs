@@ -60,11 +60,5 @@ internal class ASTNodeCast : ASTNode
         evaluator.CurrentOffset = startOffset;
 
         return new ASTNodeLiteral(castedLiteral);
-        //return literal.getValue() switch
-        //{
-        //    PatternData data => throw new Exception($"cannot cast custom type '{data.getTypeName()}' to '{Token.getTypeName(type)}'"),
-        //    string _ => throw new Exception($"cannot cast string to '{Token.getTypeName(type)}'"),
-        //    object value => CastPrimitive(type, value, typePattern.getEndian())
-        //};
     }
 }

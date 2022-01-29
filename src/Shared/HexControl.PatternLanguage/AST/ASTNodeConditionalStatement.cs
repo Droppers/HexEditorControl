@@ -46,7 +46,10 @@ internal class ASTNodeConditionalStatement : ASTNode
                 for (var j = 0; j < newPatterns.Count; j++)
                 {
                     var pattern = newPatterns[j];
-                    scope.Add(pattern.Clone());
+                    if (pattern is not null)
+                    {
+                        scope.Add(pattern.Clone());
+                    }
                 }
             }
             else

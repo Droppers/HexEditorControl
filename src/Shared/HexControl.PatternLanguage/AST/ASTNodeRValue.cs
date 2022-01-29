@@ -49,7 +49,6 @@ internal class ASTNodeRValue : ASTNode
         else if (pattern is PatternDataSigned)
         {
             literal = ReadValue<Int128>(evaluator, pattern);
-            //value = hex::signExtend(pattern.Size * 8, value); // TODO: impl
         }
         else if (pattern is PatternDataFloat)
         {
@@ -83,9 +82,7 @@ internal class ASTNodeRValue : ASTNode
         }
         else if (pattern is PatternDataBoolean)
         {
-            //bool value = false;
             literal = ReadValue<bool>(evaluator, pattern);
-            //literal = value;
         }
         else if (pattern is PatternDataString)
         {
@@ -110,7 +107,6 @@ internal class ASTNodeRValue : ASTNode
         else if (pattern is PatternDataBitfieldField bitfieldFieldPattern)
         {
             var value = ReadValue<Int128>(evaluator, pattern);
-            //literal = u128(hex::extract(bitfieldFieldPattern->getBitOffset() + (bitfieldFieldPattern->getBitSize() - 1), bitfieldFieldPattern->getBitOffset(), value));
             literal = value & (1 << bitfieldFieldPattern.BitOffset);
         }
         else

@@ -8,12 +8,7 @@ internal class ASTNodeLiteral : ASTNode
     {
         Literal = literal;
     }
-
-    //private ASTNodeLiteral(ASTNodeLiteral node) : base(node)
-    //{
-    //    Literal = node.Literal;
-    //}
-
+    
     public Literal Literal { get; }
 
     // No reason to clone a literal, since it is a literal.

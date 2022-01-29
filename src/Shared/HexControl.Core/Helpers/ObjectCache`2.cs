@@ -1,4 +1,4 @@
-﻿namespace HexControl.SharedControl.Framework.Helpers;
+﻿namespace HexControl.Core.Helpers;
 
 internal class ObjectCache<TKey, TValue> : IDisposable
     where TKey : notnull
@@ -6,7 +6,7 @@ internal class ObjectCache<TKey, TValue> : IDisposable
     private readonly Dictionary<TKey, TValue> _entries;
     private readonly Func<TKey, TValue> _factory;
     private readonly object _lock;
-
+    
     public ObjectCache(Func<TKey, TValue> factory)
     {
         _factory = factory;
@@ -32,7 +32,7 @@ internal class ObjectCache<TKey, TValue> : IDisposable
         }
     }
 
-    private TValue? Get(TKey? key)
+    public TValue? Get(TKey? key)
     {
         if (key is null)
         {

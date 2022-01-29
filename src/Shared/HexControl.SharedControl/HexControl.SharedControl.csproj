@@ -21,6 +21,7 @@
 
 	<ItemGroup>
 		<Folder Include="Control\EventArgs\" />
+		<Folder Include="Framework\Helpers\" />
 	</ItemGroup>
 
 </Project>

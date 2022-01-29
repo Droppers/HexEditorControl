@@ -18,5 +18,16 @@ namespace HexControl.Core.Helpers
 
             return clonedList;
         }
+
+        public static T[] CloneAll<T>(this T[] array) where T : ICloneable<T>
+        {
+            var clonedList = new T[array.Length];
+            for (var i = 0; i < array.Length; i++)
+            {
+                clonedList[i] = array[i].Clone();
+            }
+
+            return clonedList;
+        }
     }
 }

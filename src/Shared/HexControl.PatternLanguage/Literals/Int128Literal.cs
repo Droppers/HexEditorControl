@@ -1,6 +1,6 @@
 ﻿using System;
 using HexControl.Core.Numerics;
-using HexControl.PatternLanguage.Types;
+using HexControl.PatternLanguage.Helpers;
 
 namespace HexControl.PatternLanguage.Literals;
 

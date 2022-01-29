@@ -1,11 +1,11 @@
-﻿namespace HexControl.PatternLanguage.Types;
+﻿namespace HexControl.PatternLanguage.Helpers;
 
 // A wrapper around a byte to represent a single byte character, since this does not exist in C#.
 public readonly struct AsciiChar
 {
     private byte Value { get; }
 
-    public AsciiChar(byte value)
+    private AsciiChar(byte value)
     {
         Value = value;
     }

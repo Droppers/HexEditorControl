@@ -30,9 +30,16 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         _placementOffset = other._placementOffset?.Clone();
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodePointerVariableDecl(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
+    {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
     {
         if (_placementOffset is not null)
         {
@@ -47,7 +54,7 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         }
 
         var startOffset = evaluator.CurrentOffset;
-        var sizePattern = _sizeType.CreatePatterns(evaluator)[0];
+        var sizePattern = _sizeType.CreatePattern(evaluator);
         var endOffset = evaluator.CurrentOffset;
 
         var size = sizePattern.Size;
@@ -58,16 +65,16 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
         {
             PointedAtAddress = (long)pointerAddress,
             VariableName = _name,
-            Endian = sizePattern.Endian
+            Endian = sizePattern.Endian,
+            StaticData = StaticData
         };
 
         evaluator.CurrentOffset = startOffset;
         ApplyVariableAttributes(evaluator, this, pattern);
 
         evaluator.CurrentOffset = pattern.PointedAtAddress;
-        pattern.PointedAtPattern = _type.CreatePatterns(evaluator)[0];
+        pattern.PointedAtPattern = _type.CreatePattern(evaluator);
         evaluator.CurrentOffset = endOffset;
-
-        return new[] {pattern};
+        return pattern;
     }
 }

@@ -85,7 +85,7 @@ internal class WpfRenderContext : RenderContext<Brush, Pen>
             layout.Size, brush, _subst, TextFormattingMode.Display, 1.0f);
         foreach (var range in layout.BrushRanges)
         {
-            text.SetForegroundBrush(brushes[range.Brush], range.Start, range.Length);
+            text.SetForegroundBrush(GetBrush(range.Brush), range.Start, range.Length);
         }
 
         Context.DrawText(text, Convert(layout.Position));

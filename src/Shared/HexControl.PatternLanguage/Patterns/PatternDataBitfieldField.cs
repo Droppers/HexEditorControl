@@ -7,7 +7,7 @@ public class PatternDataBitfieldField : PatternData, IInlinable
     private readonly PatternData _bitField;
 
     public PatternDataBitfieldField(long offset, byte bitOffset, byte bitSize, PatternData bitField,
-        Evaluator evaluator, uint color = 0)
+        Evaluator evaluator, int color = 0)
         : base(offset, 0, evaluator, color)
     {
         BitOffset = bitOffset;
@@ -23,9 +23,13 @@ public class PatternDataBitfieldField : PatternData, IInlinable
     }
 
     public byte BitOffset { get; }
-
     public byte BitSize { get; }
-    public bool Inlined { get; set; }
+
+    public bool Inlined
+    {
+        get => GetValue(BooleanValue.Inlined);
+        set => SetValue(BooleanValue.Inlined, value);
+    }
 
     public override PatternData Clone() => new PatternDataBitfieldField(this);
 

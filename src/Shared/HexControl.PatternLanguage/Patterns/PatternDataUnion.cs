@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using HexControl.Core;
 using HexControl.Core.Helpers;
 
@@ -6,17 +7,17 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataUnion : PatternData, IInlinable
 {
-    private readonly List<PatternData> _members;
+    private PatternData[] _members;
 
-    public PatternDataUnion(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataUnion(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color)
     {
-        _members = new List<PatternData>();
+        _members = Array.Empty<PatternData>();
     }
 
     private PatternDataUnion(PatternDataUnion other) : base(other)
     {
-        _members = other._members.Clone();
+        _members = other._members.CloneAll();
     }
 
     public override long Offset
@@ -24,15 +25,27 @@ public class PatternDataUnion : PatternData, IInlinable
         get => base.Offset;
         set
         {
-            if (!Local)
+            foreach (var member in _members)
             {
-                foreach (var member in _members)
-                {
-                    member.Offset = value + (member.Offset - Offset);
-                }
+                member.Offset = member.Offset - Offset + value;
             }
 
             base.Offset = value;
+        }
+    }
+
+    public override int Color
+    {
+        get => base.Color;
+        set
+        {
+            base.Color = value;
+
+            for (var i = 0; i < _members.Length; i++)
+            {
+                var member = _members[i];
+                member.Color = Color;
+            }
         }
     }
 
@@ -41,31 +54,44 @@ public class PatternDataUnion : PatternData, IInlinable
         get => _members;
         set
         {
-            _members.Clear();
-            foreach (var member in value)
+            _members = new PatternData[value.Count];
+            for (var i = 0; i < value.Count; i++)
             {
-                // TODO: Is this safe to remove?
-                //if (member is null)
-                //{
-                //    continue;
-                //}
+                var member = value[i];
+                if (member is null)
+                {
+                    continue;
+                }
 
-                _members.Add(member);
                 member.Parent = this;
+                _members[i] = member;
             }
         }
     }
 
-    public bool Inlined { get; set; }
+    public bool Inlined
+    {
+        get => GetValue(BooleanValue.Inlined);
+        set => SetValue(BooleanValue.Inlined, value);
+    }
 
     public override PatternData Clone() => new PatternDataUnion(this);
 
-    public override void CreateMarkers(List<Marker> markers)
+    public override void CreateMarkers(List<PatternMarker> markers)
     {
-        foreach (var member in Members)
+        // Only take the largest member in a union type
+        PatternData? largestMember = null;
+        for (var i = 0; i < Members.Count; i++)
         {
-            member.CreateMarkers(markers);
+            var member = Members[i];
+
+            if (largestMember is null || largestMember.Size < member.Size)
+            {
+                largestMember = member;
+            }
         }
+
+        largestMember?.CreateMarkers(markers);
     }
 
     public override string GetFormattedName() => $"union {TypeName}";
@@ -77,12 +103,12 @@ public class PatternDataUnion : PatternData, IInlinable
             return false;
         }
 
-        if (_members.Count != otherUnion._members.Count)
+        if (_members.Length != otherUnion._members.Length)
         {
             return false;
         }
 
-        for (var i = 0; i < _members.Count; i++)
+        for (var i = 0; i < _members.Length; i++)
         {
             if (!_members[i].Equals(otherUnion._members[i]))
             {

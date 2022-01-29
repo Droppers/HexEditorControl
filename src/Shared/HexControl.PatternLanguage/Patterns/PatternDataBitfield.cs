@@ -1,21 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataBitfield : PatternData
 {
-    private readonly List<PatternData> _fields;
+    private PatternData[] _fields;
 
-    public PatternDataBitfield(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataBitfield(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color)
     {
-        _fields = new List<PatternData>();
+        _fields = Array.Empty<PatternData>();
     }
 
     private PatternDataBitfield(PatternDataBitfield other) : base(other)
     {
-        _fields = other._fields.Clone();
+        _fields = other._fields.CloneAll();
     }
 
     public IReadOnlyList<PatternData> Fields
@@ -23,18 +24,33 @@ public class PatternDataBitfield : PatternData
         get => _fields;
         set
         {
-            _fields.Clear();
+            _fields = new PatternData[value.Count];
 
-            foreach (var field in value)
+            for (var i = 0; i < value.Count; i++)
             {
-                _fields.Add(field);
+                var field = value[i];
                 field.Size = Size;
                 field.Color = Color;
                 field.Parent = this;
+
+                _fields[i] = field;
             }
         }
     }
 
+    public override long Offset
+    {
+        get => base.Offset;
+        set
+        {
+            foreach (var member in _fields)
+            {
+                member.Offset = member.Offset - Offset + value;
+            }
+
+            base.Offset = value;
+        }
+    }
 
     public override PatternData Clone() => new PatternDataBitfield(this);
 
@@ -47,12 +63,12 @@ public class PatternDataBitfield : PatternData
             return false;
         }
 
-        if (_fields.Count != otherField._fields.Count)
+        if (_fields.Length != otherField._fields.Length)
         {
             return false;
         }
 
-        for (var i = 0; i < _fields.Count; i++)
+        for (var i = 0; i < _fields.Length; i++)
         {
             if (!_fields[i].Equals(otherField._fields[i]))
             {

@@ -7,7 +7,7 @@ public class PatternDataPointer : PatternData
 {
     private PatternData _pointedAt;
 
-    public PatternDataPointer(long offset, long size, Evaluator evaluator, uint color = 0) : base(offset, size,
+    public PatternDataPointer(long offset, long size, Evaluator evaluator, int color = 0) : base(offset, size,
         evaluator, color)
     {
         _pointedAt = null!;
@@ -30,9 +30,19 @@ public class PatternDataPointer : PatternData
 
     public long PointedAtAddress { get; set; }
 
+    public override int Color
+    {
+        get => base.Color;
+        set
+        {
+            base.Color = value;
+            _pointedAt.Color = Color;
+        }
+    }
+
     public override PatternData Clone() => new PatternDataPointer(this);
 
-    public override void CreateMarkers(List<Marker> markers)
+    public override void CreateMarkers(List<PatternMarker> markers)
     {
         base.CreateMarkers(markers);
         PointedAtPattern.CreateMarkers(markers);

@@ -88,7 +88,7 @@ internal abstract class Token
         Separator
     }
 
-    public enum ValueType
+    public enum ValueType : ushort
     {
         Unsigned8Bit = 0x10,
         Signed8Bit = 0x11,
@@ -110,11 +110,18 @@ internal abstract class Token
         CustomType = 0x00,
         Padding = 0x1F,
 
-        Unsigned = 0xFF00,
-        Signed = 0xFF01,
-        FloatingPoint = 0xFF02,
-        Integer = 0xFF03,
-        Any = 0xFFFF
+        Unsigned = 0x200,
+        Signed = 0x201,
+        FloatingPoint = 0x202,
+        Integer = 0x203,
+        Any = 0x204
+
+        // TODO: temporarily reduced maximum values to not waste space
+        //Unsigned = 0xFF00,
+        //Signed = 0xFF01,
+        //FloatingPoint = 0xFF02,
+        //Integer = 0xFF03,
+        //Any = 0xFFFF
     }
 
     protected Token(TokenType type, int length, int lineNumber, int column)
@@ -161,6 +168,30 @@ internal abstract class Token
             ValueType.Padding => "padding",
             ValueType.String => "str",
             _ => "< ??? >"
+        };
+    }
+
+    public static ValueType? GetTypeFromName(string name)
+    {
+        return name switch
+        {
+            "s8" => ValueType.Signed8Bit,
+            "s16" => ValueType.Signed16Bit,
+            "s32" => ValueType.Signed32Bit,
+            "s64" => ValueType.Signed64Bit,
+            "s128" => ValueType.Signed128Bit,
+            "u8" => ValueType.Unsigned8Bit,
+            "u16" => ValueType.Unsigned16Bit,
+            "u32" => ValueType.Unsigned32Bit,
+            "u64" => ValueType.Unsigned64Bit,
+            "u128" => ValueType.Unsigned128Bit,
+            "float" => ValueType.Float,
+            "double" => ValueType.Double,
+            "char" => ValueType.Character,
+            "char16" => ValueType.Character16,
+            "padding" => ValueType.Padding,
+            "str" => ValueType.String,
+            _ => null
         };
     }
 

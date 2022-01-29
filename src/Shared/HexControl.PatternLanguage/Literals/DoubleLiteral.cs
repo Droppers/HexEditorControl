@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using HexControl.Core.Numerics;
-using HexControl.PatternLanguage.Types;
+using HexControl.PatternLanguage.Helpers;
 
 namespace HexControl.PatternLanguage.Literals;
 

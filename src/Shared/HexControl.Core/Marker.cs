@@ -2,7 +2,21 @@
 
 namespace HexControl.Core;
 
-public class Marker
+public interface IDocumentMarker
+{
+    public Guid Id { get; set; }
+
+    public long Offset { get; set; }
+    public long Length { get; set; }
+
+    public Color? Background { get; init; }
+    public Color? Border { get; init; }
+    public Color? Foreground { get; init; }
+    public bool BehindText { get; init; }
+    public ColumnSide Column { get; init; }
+}
+
+public class Marker : IDocumentMarker
 {
     public Marker(long offset, long length)
     {
@@ -10,11 +24,11 @@ public class Marker
         Length = length;
     }
 
-    public long Offset { get; internal set; }
-    public long Length { get; internal set; }
+    public Guid Id { get; set; }
 
-    public string? Id { get; init; }
-
+    public virtual long Offset { get; set; }
+    public virtual long Length { get; set; }
+    
     public Color? Background { get; init; }
     public Color? Border { get; init; }
     public Color? Foreground { get; init; }

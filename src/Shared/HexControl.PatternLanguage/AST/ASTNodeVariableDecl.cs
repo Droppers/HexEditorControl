@@ -24,6 +24,8 @@ internal class ASTNodeVariableDecl : AttributableASTNode
         PlacementOffset = other.PlacementOffset?.Clone();
     }
 
+    public override bool MultiPattern => false;
+
     public string Name { get; }
     public ASTNode Type { get; }
 
@@ -37,6 +39,11 @@ internal class ASTNodeVariableDecl : AttributableASTNode
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
         if (PlacementOffset is not null)
         {
             var offsetNode = (ASTNodeLiteral)PlacementOffset.Evaluate(evaluator);
@@ -49,18 +56,17 @@ internal class ASTNodeVariableDecl : AttributableASTNode
             };
         }
 
-        var pattern = Type.CreatePatterns(evaluator)[0];
+        var pattern = Type.CreatePattern(evaluator);
         pattern.VariableName = Name;
 
         ApplyVariableAttributes(evaluator, this, pattern);
 
-        return new[] {pattern};
+        return pattern;
     }
 
     public override Literal? Execute(Evaluator evaluator)
     {
         evaluator.CreateVariable(Name, Type);
-
         return null;
     }
 }

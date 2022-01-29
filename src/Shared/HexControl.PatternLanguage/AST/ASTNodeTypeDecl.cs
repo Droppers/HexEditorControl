@@ -14,6 +14,7 @@ internal class ASTNodeTypeDecl : AttributableASTNode
     }
 
     private ASTNodeTypeDecl(ASTNodeTypeDecl other) : this(other.Name, other.Type, other.Endian) { }
+    public override bool MultiPattern => Type.MultiPattern;
 
     public string Name { get; }
     public ASTNode Type { get; }
@@ -25,6 +26,11 @@ internal class ASTNodeTypeDecl : AttributableASTNode
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
+        if (!Type.MultiPattern)
+        {
+            return new[] {CreatePattern(evaluator)};
+        }
+
         var patterns = Type.CreatePatterns(evaluator);
 
         for (var i = 0; i < patterns.Count; i++)
@@ -44,5 +50,17 @@ internal class ASTNodeTypeDecl : AttributableASTNode
         }
 
         return patterns;
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
+        var pattern = Type.CreatePattern(evaluator);
+        if (Name.Length > 0)
+        {
+            pattern.TypeName = Name;
+        }
+
+        pattern.Endian = Endian ?? evaluator.DefaultEndian;
+        return pattern;
     }
 }

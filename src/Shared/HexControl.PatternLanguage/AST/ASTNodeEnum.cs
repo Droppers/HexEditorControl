@@ -6,52 +6,61 @@ namespace HexControl.PatternLanguage.AST;
 
 internal class ASTNodeEnum : AttributableASTNode
 {
-    private readonly Dictionary<string, ASTNode> _entries;
+    private readonly List<(string, ASTNode)> _entries;
     private readonly ASTNode _underlyingType;
 
     public ASTNodeEnum(ASTNode underlyingType)
     {
-        _entries = new Dictionary<string, ASTNode>();
+        _entries = new List<(string, ASTNode)>();
         _underlyingType = underlyingType;
     }
 
     private ASTNodeEnum(ASTNodeEnum other) : base(other)
     {
-        _entries = new Dictionary<string, ASTNode>();
-        foreach (var (name, entry) in other.Entries)
+        _entries = new List<(string, ASTNode)>(other._entries.Count);
+        foreach (var (name, entry) in other._entries)
         {
-            _entries.Add(name, entry.Clone());
+            _entries.Add((name, entry.Clone()));
         }
 
         _underlyingType = other._underlyingType.Clone();
     }
 
-    public IReadOnlyDictionary<string, ASTNode> Entries => _entries;
+    public override bool MultiPattern => false;
+
+    public IReadOnlyList<(string, ASTNode)> Entries => _entries;
 
     public override ASTNode Clone() => new ASTNodeEnum(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
-        var pattern = new PatternDataEnum(evaluator.CurrentOffset, 0, evaluator);
+        return new[] {CreatePattern(evaluator)};
+    }
 
-        var enumEntries = new List<(Literal, string)>(_entries.Count);
-        foreach (var (name, value) in _entries)
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
+        var underlying = _underlyingType.CreatePattern(evaluator);
+        var pattern = new PatternDataEnum(underlying.Offset, underlying.Size, evaluator)
         {
+            StaticData = StaticData,
+            Endian = underlying.Endian
+        };
+
+        var enumEntries = new (Literal, string)[_entries.Count];
+        for (var i = 0; i < _entries.Count; i++)
+        {
+            var (name, value) = _entries[i];
             var literal = (ASTNodeLiteral)value.Evaluate(evaluator);
-            enumEntries.Add((literal.Literal, name));
+            enumEntries[i] = (literal.Literal, name);
         }
 
         pattern.EnumValues = enumEntries;
 
-        var underlying = _underlyingType.CreatePatterns(evaluator)[0];
-        pattern.Size = underlying.Size;
-        pattern.Endian = underlying.Endian;
-
-        return new[] {pattern};
+        return pattern;
     }
 
     public void AddEntry(string name, ASTNode expression)
     {
-        _entries.Add(name, expression);
+        _entries.Add((name, expression));
     }
 }

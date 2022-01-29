@@ -44,8 +44,14 @@ internal class ASTNodeCompoundStatement : ASTNode
         for (var i = 0; i < _statements.Count; i++)
         {
             var statement = _statements[i];
-            var patterns = statement.CreatePatterns(evaluator);
-            result.AddRange(patterns);
+            if (statement.MultiPattern)
+            {
+                result.AddRange(statement.CreatePatterns(evaluator));
+            }
+            else
+            {
+                result.Add(statement.CreatePattern(evaluator));
+            }
         }
 
         return result;

@@ -5,7 +5,7 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataString : PatternData
 {
-    public PatternDataString(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataString(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color) { }
 
     private PatternDataString(PatternDataString other) : base(other) { }

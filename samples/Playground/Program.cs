@@ -21,7 +21,7 @@ namespace Playground
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\FieldNamingStrategy.class");
 
             var code = File.ReadAllText(@"Patterns\memory_test.hexpat");
-            var document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
+            var document = Document.FromFile(@"C:\Users\joery\Downloads\pad000001.meta");
 
             //var code = File.ReadAllText(@"Patterns\pe.hexpat");
             //var document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
@@ -49,19 +49,20 @@ namespace Playground
                 //eval.DefaultEndian = Endianess.Big;
                 var patterns = eval.Evaluate(buffer, parsed);
 
-                sw.Stop();
+                 sw.Stop();
                 Console.WriteLine($"Time: {sw.ElapsedMilliseconds}");
 
-                //var markers = new List<Marker>();
-                //foreach (var pattern in patterns)
-                //{
-                //    pattern.CreateMarkers(markers);
-                //}
+                var markers = new List<PatternMarker>();
+            foreach (var pattern in patterns)
+            {
+                pattern.CreateMarkers(markers);
+            }
             //}
 
             //new ConsoleVisualizer().Visualize(patterns);
 
             Console.WriteLine("Hello World!");
+            Console.Read();
         }
     }
 }

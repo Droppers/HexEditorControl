@@ -5,7 +5,7 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataCharacter : PatternData
 {
-    public PatternDataCharacter(long offset, Evaluator evaluator, uint color = 0)
+    public PatternDataCharacter(long offset, Evaluator evaluator, int color = 0)
         : base(offset, 1, evaluator, color) { }
 
     private PatternDataCharacter(PatternDataCharacter other) : base(other) { }

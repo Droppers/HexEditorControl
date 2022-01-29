@@ -2,7 +2,7 @@
 
 public class PatternDataSigned : PatternData
 {
-    public PatternDataSigned(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataSigned(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color) { }
 
     private PatternDataSigned(PatternDataSigned other) : base(other) { }

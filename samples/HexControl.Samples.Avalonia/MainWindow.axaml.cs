@@ -27,14 +27,14 @@ public class MainWindow : Window
         //Document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
 
         var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\gpg4win-4.0.0.exe");
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         var parsed = LanguageParser.Parse(code);
         var eval = new Evaluator();
         eval.EvaluationDepth = 9999;
         eval.ArrayLimit = 100000;
         var patterns = eval.Evaluate(Document.Buffer, parsed);
 
-        var markers = new List<Marker>();
+        var markers = new List<PatternMarker>();
         foreach (var pattern in patterns)
         {
             pattern.CreateMarkers(markers);

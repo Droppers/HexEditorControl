@@ -18,9 +18,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     private readonly float[] _dashes = {2, 2};
     private readonly float[] _dots = {1.5f, 1.5f};
     private readonly DWFactory _dwFactory;
-
-    private readonly Dictionary<SharedGlyphRun, GlyphRun> _instances = new();
-
+    
     private readonly Stack<RawMatrix3x2> _transforms;
 
     private TextFormat? _format;
@@ -195,23 +193,18 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
             advances[i] = 0;
         }
 
-        if (!_instances.TryGetValue(sharedGlyphRun, out var glyphRun))
+        var typeface = (sharedGlyphRun.Typeface as D2DGlyphTypeface)?.Typeface;
+        var glyphRun = new GlyphRun
         {
-            var typeface = (sharedGlyphRun.Typeface as D2DGlyphTypeface)?.Typeface;
-            glyphRun = new GlyphRun
-            {
-                FontFace = typeface,
-                FontSize = Convert(sharedGlyphRun.FontSize),
-                BidiLevel = 0,
-                IsSideways = false
-            };
-            _instances[sharedGlyphRun] = glyphRun;
-        }
+            FontFace = typeface,
+            FontSize = Convert(sharedGlyphRun.FontSize),
+            BidiLevel = 0,
+            IsSideways = false
+        };
 
         glyphRun.Indices = indices;
         glyphRun.Offsets = offsets;
         glyphRun.Advances = advances;
-
         _context.DrawGlyphRun(Convert(sharedGlyphRun.Position), glyphRun, brush, MeasuringMode.GdiClassic);
     }
 
@@ -231,9 +224,10 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
         using var layout = new TextLayout(_dwFactory, sharedLayout.Text, _format, int.MaxValue, int.MaxValue, 1.0f,
             true);
-        foreach (var brushRange in sharedLayout.BrushRanges)
+        for (var i = 0; i < sharedLayout.BrushRanges.Count; i++)
         {
-            var rangeBrush = brushes[brushRange.Brush];
+            var brushRange = sharedLayout.BrushRanges[i];
+            var rangeBrush = GetBrush(brushRange.Brush);
             if (brushRange.Start is 0 && brushRange.Length == sharedLayout.Text.Length)
             {
                 brush = rangeBrush;

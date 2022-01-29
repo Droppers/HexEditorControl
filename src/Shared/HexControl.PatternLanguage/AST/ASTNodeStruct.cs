@@ -21,11 +21,25 @@ internal class ASTNodeStruct : AttributableASTNode
         _members = other._members.Clone();
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodeStruct(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
-        var pattern = new PatternDataStruct(evaluator.CurrentOffset, 0, evaluator);
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
+        if (_members.Count == 10)
+        {
+            int i = 1;
+        }
+        var pattern = new PatternDataStruct(evaluator.CurrentOffset, 0, evaluator)
+        {
+            StaticData = StaticData
+        };
 
         var startOffset = evaluator.CurrentOffset;
         var memberPatterns = evaluator.PushScope(pattern).Entries;
@@ -33,7 +47,7 @@ internal class ASTNodeStruct : AttributableASTNode
         for (var i = 0; i < _inheritance.Count; i++)
         {
             var inheritance = _inheritance[i];
-            var inheritancePatterns = inheritance.CreatePatterns(evaluator)[0];
+            var inheritancePatterns = inheritance.CreatePattern(evaluator);
             if (inheritancePatterns is not PatternDataStruct structPattern)
             {
                 continue;
@@ -49,20 +63,32 @@ internal class ASTNodeStruct : AttributableASTNode
         for (var i = 0; i < _members.Count; i++)
         {
             var member = _members[i];
-            var list = member.CreatePatterns(evaluator);
-            for (var j = 0; j < list.Count; j++)
+            if (member.MultiPattern)
             {
-                var memberPattern = list[j];
-                memberPatterns.Add(memberPattern);
+                var newPatterns = member.CreatePatterns(evaluator);
+                for (var j = 0; j < newPatterns.Count; j++)
+                {
+                    var memberPattern = newPatterns[j];
+                    memberPatterns.Add(memberPattern);
+                }
+            }
+            else
+            {
+                var newPattern = member.CreatePattern(evaluator);
+                if (newPattern is not null)
+                {
+                    memberPatterns.Add(newPattern);
+                }
             }
         }
-
-        evaluator.PopScope();
 
         pattern.Members = memberPatterns;
         pattern.Size = evaluator.CurrentOffset - startOffset;
 
-        return new[] {pattern};
+        // MUST be called after setting "Members" property, since memberPatterns will be cleared immediately
+        evaluator.PopScope();
+
+        return pattern;
     }
 
     public void AddMember(ASTNode node)

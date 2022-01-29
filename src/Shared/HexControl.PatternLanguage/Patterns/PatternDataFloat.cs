@@ -2,7 +2,7 @@
 
 public class PatternDataFloat : PatternData
 {
-    public PatternDataFloat(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataFloat(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color) { }
 
     private PatternDataFloat(PatternDataFloat other) : base(other) { }

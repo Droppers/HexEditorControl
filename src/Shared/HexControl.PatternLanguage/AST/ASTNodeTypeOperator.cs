@@ -26,7 +26,7 @@ internal class ASTNodeTypeOperator : ASTNode
 
     public override ASTNode Evaluate(Evaluator evaluator)
     {
-        var pattern = _expression.CreatePatterns(evaluator)[0];
+        var pattern = _expression.CreatePattern(evaluator);
 
         return _operator switch
         {

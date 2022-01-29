@@ -71,11 +71,11 @@ internal abstract class AttributableASTNode : ASTNode
             }
             else if (name == "name" && requiresValue())
             {
-                pattern.DisplayName = value!;
+                pattern.StaticData.DisplayName = value!;
             }
             else if (name == "comment" && requiresValue())
             {
-                pattern.Comment = value!;
+                pattern.StaticData.Comment = value!;
             }
             else if (name == "hidden" && noValue())
             {
@@ -104,7 +104,7 @@ internal abstract class AttributableASTNode : ASTNode
                     throw new Exception("formatter function needs exactly one parameter"); // pass node
                 }
 
-                pattern.FormatterFunction = function.Body;
+                pattern.StaticData.FormatterFunction = function.Body;
             }
             else if (name == "transform" && requiresValue())
             {
@@ -119,8 +119,7 @@ internal abstract class AttributableASTNode : ASTNode
                     throw new Exception("transform function needs exactly one parameter"); // pass node
                 }
 
-                pattern.TransformFunction = function.Body;
-                throw new Exception("transform not implemented");
+                pattern.StaticData.TransformFunction = function.Body;
             }
             else if (name == "pointer_base" && requiresValue())
             {
@@ -146,7 +145,6 @@ internal abstract class AttributableASTNode : ASTNode
                         throw new Exception("pointer base function did not return a value"); // pass node
                     }
 
-                    // TODO: literaltoUnsigned a bad choice??
                     pointerPattern.PointedAtAddress = result.ToInt64() + pointerValue;
                 }
                 else

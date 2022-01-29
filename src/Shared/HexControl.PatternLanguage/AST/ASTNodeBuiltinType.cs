@@ -12,16 +12,23 @@ internal class ASTNodeBuiltinType : ASTNode
         Type = type;
     }
 
-    private ASTNodeBuiltinType(ASTNodeBuiltinType node) : base(node)
+    private ASTNodeBuiltinType(ASTNodeBuiltinType other) : base(other)
     {
-        Type = node.Type;
+        Type = other.Type;
     }
+
+    public override bool MultiPattern => false;
 
     public Token.ValueType Type { get; }
 
     public override ASTNode Clone() => new ASTNodeBuiltinType(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
+    {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
     {
         var offset = evaluator.CurrentOffset;
         var size = Token.GetTypeSize(Type);
@@ -63,7 +70,7 @@ internal class ASTNodeBuiltinType : ASTNode
         }
         else if (Type == Token.ValueType.Auto)
         {
-            return Array.Empty<PatternData>();
+            return null;
         }
         else
         {
@@ -77,8 +84,8 @@ internal class ASTNodeBuiltinType : ASTNode
             throw new Exception("invalid built-in type");
         }
 
+        pattern.StaticData = StaticData;
         pattern.TypeName = Token.GetTypeName(Type);
-
-        return new[] {pattern};
+        return pattern;
     }
 }

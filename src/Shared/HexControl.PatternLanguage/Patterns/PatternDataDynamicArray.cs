@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using HexControl.Core;
 using HexControl.Core.Helpers;
 
@@ -6,17 +7,17 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataDynamicArray : PatternData, IInlinable
 {
-    private readonly List<PatternData> _entries;
+    private PatternData[] _entries;
 
-    public PatternDataDynamicArray(long offset, long size, Evaluator evaluator, uint color = 0) : base(offset, size,
+    public PatternDataDynamicArray(long offset, long size, Evaluator evaluator, int color = 0) : base(offset, size,
         evaluator, color)
     {
-        _entries = new List<PatternData>();
+        _entries = Array.Empty<PatternData>();
     }
 
     private PatternDataDynamicArray(PatternDataDynamicArray other) : base(other)
     {
-        _entries = other._entries.Clone();
+        _entries = other._entries.CloneAll();
     }
 
     public override long Offset
@@ -36,37 +37,57 @@ public class PatternDataDynamicArray : PatternData, IInlinable
         }
     }
 
-    public IReadOnlyList<PatternData> Entries
+    public override int Color
     {
+        get => base.Color;
         set
         {
-            _entries.Clear();
+            base.Color = value;
 
-            for (var index = 0; index < value.Count; index++)
+            for (var i = 0; i < _entries.Length; i++)
             {
-                var entry = value[index];
-                _entries.Add(entry);
-                entry.Color = Color;
-                entry.Parent = this;
+                var member = _entries[i];
+                member.Color = Color;
             }
         }
-        get => _entries;
     }
 
-    public bool Inlined { get; set; }
+    public IReadOnlyList<PatternData> Entries
+    {
+        get => _entries;
+        set
+        {
+            _entries = new PatternData[value.Count];
+
+            for (var i = 0; i < value.Count; i++)
+            {
+                var entry = value[i];
+                entry.Color = Color;
+                entry.Parent = this;
+                _entries[i] = entry;
+            }
+        }
+    }
+
+    public bool Inlined
+    {
+        get => GetValue(BooleanValue.Inlined);
+        set => SetValue(BooleanValue.Inlined, value);
+    }
 
     public override PatternData Clone() => new PatternDataDynamicArray(this);
 
-    public override void CreateMarkers(List<Marker> markers)
+    public override void CreateMarkers(List<PatternMarker> markers)
     {
-        foreach (var entry in _entries)
+        for (var i = 0; i < _entries.Length; i++)
         {
+            var entry = _entries[i];
             entry.CreateMarkers(markers);
         }
     }
 
     public override string GetFormattedName() =>
-        $"{(_entries.Count is 0 ? "unknown" : _entries[0].TypeName)}[{_entries.Count}]";
+        $"{(_entries.Length is 0 ? "unknown" : _entries[0].TypeName)}[{_entries.Length}]";
 
     public override bool Equals(object? obj)
     {
@@ -75,12 +96,12 @@ public class PatternDataDynamicArray : PatternData, IInlinable
             return false;
         }
 
-        if (_entries.Count != otherArray._entries.Count)
+        if (_entries.Length != otherArray._entries.Length)
         {
             return false;
         }
 
-        for (var i = 0; i < _entries.Count; i++)
+        for (var i = 0; i < _entries.Length; i++)
         {
             if (!_entries[i].Equals(otherArray._entries[i]))
             {

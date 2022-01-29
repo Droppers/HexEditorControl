@@ -8,9 +8,9 @@ using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
 using HexControl.PatternLanguage.Functions;
+using HexControl.PatternLanguage.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
-using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage;
 
@@ -151,7 +151,7 @@ public class Evaluator
                     node.Evaluate(this);
                     break;
                 case ASTNodeVariableDecl varDeclNode:
-                    var pattern = node.CreatePatterns(this)[0];
+                    var pattern = node.CreatePattern(this);
 
                     if (varDeclNode.PlacementOffset is null)
                     {
@@ -177,8 +177,20 @@ public class Evaluator
 
                     break;
                 default:
-                    var newPatterns = node.CreatePatterns(this);
-                    patterns.AddRange(newPatterns);
+                    if (node.MultiPattern)
+                    {
+                        var newPatterns = node.CreatePatterns(this);
+                        patterns.AddRange(newPatterns);
+                    }
+                    else
+                    {
+                        var newPattern = node.CreatePattern(this);
+                        if (newPattern is not null)
+                        {
+                            patterns.Add(newPattern);
+                        }
+                    }
+
                     break;
             }
         }
@@ -210,14 +222,12 @@ public class Evaluator
     internal Scope PushScope()
     {
         var entries = ScopePool.Rent();
-        entries.Clear();
         return PushScope(null, entries, true);
     }
 
     internal Scope PushScope(PatternData? parent)
     {
         var entries = ScopePool.Rent();
-        entries.Clear();
         return PushScope(parent, entries, true);
     }
 
@@ -270,6 +280,7 @@ public class Evaluator
         {
             if (scope.Rented)
             {
+                scope.Entries.Clear();
                 ScopePool.Return(scope.Entries);
             }
         }
@@ -289,7 +300,7 @@ public class Evaluator
         }
 
         var startOffset = CurrentOffset;
-        var pattern = type.CreatePatterns(this).FirstOrDefault();
+        var pattern = type.CreatePattern(this);
         CurrentOffset = startOffset;
 
         if (pattern is null)

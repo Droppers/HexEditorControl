@@ -1,4 +1,6 @@
-﻿namespace HexControl.SharedControl.Framework.Drawing;
+﻿using System.Drawing;
+
+namespace HexControl.SharedControl.Framework.Drawing;
 
 internal abstract class NativeBrush<TNative> : ISharedBrush, IEquatable<NativeBrush<TNative>> where TNative : class
 {
@@ -8,7 +10,7 @@ internal abstract class NativeBrush<TNative> : ISharedBrush, IEquatable<NativeBr
     }
 
     public TNative Brush { get; }
-
+    
     public bool Equals(NativeBrush<TNative>? other)
     {
         if (other is null)

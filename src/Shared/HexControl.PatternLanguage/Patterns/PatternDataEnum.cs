@@ -5,7 +5,7 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataEnum : PatternData
 {
-    public PatternDataEnum(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataEnum(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color)
     {
         EnumValues = new List<(Literal, string)>();
@@ -14,7 +14,6 @@ public class PatternDataEnum : PatternData
     private PatternDataEnum(PatternDataEnum other) : base(other)
     {
         EnumValues = new List<(Literal, string)>(other.EnumValues);
-        // TODO: should copy values?
     }
 
     public IReadOnlyList<(Literal, string)> EnumValues { set; get; }

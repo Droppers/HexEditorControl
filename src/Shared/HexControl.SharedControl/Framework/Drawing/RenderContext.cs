@@ -1,25 +1,26 @@
-﻿using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Helpers;
+﻿using HexControl.Core.Helpers;
+using HexControl.SharedControl.Framework.Drawing.Text;
 using HexControl.SharedControl.Framework.Host;
 
 namespace HexControl.SharedControl.Framework.Drawing;
 
 internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
-    where TNativeBrush : class where TNativePen : class
+    where TNativeBrush : class
+    where TNativePen : class
 {
     private readonly RenderFactory<TNativeBrush, TNativePen> _factory;
     private readonly LinkedList<IDisposable> _garbage;
-    protected readonly ObjectCache<ISharedBrush, TNativeBrush?> brushes;
-    protected readonly ObjectCache<ISharedPen, TNativePen?> pens;
+    private readonly ObjectCache<ISharedBrush, TNativeBrush?> _brushes;
+    private readonly ObjectCache<ISharedPen, TNativePen?> _pens;
 
     private IRenderStateProvider? _stateProvider;
 
     protected RenderContext(RenderFactory<TNativeBrush, TNativePen> factory)
     {
         _factory = factory;
-        brushes = new ObjectCache<ISharedBrush, TNativeBrush?>(brush =>
+        _brushes = new ObjectCache<ISharedBrush, TNativeBrush?>(brush =>
             _factory.CreateBrush(brush));
-        pens = new ObjectCache<ISharedPen, TNativePen?>(pen => _factory.CreatePen(pen));
+        _pens = new ObjectCache<ISharedPen, TNativePen?>(pen => _factory.CreatePen(pen));
 
         _garbage = new LinkedList<IDisposable>();
     }
@@ -47,7 +48,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            Clear(brushes[brush]);
+            Clear(_brushes[brush]);
         }
     }
 
@@ -55,7 +56,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            DrawRectangle(brushes[brush], pens[pen], rectangle);
+            DrawRectangle(_brushes[brush], _pens[pen], rectangle);
         }
     }
 
@@ -63,7 +64,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            DrawPolygon(brushes[brush], pens[pen], points);
+            DrawPolygon(_brushes[brush], _pens[pen], points);
         }
     }
 
@@ -71,7 +72,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            DrawLine(pens[pen], startPoint, endPoint);
+            DrawLine(_pens[pen], startPoint, endPoint);
         }
     }
 
@@ -79,7 +80,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            DrawGlyphRun(brushes[brush], glyphRun);
+            DrawGlyphRun(_brushes[brush], glyphRun);
         }
     }
 
@@ -87,7 +88,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         if (CanRender)
         {
-            DrawTextLayout(brushes[brush], layout);
+            DrawTextLayout(_brushes[brush], layout);
         }
     }
 
@@ -110,8 +111,8 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
             CanRender = false;
         }
 
-        brushes.Dispose();
-        pens.Dispose();
+        _brushes.Dispose();
+        _pens.Dispose();
         CollectGarbage();
     }
 
@@ -126,6 +127,10 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     {
         CanRender = e.CanRender;
     }
+
+    protected TNativeBrush? GetBrush(ISharedBrush? brush) => _brushes[brush];
+
+    protected TNativePen? GetPen(ISharedPen? pen) => _pens[pen];
 
     protected void AddGarbage(IDisposable disposable)
     {

@@ -31,7 +31,7 @@ internal class ASTNodeCast : ASTNode
         var type = ((ASTNodeBuiltinType)_type.Evaluate(evaluator)).Type;
 
         var startOffset = evaluator.CurrentOffset;
-        var typePattern = _type.CreatePatterns(evaluator)[0]; // TODO: keep for endian purposes :)
+        var typePattern = _type.CreatePattern(evaluator); // TODO: keep for endian purposes :)
 
         // TODO: implement endian swapping
         //auto endianAdjustedValue = hex::changeEndianess(value, typePattern->getSize(), typePattern->getEndian())

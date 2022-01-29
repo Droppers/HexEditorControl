@@ -24,6 +24,8 @@ internal class ASTNodeBitfield : AttributableASTNode
         }
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodeBitfield(this);
 
     public void AddEntry(string name, ASTNode size)
@@ -32,6 +34,11 @@ internal class ASTNodeBitfield : AttributableASTNode
     }
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
+    {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
     {
         var pattern = new PatternDataBitfield(evaluator.CurrentOffset, 0, evaluator);
 
@@ -65,11 +72,11 @@ internal class ASTNodeBitfield : AttributableASTNode
 
         evaluator.PopScope();
 
+        pattern.StaticData = StaticData;
         pattern.Size = (bitOffset + 7) / 8;
         pattern.Fields = fields;
 
         evaluator.CurrentOffset += pattern.Size;
-
-        return new[] {pattern};
+        return pattern;
     }
 }

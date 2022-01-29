@@ -38,11 +38,24 @@ internal class ASTNodeConditionalStatement : ASTNode
         for (var i = 0; i < body.Count; i++)
         {
             var node = body[i];
-            var newPatterns = node.CreatePatterns(evaluator);
-            for (var j = 0; j < newPatterns.Count; j++)
+
+            // TODO: Verify if cloning is even necessary after CREATING patterns
+            if (node.MultiPattern)
             {
-                var pattern = newPatterns[j];
-                scope.Add(pattern.Clone());
+                var newPatterns = node.CreatePatterns(evaluator);
+                for (var j = 0; j < newPatterns.Count; j++)
+                {
+                    var pattern = newPatterns[j];
+                    scope.Add(pattern.Clone());
+                }
+            }
+            else
+            {
+                var newPattern = node.CreatePattern(evaluator);
+                if (newPattern is not null)
+                {
+                    scope.Add(newPattern.Clone());
+                }
             }
         }
 

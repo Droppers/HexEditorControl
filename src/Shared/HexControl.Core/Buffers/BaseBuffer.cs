@@ -89,6 +89,7 @@ public abstract class BaseBuffer : IBuffer
             return await node.Value.ReadAsync(buffer, readOffset, buffer.Length, cancellationToken);
         }
 
+        var previousChunkLength = -1;
         var readLength = buffer.Length;
         var actualRead = 0L;
         var modificationStart = -1L;

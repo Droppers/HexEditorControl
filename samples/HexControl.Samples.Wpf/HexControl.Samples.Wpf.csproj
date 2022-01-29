@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Controls\HexControl.Wpf\HexControl.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
   </ItemGroup>
 
 </Project>

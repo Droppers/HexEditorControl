@@ -2,10 +2,10 @@
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Control.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Helpers;
 using HexControl.SharedControl.Framework.Host;
 using HexControl.SharedControl.Framework.Host.Controls;
 using HexControl.SharedControl.Framework.Host.EventArgs;
@@ -20,15 +20,15 @@ internal class EditorColumn : VisualElement
     private const int SPACING_BETWEEN_COLUMNS = 2;
 
     private readonly char[] _characterBuffer;
-    private readonly byte[] _readBuffer;
     private readonly ObjectCache<Color, ISharedBrush> _colorToBrushCache;
-    private readonly List<Marker> _markers;
+    private readonly List<IDocumentMarker> _markers;
 
     private readonly SharedHexControl _parent;
-    
-    private ColumnSide _activeColumn = ColumnSide.Left;
+    private readonly byte[] _readBuffer;
 
     private readonly SynchronizationContext? _syncContext;
+
+    private ColumnSide _activeColumn = ColumnSide.Left;
     private bool _cursorTick;
 
     private Timer? _cursorTimer;
@@ -48,7 +48,7 @@ internal class EditorColumn : VisualElement
         _parent = parent;
 
         _colorToBrushCache = new ObjectCache<Color, ISharedBrush>(color => new ColorBrush(color));
-        _markers = new List<Marker>();
+        _markers = new List<IDocumentMarker>();
         _markerForegroundLookup = Array.Empty<ISharedBrush?>();
         _characterBuffer = new char[8];
         _readBuffer = new byte[8];
@@ -157,7 +157,7 @@ internal class EditorColumn : VisualElement
 
             if (_syncContext is not null)
             {
-                _syncContext.Post((_) => Host?.Invalidate(), null);
+                _syncContext.Post(_ => Host?.Invalidate(), null);
             }
             else
             {
@@ -272,8 +272,9 @@ internal class EditorColumn : VisualElement
 
     private void UpdateUserMarkers(Document document)
     {
-        foreach (var marker in document.Markers.Values)
+        for (var i = 0; i < document.Markers.Count; i++)
         {
+            var marker = document.Markers[i];
             if (marker.Offset >= Offset + Bytes.Length || marker.Offset + marker.Length < Offset)
             {
                 continue;
@@ -333,17 +334,32 @@ internal class EditorColumn : VisualElement
     private void UpdateModificationBrushOverrides()
     {
         var rightOffset = _markerForegroundLookup.Length / 2;
-        foreach (var modification in Modifications)
+        for (var i = 0; i < Modifications.Count; i++)
         {
+            var modification = Modifications[i];
             var startOffset = Math.Max(0, modification.StartOffset - Offset);
             var length = Math.Min(Bytes.Length - startOffset,
                 modification.Length - (modification.StartOffset < Offset ? Offset - modification.StartOffset : 0));
-            for (var i = 0; i < length; i++)
+            for (var j = 0; j < length; j++)
             {
-                _markerForegroundLookup[startOffset + i] = _parent.ModifiedForeground;
-                _markerForegroundLookup[rightOffset + startOffset + i] = _parent.ModifiedForeground;
+                _markerForegroundLookup[startOffset + j] = _parent.ModifiedForeground;
+                _markerForegroundLookup[rightOffset + startOffset + j] = _parent.ModifiedForeground;
             }
         }
+    }
+
+    private static Color? DetermineTextColor(Color? background)
+    {
+        if (background is null || background.Value.A != 255)
+        {
+            return null;
+        }
+
+        var threshold = 105;
+        var delta = Convert.ToInt32(background.Value.R * 0.299 + background.Value.G * 0.587 +
+                                    background.Value.B * 0.114);
+
+        return 255 - delta < threshold ? Color.Black : Color.White;
     }
 
     private void UpdateMarkerBrushOverrides()
@@ -358,7 +374,8 @@ internal class EditorColumn : VisualElement
                 continue;
             }
 
-            if (marker.Foreground is null || _colorToBrushCache[marker.Foreground.Value] is not { } foregroundBrush)
+            var foreground = marker.Foreground ?? DetermineTextColor(marker.Background);
+            if (foreground is null || _colorToBrushCache[foreground.Value] is not { } foregroundBrush)
             {
                 continue;
             }
@@ -382,7 +399,7 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private void DrawMarkers(IRenderContext context, Func<Marker, bool> condition)
+    private void DrawMarkers(IRenderContext context, Func<IDocumentMarker, bool> condition)
     {
         for (var i = 0; i < _markers.Count; i++)
         {
@@ -391,7 +408,7 @@ internal class EditorColumn : VisualElement
             {
                 continue;
             }
-            
+
             if (_horizontalCharacterOffset < Configuration.BytesPerRow &&
                 marker.Column is ColumnSide.Left or ColumnSide.Both)
             {
@@ -536,7 +553,7 @@ internal class EditorColumn : VisualElement
         return new SharedPoint(x, y);
     }
 
-    private void DrawMarkerArea(IRenderContext context, ColumnSide column, Marker marker)
+    private void DrawMarkerArea(IRenderContext context, ColumnSide column, IDocumentMarker marker)
     {
         if (marker.Background is null && marker.Border is null)
         {
@@ -558,7 +575,7 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private MarkerPosition CalculateMarkerPosition(Marker marker, ColumnSide column)
+    private MarkerPosition CalculateMarkerPosition(IDocumentMarker marker, ColumnSide column)
     {
         var startOffset = Math.Max(0, marker.Offset - Offset);
         var length = Math.Min(Bytes.Length, marker.Length - (marker.Offset < Offset ? Offset - marker.Offset : 0) - 1);
@@ -581,29 +598,30 @@ internal class EditorColumn : VisualElement
         ISharedBrush? brush,
         ISharedPen? pen,
         ColumnSide column,
-        Marker marker,
+        IDocumentMarker marker,
         MarkerPosition position)
     {
+        // TODO: fix funky rectangle borders, introduce a 'render flags' option in IRenderContext to determine how borders behave :)!
         var columnWidth = GetVisibleColumnWidth(column);
         var aliasOffset = GetLineAntiAliasOffset(pen);
-
+        
         if (position.StartRow == position.EndRow)
         {
-            var rect = new SharedRectangle(position.Start.X - aliasOffset, position.Start.Y + aliasOffset,
-                position.End.X - position.Start.X,
+            var rect = new SharedRectangle(position.Start.X + aliasOffset, position.Start.Y + aliasOffset,
+                position.End.X - position.Start.X - aliasOffset * 2,
                 RowHeight - aliasOffset * 2);
             context.DrawRectangle(brush, pen, rect);
         }
         else if (marker.Length <= Configuration.BytesPerRow)
         {
-            var firstRect = new SharedRectangle(position.Start.X - aliasOffset, position.Start.Y + aliasOffset,
+            var firstRect = new SharedRectangle(position.Start.X + aliasOffset, position.Start.Y + aliasOffset,
                 columnWidth - position.Start.X,
                 RowHeight - aliasOffset * 2);
             context.DrawRectangle(brush, pen, firstRect);
 
             if (position.End.X > 0)
             {
-                var secondRect = new SharedRectangle(-aliasOffset, position.End.Y + aliasOffset, position.End.X,
+                var secondRect = new SharedRectangle(aliasOffset, position.End.Y + aliasOffset, position.End.X,
                     RowHeight - aliasOffset * 2);
                 context.DrawRectangle(brush, pen, secondRect);
             }
@@ -636,7 +654,7 @@ internal class EditorColumn : VisualElement
             points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y + aliasOffset));
         }
 
-        points.Add(new SharedPoint(columnWidth - aliasOffset, position.Start.Y + aliasOffset));
+        points.Add(new SharedPoint(columnWidth - aliasOffset, position.Start.Y + aliasOffset + 0));
 
         if (position.EndOffset == Configuration.BytesPerRow - 1)
         {
@@ -1113,16 +1131,16 @@ internal class EditorColumn : VisualElement
         var appendToDocument = cursor.Offset >= Document.Length;
 
         var characterSet = GetCharacterSetForColumn(cursor.Column);
-        var relativeOffset = cursor.Offset - Offset;
         var oldByte = (byte)0;
 
         if (!appendToDocument)
         {
             var readByte = await ReadCursorByte(cursor);
-            if(readByte is null)
+            if (readByte is null)
             {
                 return;
             }
+
             oldByte = readByte.Value;
         }
 
@@ -1146,7 +1164,7 @@ internal class EditorColumn : VisualElement
 
     private async Task<byte?> ReadCursorByte(Cursor cursor)
     {
-        if(Document is null)
+        if (Document is null)
         {
             return null;
         }
@@ -1156,17 +1174,15 @@ internal class EditorColumn : VisualElement
         {
             return Bytes[relativeOffset];
         }
-        else
-        {
-            // Allow for writing outside of current visible buffer
-            var readLength = await Document.Buffer.ReadAsync(cursor.Offset, _readBuffer);
-            if (readLength <= 0)
-            {
-                return null;
-            }
 
-            return _readBuffer[0];
+        // Allow for writing outside of current visible buffer
+        var readLength = await Document.Buffer.ReadAsync(cursor.Offset, _readBuffer);
+        if (readLength <= 0)
+        {
+            return null;
         }
+
+        return _readBuffer[0];
     }
 
     private void HandleArrowKeys(Document document, HostKey key, bool jumpByte = false)
@@ -1207,7 +1223,7 @@ internal class EditorColumn : VisualElement
         nibble = Math.Max(0, nibble);
 
         // TODO: Don't set cursor offset when selecting, this is already handeled by Select()
-        SetCursorOffset(offset, nibble, scrollToCursor: true);
+        SetCursorOffset(offset, nibble, true);
         Select(offset, _activeColumn); // TODO, should be minus one?
     }
 

@@ -5,9 +5,9 @@ using System.Text;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Extensions;
+using HexControl.PatternLanguage.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
-using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage.AST;
 
@@ -25,6 +25,8 @@ internal class ASTNodeRValue : ASTNode
         _path = other._path;
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodeRValue(this);
 
     public override ASTNode Evaluate(Evaluator evaluator)
@@ -37,7 +39,7 @@ internal class ASTNodeRValue : ASTNode
             }
         }
 
-        var pattern = CreatePatterns(evaluator)[0];
+        var pattern = CreatePattern(evaluator);
 
         Literal literal;
         if (pattern is PatternDataUnsigned or PatternDataEnum)
@@ -128,6 +130,11 @@ internal class ASTNodeRValue : ASTNode
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
         var initialSearchScope = new List<PatternData>();
         PatternData? currentPattern = null;
         var scopeIndex = 0;
@@ -216,24 +223,20 @@ internal class ASTNodeRValue : ASTNode
                                 throw new Exception("array index out of bounds");
                             //LogConsole::abortEvaluation("array index out of bounds", this);
                             case PatternDataDynamicArray:
-                            {
                                 currentPattern = searchScope[arrayIndex];
                                 break;
-                            }
                             case PatternDataStaticArray staticArrayPattern
                                 when arrayIndex >= staticArrayPattern.EntryCount || arrayIndex < 0:
                                 throw new Exception("array index out of bounds");
                             //LogConsole::abortEvaluation("array index out of bounds", this);
                             case PatternDataStaticArray staticArrayPattern:
-                            {
                                 shouldClone = false;
-                                var newPattern = searchScope.First().Clone();
+                                var newPattern = searchScope[0].Clone();
                                 newPattern.Offset = staticArrayPattern.Offset +
                                                     arrayIndex * staticArrayPattern.Template.Size;
 
                                 currentPattern = newPattern;
                                 break;
-                            }
                             default:
                                 throw new Exception("Unsupported array type.");
                         }
@@ -263,7 +266,7 @@ internal class ASTNodeRValue : ASTNode
                 }
                 else
                 {
-                    return new[] {currentPattern};
+                    return currentPattern;
                 }
             }
             else
@@ -300,9 +303,8 @@ internal class ASTNodeRValue : ASTNode
         }
 
         var pattern = shouldClone ? currentPattern.Clone() : currentPattern;
-        return new[] {pattern};
+        return pattern;
     }
-
 
     private static Literal ReadLocal(Evaluator evaluator, long offset) => evaluator.Stack[(int)offset];
 

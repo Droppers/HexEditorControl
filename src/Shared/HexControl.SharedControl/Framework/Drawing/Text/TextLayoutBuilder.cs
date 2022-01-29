@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using HexControl.Core.Helpers;
-using HexControl.SharedControl.Framework.Helpers;
 using HexControl.SharedControl.Framework.Host.Typeface;
 
 namespace HexControl.SharedControl.Framework.Drawing.Text;

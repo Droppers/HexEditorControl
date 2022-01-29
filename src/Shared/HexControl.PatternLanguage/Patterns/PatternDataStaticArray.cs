@@ -7,7 +7,7 @@ public class PatternDataStaticArray : PatternData, IInlinable
 {
     private readonly PatternData _template = null!;
 
-    public PatternDataStaticArray(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataStaticArray(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color)
     {
         // TODO: Remove whenever required init is a thing
@@ -25,26 +25,48 @@ public class PatternDataStaticArray : PatternData, IInlinable
         get => _template;
         init
         {
-            _template = value;
-
-            if (_template is null)
+            if (value is not null)
             {
-                return;
+
+                _template = value;
+                _template.Endian = value.Endian;
+                _template.Parent = this;
+                Color = _template.Color;
             }
+        }
+    }
 
-            _template.Endian = value.Endian;
-            _template.Parent = this;
+    public override long Offset
+    {
+        get => base.Offset;
+        set
+        {
+            base.Offset = Offset;
+            _template.Offset = Offset;
+        }
+    }
 
-            Color = _template.Color;
+    public override int Color
+    {
+        get => base.Color;
+        set
+        {
+            base.Color = Color;
+            _template.Color = Color;
         }
     }
 
     public int EntryCount { get; init; }
-    public bool Inlined { get; set; }
+
+    public bool Inlined
+    {
+        get => GetValue(BooleanValue.Inlined);
+        set => SetValue(BooleanValue.Inlined, value);
+    }
 
     public override PatternData Clone() => new PatternDataStaticArray(this);
 
-    public override void CreateMarkers(List<Marker> markers)
+    public override void CreateMarkers(List<PatternMarker> markers)
     {
         var entry = Template.Clone();
 

@@ -2,7 +2,7 @@
 
 public class PatternDataBoolean : PatternData
 {
-    public PatternDataBoolean(long offset, Evaluator evaluator, uint color = 0)
+    public PatternDataBoolean(long offset, Evaluator evaluator, int color = 0)
         : base(offset, 1, evaluator, color) { }
 
     private PatternDataBoolean(PatternDataBoolean other) : base(other) { }

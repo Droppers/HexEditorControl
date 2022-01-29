@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
 
@@ -11,6 +12,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
     private readonly string _name;
     private readonly ASTNode? _placementOffset;
     private readonly ASTNode? _size;
+
     private readonly ASTNode _type;
 
     private bool _inlined;
@@ -31,9 +33,16 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         _placementOffset = other._placementOffset?.Clone();
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodeArrayVariableDecl(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
+    {
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
     {
         if (_placementOffset is not null)
         {
@@ -65,19 +74,20 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         }
 
         ApplyVariableAttributes(evaluator, this, pattern);
-        return new[] {pattern};
+
+
+        pattern.VariableName = _name;
+        pattern.StaticData = StaticData;
+        return pattern;
     }
 
     private PatternData CreateStaticArray(Evaluator evaluator)
     {
         var startOffset = evaluator.CurrentOffset;
-
-        var templatePattern = _type.CreatePatterns(evaluator)[0];
-
+        var templatePattern = _type.CreatePattern(evaluator);
         evaluator.CurrentOffset = startOffset;
 
         var entryCount = 0;
-
         if (_size is not null)
         {
             var sizeNode = _size.Evaluate(evaluator);
@@ -137,33 +147,20 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
             }
         }
 
-        PatternData outputPattern;
-        if (templatePattern is PatternDataPadding)
+        PatternData outputPattern = templatePattern switch
         {
-            outputPattern = new PatternDataPadding(startOffset, 0, evaluator);
-        }
-        else if (templatePattern is PatternDataCharacter)
-        {
-            outputPattern = new PatternDataString(startOffset, 0, evaluator);
-        }
-        else if (templatePattern is PatternDataCharacter16)
-        {
-            outputPattern = new PatternDataString16(startOffset, 0, evaluator);
-        }
-        else
-        {
-            var arrayPattern = new PatternDataStaticArray(startOffset, 0, evaluator)
+            PatternDataPadding => new PatternDataPadding(startOffset, 0, evaluator),
+            PatternDataCharacter => new PatternDataString(startOffset, 0, evaluator),
+            PatternDataCharacter16 => new PatternDataString16(startOffset, 0, evaluator),
+            _ => new PatternDataStaticArray(startOffset, 0, evaluator)
             {
-                Template = templatePattern.Clone(),
-                EntryCount = entryCount
-            };
-            outputPattern = arrayPattern;
-        }
+                Template = templatePattern.Clone(), EntryCount = entryCount
+            }
+        };
 
-        outputPattern.VariableName = _name;
         outputPattern.Endian = templatePattern.Endian;
         outputPattern.Color = templatePattern.Color;
-        outputPattern.TypeName = templatePattern.TypeName;
+        outputPattern.TypeNameIndex = templatePattern.TypeNameIndex;
         outputPattern.Size = templatePattern.Size * entryCount;
 
         evaluator.CurrentOffset = startOffset + outputPattern.Size;
@@ -171,36 +168,27 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         return outputPattern;
     }
 
+    private static long AddDynamicArrayEntry(List<PatternData> entries, PatternData parent, PatternData pattern)
+    {
+        pattern.ArrayIndex = entries.Count;
+        pattern.Endian = parent.Endian;
+        entries.Add(pattern);
+        return pattern.Size;
+    }
+
+    private static long DiscardDynamicArrayEntry(List<PatternData> entries)
+    {
+        var lastEntry = entries[^1];
+        entries.RemoveAt(entries.Count - 1);
+        return lastEntry.Size;
+    }
+
     private PatternData CreateDynamicArray(Evaluator evaluator)
     {
-        var arrayPattern = new PatternDataDynamicArray(evaluator.CurrentOffset, 0, evaluator)
-        {
-            VariableName = _name
-        };
+        var arrayPattern = new PatternDataDynamicArray(evaluator.CurrentOffset, 0, evaluator);
 
         var entries = new List<PatternData>();
-
         long size = 0;
-        long entryIndex = 0;
-
-        var addEntry = (PatternData pattern) =>
-        {
-            pattern.VariableName = $"[{entryIndex}]";
-            pattern.Endian = arrayPattern.Endian;
-            entries.Add(pattern);
-
-            size += pattern.Size;
-            entryIndex++;
-
-            evaluator.HandleAbort();
-        };
-
-        var discardEntry = () =>
-        {
-            entries.RemoveAt(entries.Count - 1);
-            entryIndex--;
-        };
-
         if (_size is not null)
         {
             var sizeNode = _size.Evaluate(evaluator);
@@ -222,11 +210,11 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                 for (var i = 0; i < entryCount; i++)
                 {
-                    var patterns = _type.CreatePatterns(evaluator);
+                    var pattern = _type.CreatePattern(evaluator);
 
-                    if (patterns.Count > 0)
+                    if (pattern is not null)
                     {
-                        addEntry(patterns[0]);
+                        size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
                     }
 
                     var ctrlFlow = evaluator.CurrentControlFlowStatement;
@@ -237,7 +225,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     if (ctrlFlow == ControlFlowStatement.Continue)
                     {
-                        discardEntry();
+                        size -= DiscardDynamicArrayEntry(entries);
                     }
                 }
             }
@@ -246,16 +234,16 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 while (whileStatement.EvaluateCondition(evaluator))
                 {
                     var limit = evaluator.ArrayLimit;
-                    if (entryIndex > limit)
+                    if (entries.Count > limit)
                     {
                         throw new Exception($"array grew past set limit of {limit}");
                     }
 
-                    var patterns = _type.CreatePatterns(evaluator);
+                    var pattern = _type.CreatePattern(evaluator);
 
-                    if (patterns.Count > 0)
+                    if (pattern is not null)
                     {
-                        addEntry(patterns[0]);
+                        size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
                     }
 
                     var ctrlFlow = evaluator.CurrentControlFlowStatement;
@@ -266,7 +254,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     if (ctrlFlow == ControlFlowStatement.Continue)
                     {
-                        discardEntry();
+                        size -= DiscardDynamicArrayEntry(entries);
                     }
                 }
             }
@@ -276,25 +264,21 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
             while (true)
             {
                 var limit = evaluator.ArrayLimit;
-                if (entryIndex > limit)
+                if (entries.Count > limit)
                 {
                     throw new Exception($"array grew past set limit of {limit}");
                 }
 
-                var patterns = _type.CreatePatterns(evaluator);
+                var pattern = _type.CreatePattern(evaluator);
 
-                if (patterns.Count > 0)
+                if (pattern is not null)
                 {
-                    var pattern = patterns[0];
-
-                    var buffer = new byte[pattern.Size];
-
-                    if (evaluator.CurrentOffset >= evaluator.Buffer.Length - buffer.Length)
+                    if (evaluator.CurrentOffset >= evaluator.Buffer.Length - pattern.Size)
                     {
                         throw new Exception("reached end of file before finding end of unsized array");
                     }
 
-                    addEntry(pattern);
+                    size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
 
                     var ctrlFlow = evaluator.CurrentControlFlowStatement;
                     if (ctrlFlow == ControlFlowStatement.Break)
@@ -304,24 +288,34 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     if (ctrlFlow == ControlFlowStatement.Continue)
                     {
-                        discardEntry();
+                        size -= DiscardDynamicArrayEntry(entries);
                         continue;
                     }
 
-                    evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
-                    var reachedEnd = true;
-                    foreach (var @byte in buffer)
+
+                    var buffer = ExactArrayPool<byte>.Instance.Rent((int)pattern.Size);
+                    try
                     {
-                        if (@byte != 0x00)
+                        evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
+                        var reachedEnd = true;
+                        for (var i = 0; i < buffer.Length; i++)
                         {
-                            reachedEnd = false;
+                            var @byte = buffer[i];
+                            if (@byte != 0x00)
+                            {
+                                reachedEnd = false;
+                                break;
+                            }
+                        }
+
+                        if (reachedEnd)
+                        {
                             break;
                         }
                     }
-
-                    if (reachedEnd)
+                    finally
                     {
-                        break;
+                        ExactArrayPool<byte>.Instance.Return(buffer);
                     }
                 }
             }
@@ -330,10 +324,10 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         arrayPattern.Entries = entries;
         arrayPattern.Size = size;
 
-        var tmpEntries = arrayPattern.Entries;
-        if (tmpEntries.Count > 0)
+        // Copy type from first entry to the array
+        if (arrayPattern.Entries.Count > 0)
         {
-            arrayPattern.TypeName = tmpEntries.First().TypeName;
+            arrayPattern.TypeNameIndex = arrayPattern.Entries[0].TypeNameIndex;
         }
 
         return arrayPattern;

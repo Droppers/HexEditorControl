@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using HexControl.Core;
 using HexControl.Core.Helpers;
 
@@ -6,17 +7,17 @@ namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataStruct : PatternData, IInlinable
 {
-    private readonly List<PatternData> _members;
+    private PatternData[] _members;
 
-    public PatternDataStruct(long offset, long size, Evaluator evaluator, uint color = 0)
+    public PatternDataStruct(long offset, long size, Evaluator evaluator, int color = 0)
         : base(offset, size, evaluator, color)
     {
-        _members = new List<PatternData>();
+        _members = Array.Empty<PatternData>();
     }
 
     private PatternDataStruct(PatternDataStruct other) : base(other)
     {
-        _members = other._members.Clone();
+        _members = other._members.CloneAll();
     }
 
     public override long Offset
@@ -24,15 +25,28 @@ public class PatternDataStruct : PatternData, IInlinable
         get => base.Offset;
         set
         {
-            if (!Local)
+            for (var i = 0; i < _members.Length; i++)
             {
-                foreach (var member in _members)
-                {
-                    member.Offset = value + (member.Offset - Offset);
-                }
+                var member = _members[i];
+                member.Offset = member.Offset - Offset + value;
             }
 
             base.Offset = value;
+        }
+    }
+
+    public override int Color
+    {
+        get => base.Color;
+        set
+        {
+            base.Color = value;
+
+            for (var i = 0; i < _members.Length; i++)
+            {
+                var member = _members[i];
+                member.Color = Color;
+            }
         }
     }
 
@@ -41,25 +55,30 @@ public class PatternDataStruct : PatternData, IInlinable
         get => _members;
         set
         {
-            _members.Clear();
+            _members = new PatternData[value.Count];
 
-            for (var index = 0; index < value.Count; index++)
+            for (var i = 0; i < value.Count; i++)
             {
-                var member = value[index];
-                _members.Add(member);
+                var member = value[i];
                 member.Parent = this;
+                _members[i] = member;
             }
         }
     }
 
-    public bool Inlined { get; set; }
+    public bool Inlined
+    {
+        get => GetValue(BooleanValue.Inlined);
+        set => SetValue(BooleanValue.Inlined, value);
+    }
 
     public override PatternData Clone() => new PatternDataStruct(this);
 
-    public override void CreateMarkers(List<Marker> markers)
+    public override void CreateMarkers(List<PatternMarker> markers)
     {
-        foreach (var member in Members)
+        for (var i = 0; i < Members.Count; i++)
         {
+            var member = Members[i];
             member.CreateMarkers(markers);
         }
     }
@@ -73,12 +92,12 @@ public class PatternDataStruct : PatternData, IInlinable
             return false;
         }
 
-        if (_members.Count != otherStruct._members.Count)
+        if (_members.Length != otherStruct._members.Length)
         {
             return false;
         }
 
-        for (var i = 0; i < _members.Count; i++)
+        for (var i = 0; i < _members.Length; i++)
         {
             if (!_members[i].Equals(otherStruct._members[i]))
             {

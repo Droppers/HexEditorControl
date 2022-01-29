@@ -33,7 +33,7 @@ public class CursorChangedEventArgs : EventArgs
     public bool ScrollToCursor { get; }
 }
 
-internal record MarkerState(string Id, long Offset, long Length);
+internal record MarkerState(IDocumentMarker Marker, long Offset, long Length);
 
 internal record DocumentState(
     IReadOnlyList<MarkerState> MarkerStates,
@@ -44,7 +44,7 @@ internal record DocumentState(
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class Document
 {
-    private readonly Dictionary<string, Marker> _markers;
+    private readonly List<IDocumentMarker> _markers;
     private readonly Stack<DocumentState> _redoStates;
 
     private readonly Stack<DocumentState> _undoStates;
@@ -62,23 +62,8 @@ public class Document
         _undoStates = new Stack<DocumentState>();
         _redoStates = new Stack<DocumentState>();
 
-        _markers = new Dictionary<string, Marker>();
+        _markers = new List<IDocumentMarker>();
         Cursor = new Cursor(0, 0, ColumnSide.Left);
-
-
-        AddMarker(new Marker(160, 30)
-        {
-            BehindText = true,
-            Background = Color.White,
-            Foreground = Color.Black
-        });
-
-        AddMarker(new Marker(30, 50)
-        {
-            BehindText = true,
-            Background = Color.FromArgb(50, 255, 255, 0),
-            Border = Color.FromArgb(160, 255, 255, 0)
-        });
     }
 
     public Cursor Cursor { get; private set; }
@@ -97,7 +82,7 @@ public class Document
 
     public BaseBuffer Buffer { get; }
 
-    public IReadOnlyDictionary<string, Marker> Markers => _markers;
+    public IReadOnlyList<IDocumentMarker> Markers => _markers;
 
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;
@@ -170,15 +155,21 @@ public class Document
 
     private void ApplyDocumentState(DocumentState state)
     {
-        foreach (var markerState in state.MarkerStates)
+        for (var i = 0; i < _markers.Count; i++)
         {
-            if (!_markers.TryGetValue(markerState.Id, out var marker))
+            var marker = _markers[i];
+            for (var j = 0; j < state.MarkerStates.Count; j++)
             {
-                continue;
-            }
+                var markerState = state.MarkerStates[j];
+                if (marker.Id != markerState.Marker.Id)
+                {
+                    continue;
+                }
 
-            marker.Offset = markerState.Offset;
-            marker.Length = markerState.Length;
+                marker.Offset = markerState.Offset;
+                marker.Length = markerState.Length;
+                break;
+            }
         }
 
         if (state.CursorState is not null)
@@ -250,32 +241,36 @@ public class Document
         OnSelectionChanged(oldArea, newArea, requestCenter);
     }
 
-    public string AddMarker(string id, Marker marker)
+    public Guid AddMarker(Guid id, IDocumentMarker marker)
     {
-        if (_markers.ContainsKey(id))
+        for (var i = 0; i < _markers.Count; i++)
         {
-            throw new ArgumentException($"A marker with id '{id}' already exists.", nameof(id));
+            if (_markers[i].Id == id)
+            {
+                throw new ArgumentException($"A marker with id '{id}' already exists.", nameof(id));
+            }
         }
 
-        _markers.Add(id, marker);
+        _markers.Add(marker);
         OnMarkersChanged();
 
         return id;
     }
 
-    public string AddMarker(Marker marker) => AddMarker(Guid.NewGuid().ToString(), marker);
+    public Guid AddMarker(IDocumentMarker marker) => AddMarker(Guid.NewGuid(), marker);
 
-    public void RemoveMarker(string id)
+    public void RemoveMarker(Guid id)
     {
-        _ = id ?? throw new ArgumentNullException(nameof(id));
-
-        if (!_markers.ContainsKey(id))
+        for (var i = 0; i < _markers.Count; i++)
         {
-            throw new ArgumentOutOfRangeException(nameof(id), $"Marker with id '{id}' does not exist.");
+            if (_markers[i].Id == id)
+            {
+                OnMarkersChanged();
+                return;
+            }
         }
 
-        _markers.Remove(id);
-        OnMarkersChanged();
+        throw new ArgumentOutOfRangeException(nameof(id), $"Marker with id '{id}' does not exist.");
     }
 
     private bool ValidateCursor(Cursor cursor)
@@ -333,8 +328,9 @@ public class Document
         var markerStates = new List<MarkerState>();
 
         var deleteEnd = deleteOffset + deleteLength;
-        foreach (var (id, marker) in _markers)
+        for (var i = 0; i < _markers.Count; i++)
         {
+            var marker = _markers[i];
             var markerOffset = marker.Offset;
             var markerEnd = marker.Offset + marker.Length;
 
@@ -370,7 +366,7 @@ public class Document
 
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
-                markerStates.Add(new MarkerState(id, marker.Offset, marker.Length));
+                markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
                 marker.Offset = newOffset;
                 marker.Length = newLength;
             }
@@ -390,8 +386,9 @@ public class Document
     {
         var markerStates = new List<MarkerState>();
 
-        foreach (var (id, marker) in _markers)
+        for (var i = 0; i < _markers.Count; i++)
         {
+            var marker = _markers[i];
             var markerOffset = marker.Offset;
             var markerEnd = marker.Offset + marker.Length;
             var newOffset = marker.Offset;
@@ -408,7 +405,7 @@ public class Document
 
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
-                markerStates.Add(new MarkerState(id, marker.Offset, marker.Length));
+                markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
                 marker.Offset = newOffset;
                 marker.Length = newLength;
             }

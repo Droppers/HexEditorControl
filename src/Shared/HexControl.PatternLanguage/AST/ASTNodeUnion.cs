@@ -19,11 +19,21 @@ internal class ASTNodeUnion : AttributableASTNode
         _members = other._members.Clone();
     }
 
+    public override bool MultiPattern => false;
+
     public override ASTNode Clone() => new ASTNodeUnion(this);
 
     public override IReadOnlyList<PatternData> CreatePatterns(Evaluator evaluator)
     {
-        var pattern = new PatternDataUnion(evaluator.CurrentOffset, 0, evaluator);
+        return new[] {CreatePattern(evaluator)};
+    }
+
+    public override PatternData CreatePattern(Evaluator evaluator)
+    {
+        var pattern = new PatternDataUnion(evaluator.CurrentOffset, 0, evaluator)
+        {
+            StaticData = StaticData
+        };
 
         long size = 0;
         var startOffset = evaluator.CurrentOffset;
@@ -32,23 +42,39 @@ internal class ASTNodeUnion : AttributableASTNode
         for (var i = 0; i < _members.Count; i++)
         {
             var member = _members[i];
-            var patterns = member.CreatePatterns(evaluator);
-            for (var j = 0; j < patterns.Count; j++)
+            if (member.MultiPattern)
             {
-                var memberPattern = patterns[j];
-                memberPattern.Offset = startOffset;
-                memberPatterns.Add(memberPattern);
-                size = Math.Max(memberPattern.Size, size);
+                var newPatterns = member.CreatePatterns(evaluator);
+                for (var j = 0; j < newPatterns.Count; j++)
+                {
+                    var newPattern = newPatterns[j];
+                    newPattern.Offset = startOffset;
+                    memberPatterns.Add(newPattern);
+                    size = Math.Max(newPattern.Size, size);
+                }
+            }
+            else
+            {
+                var newPattern = member.CreatePattern(evaluator);
+                if (newPattern is null)
+                {
+                    continue;
+                }
+
+                newPattern.Offset = startOffset;
+                memberPatterns.Add(newPattern);
+                size = Math.Max(newPattern.Size, size);
             }
         }
-
-        evaluator.PopScope();
 
         evaluator.CurrentOffset = startOffset + size;
         pattern.Members = memberPatterns;
         pattern.Size = size;
+        
+        // MUST be called AFTER setting pattern.Members, the 'memberPatterns' collection will be cleared.
+        evaluator.PopScope();
 
-        return new[] {pattern};
+        return pattern;
     }
 
     public void AddMember(ASTNode node)

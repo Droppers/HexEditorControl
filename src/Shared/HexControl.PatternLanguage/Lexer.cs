@@ -5,9 +5,9 @@ using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Exceptions;
 using HexControl.PatternLanguage.Extensions;
+using HexControl.PatternLanguage.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Tokens;
-using HexControl.PatternLanguage.Types;
 
 namespace HexControl.PatternLanguage;
 

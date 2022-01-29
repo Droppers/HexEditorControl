@@ -17,11 +17,11 @@ internal class ASTNodeMathematicalExpression : ASTNode
         _operator = op;
     }
 
-    private ASTNodeMathematicalExpression(ASTNodeMathematicalExpression node) : base(node)
+    private ASTNodeMathematicalExpression(ASTNodeMathematicalExpression other) : base(other)
     {
-        _left = node._left;
-        _right = node._right;
-        _operator = node._operator;
+        _left = other._left;
+        _right = other._right;
+        _operator = other._operator;
     }
 
     public override ASTNode Clone() => new ASTNodeMathematicalExpression(this);

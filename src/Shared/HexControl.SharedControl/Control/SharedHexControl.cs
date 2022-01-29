@@ -66,29 +66,31 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private readonly OffsetColumn _offsetColumn;
 
+    private string _fontFamily = "Default";
+    private int _fontSize = 13;
+
+
     private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
     private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
-    private string _fontFamily = "Default";
-
-    private int _fontSize = 13;
     private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
     private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
     private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
-
-    private byte[] _readBuffer = Array.Empty<byte>();
-    private HexRenderApi? _renderApi;
-
-    private IRenderContext? _renderContext;
-
-    private bool _requireTypefaceUpdate = true;
 
     //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
     //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     //private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     //private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(0, 0, 0));
     //private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
+    //private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
+    //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
+
+    private byte[] _readBuffer = Array.Empty<byte>();
+    private HexRenderApi? _renderApi;
+    private IRenderContext? _renderContext;
+
+    private bool _requireTypefaceUpdate = true;
 
     private int _scrollWheelSkipRows = 3;
 

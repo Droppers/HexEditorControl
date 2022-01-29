@@ -83,12 +83,12 @@ internal abstract class AttributableASTNode : ASTNode
             }
             else if (name == "inline" && noValue())
             {
-                if (pattern is not IInlinable inlinable)
+                if (pattern is not IPatternInlinable)
                 {
                     throw new Exception("inline attribute can only be applied to nested types"); // pass node
                 }
 
-                inlinable.Inlined = true;
+                pattern.Inlined = true;
             }
             else if (name == "format" && requiresValue())
             {

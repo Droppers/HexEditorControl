@@ -31,8 +31,8 @@ namespace HexControl.PatternLanguage.Patterns;
  * byte _booleanValues:
  *     1 bit: IsArrayItem
  *     1 bit: Local
- *     1 bit: Hidden
- *     1 bit: Inlined
+ *     1 bit: unused
+ *     1 bit: unused
  *     1 bit: IsBigEndian
  *     1 bit: IsLittleEndian
  *     2 bits: unused
@@ -74,10 +74,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         Size = other.Size;
 
         SetColor(other.Color);
-
-        Hidden = other.Hidden;
-        Endian = other.Endian;
-
+        
         _booleanValues = other._booleanValues;
         VariableNameIndex = other.VariableNameIndex;
         TypeNameIndex = other.TypeNameIndex;
@@ -160,8 +157,20 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     public bool Hidden
     {
-        get => GetValue(BooleanValue.Hidden);
-        set => SetValue(BooleanValue.Hidden, value);
+        get => StaticData.Hidden;
+        set => StaticData.Hidden = value;
+    }
+
+    public bool? Inlined
+    {
+        get => true ? StaticData.Inlined : null;
+        set
+        {
+            if (value is not null)
+            {
+                StaticData.Inlined = value.Value;
+            }
+        }
     }
 
     public Endianess Endian
@@ -332,6 +341,10 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         public FunctionBody? TransformFunction { get; set; }
 
         public FunctionBody? FormatterFunction { get; set; }
+
+        public bool Hidden { get; set; }
+
+        public bool Inlined { get; set; }
     }
 
     [Flags]
@@ -339,8 +352,8 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
     {
         IsArrayItem = 1,
         Local = 2,
-        Hidden = 4,
-        Inlined = 8,
+        //Hidden = 4,
+        //Inlined = 8,
         IsBigEndian = 16,
         IsLittleEndian = 32
     }

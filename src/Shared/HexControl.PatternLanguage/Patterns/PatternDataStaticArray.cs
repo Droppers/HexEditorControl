@@ -3,7 +3,7 @@ using HexControl.Core;
 
 namespace HexControl.PatternLanguage.Patterns;
 
-public class PatternDataStaticArray : PatternData, IInlinable
+public class PatternDataStaticArray : PatternData, IPatternInlinable
 {
     private readonly PatternData _template = null!;
 
@@ -57,13 +57,7 @@ public class PatternDataStaticArray : PatternData, IInlinable
     }
 
     public int EntryCount { get; init; }
-
-    public bool Inlined
-    {
-        get => GetValue(BooleanValue.Inlined);
-        set => SetValue(BooleanValue.Inlined, value);
-    }
-
+    
     public override PatternData Clone() => new PatternDataStaticArray(this);
 
     public override void CreateMarkers(List<PatternMarker> markers)

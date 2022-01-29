@@ -5,7 +5,7 @@ using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
-public class PatternDataStruct : PatternData, IInlinable
+public class PatternDataStruct : PatternData, IPatternInlinable
 {
     private PatternData[] _members;
 
@@ -65,13 +65,7 @@ public class PatternDataStruct : PatternData, IInlinable
             }
         }
     }
-
-    public bool Inlined
-    {
-        get => GetValue(BooleanValue.Inlined);
-        set => SetValue(BooleanValue.Inlined, value);
-    }
-
+    
     public override PatternData Clone() => new PatternDataStruct(this);
 
     public override void CreateMarkers(List<PatternMarker> markers)

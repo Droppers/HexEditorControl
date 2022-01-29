@@ -2,7 +2,7 @@
 
 namespace HexControl.PatternLanguage.Patterns;
 
-public class PatternDataBitfieldField : PatternData, IInlinable
+public class PatternDataBitfieldField : PatternData, IPatternInlinable
 {
     private readonly PatternData _bitField;
 
@@ -24,13 +24,7 @@ public class PatternDataBitfieldField : PatternData, IInlinable
 
     public byte BitOffset { get; }
     public byte BitSize { get; }
-
-    public bool Inlined
-    {
-        get => GetValue(BooleanValue.Inlined);
-        set => SetValue(BooleanValue.Inlined, value);
-    }
-
+    
     public override PatternData Clone() => new PatternDataBitfieldField(this);
 
     public override string GetFormattedName() => "bits";

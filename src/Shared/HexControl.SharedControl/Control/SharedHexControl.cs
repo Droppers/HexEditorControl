@@ -674,9 +674,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     protected override void RenderAfter(IRenderContext context)
     {
         base.RenderAfter(context);
-
-        context.DrawRectangle(new ColorBrush(Color.Red), null, new SharedRectangle(10, 10, 100, 100));
-
+        
         if (_renderApi is not null)
         {
             var details = CreateApiDetails();

@@ -17,11 +17,13 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="17" />
         </Grid.RowDefinitions>
-        <Image x:Name="MainImage">
-            <Image.Source>
-                <dx:D3D11Image x:Name="InteropImage" />
-            </Image.Source>
-        </Image>
+        <Grid x:Name="ImageContainer">
+            <Image x:Name="MainImage">
+                <Image.Source>
+                    <dx:D3D11Image x:Name="InteropImage" />
+                </Image.Source>
+            </Image>
+        </Grid>
 
         <ScrollBar
             x:Name="VerticalScrollBar"

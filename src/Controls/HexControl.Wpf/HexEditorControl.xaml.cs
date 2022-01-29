@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -83,27 +84,47 @@ public partial class HexEditorControl : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        SystemEvents.PowerModeChanged += SystemEventsOnPowerModeChanged;
-
-        var factory = new WpfNativeFactory();
-
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        
         var window = Window.GetWindow(this);
+        if (window is null)
+        {
+            throw new Exception("Could not obtain window.");
+        }
+
+        window.DpiChanged += WindowOnDpiChanged;
         var owner = new WindowInteropHelper(window).Handle;
-        _host = new WpfD2DInteropHost(owner, MainImage, InteropImage)
+        InteropImage.WindowOwner = owner;
+        _host = new WpfD2DInteropHost(ImageContainer, MainImage, InteropImage)
         {
             {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
             {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
             {"FakeTextBox", new WpfTextBox(FakeTextBox)}
         };
         Control.AttachHost(_host);
+
+        _host.Resize();
+    }
+
+    private void WindowOnDpiChanged(object sender, DpiChangedEventArgs e)
+    {
+        _host.Invalidate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        SystemEvents.PowerModeChanged -= SystemEventsOnPowerModeChanged;
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+
+        var window = Window.GetWindow(this);
+        if (window is null)
+        {
+            throw new Exception("Could not obtain window.");
+        }
+
+        window.DpiChanged -= WindowOnDpiChanged;
     }
 
-    private void SystemEventsOnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
         if (e.Mode is PowerModes.Resume)
         {

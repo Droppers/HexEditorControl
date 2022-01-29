@@ -384,38 +384,18 @@ internal class EditorColumn : VisualElement
 
     private void DrawMarkers(IRenderContext context, Func<Marker, bool> condition)
     {
-        long? offset = 0;
-        long length = 0;
-
         for (var i = 0; i < _markers.Count; i++)
         {
             var marker = _markers[i];
-            var nextMarker = i+1 < _markers.Count ? _markers[i + 1] : null;
             if (!condition(marker))
             {
                 continue;
             }
-
-            offset ??= marker.Offset;
-            length += marker.Length;
-
-            // TODO: add proper equality comparison, all properties
-            if (nextMarker is not null && nextMarker.Background == marker.Background)
-            {
-                continue;
-            }
-
-            // TODO: allow offset and length to be passed to drawmarkerarea.
-            var tempMarker = new Marker(offset.Value, length)
-            {
-                Background = marker.Background,
-                Foreground = marker.Foreground,
-            };
-
+            
             if (_horizontalCharacterOffset < Configuration.BytesPerRow &&
                 marker.Column is ColumnSide.Left or ColumnSide.Both)
             {
-                DrawMarkerArea(context, ColumnSide.Left, tempMarker);
+                DrawMarkerArea(context, ColumnSide.Left, marker);
             }
 
             if (marker.Column is ColumnSide.Left)
@@ -431,15 +411,13 @@ internal class EditorColumn : VisualElement
 
             if (Configuration.ColumnsVisible is VisibleColumns.HexText)
             {
-                DrawMarkerArea(context, ColumnSide.Right, tempMarker);
+                DrawMarkerArea(context, ColumnSide.Right, marker);
             }
 
             if (_horizontalCharacterOffset < Configuration.BytesPerRow)
             {
                 context.Pop();
             }
-
-            offset = null;
         }
     }
 

@@ -7,11 +7,14 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 
+using WpfImage = System.Windows.Controls.Image;
+
 namespace HexControl.Wpf.Host;
 
 internal class WpfD2DInteropHost : WpfControl
 {
-    private readonly System.Windows.Controls.Image _element;
+    private readonly FrameworkElement _container;
+    private readonly WpfImage _element;
     private readonly D3D11Image _image;
     private D2DRenderFactory? _factory;
 
@@ -20,23 +23,35 @@ internal class WpfD2DInteropHost : WpfControl
     private RenderTarget? _renderTarget;
     private Factory? _d2dFactory;
 
-    public WpfD2DInteropHost(IntPtr owner, System.Windows.Controls.Image element, D3D11Image image) : base(element)
+    private float _dpi = 1.0f;
+
+    public float Dpi
     {
+        get => _dpi;
+        set
+        {
+            _dpi = value;
+            if (_renderContext is not null)
+            {
+                _renderContext.Dpi = value;
+                Invalidate();
+            }
+        }
+    }
+    
+    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image) : base(element)
+    {
+        _container = container;
         _element = element;
         _image = image;
-
-        var parent = (FrameworkElement)_element.Parent;
-        parent.SizeChanged += _element_SizeChanged;
-
-        _image.WindowOwner = owner;
+        
+        container.SizeChanged += OnSizeChanged;
         _image.OnRender += OnRender;
     }
 
-    private void _element_SizeChanged(object sender, System.Windows.SizeChangedEventArgs e)
+    private void OnSizeChanged(object sender, System.Windows.SizeChangedEventArgs e)
     {
-        var parent = (FrameworkElement)_element.Parent;
-        _image.SetPixelSize((int)((parent.ActualWidth-17) * 2.5f), (int)((parent.ActualHeight-17) * 2.5f));
-        _image.RequestRender();
+        Resize();
     }
 
     private void OnRender(IntPtr handle, bool newSurface)
@@ -46,9 +61,9 @@ internal class WpfD2DInteropHost : WpfControl
             _d2dFactory?.Dispose();
             _renderTarget?.Dispose();
 
-            SharpDX.ComObject comObject = new SharpDX.ComObject(handle);
-            SharpDX.DXGI.Resource resource = comObject.QueryInterface<SharpDX.DXGI.Resource>();
-            SharpDX.Direct3D11.Texture2D texture = resource.QueryInterface<SharpDX.Direct3D11.Texture2D>();
+            var comObject = new SharpDX.ComObject(handle);
+            var resource = comObject.QueryInterface<SharpDX.DXGI.Resource>();
+            var texture = resource.QueryInterface<SharpDX.Direct3D11.Texture2D>();
             using var surface = texture.QueryInterface<SharpDX.DXGI.Surface>();
 
             var properties = new RenderTargetProperties
@@ -56,7 +71,7 @@ internal class WpfD2DInteropHost : WpfControl
                 DpiX = 0,
                 DpiY = 0,
                 MinLevel = FeatureLevel.Level_DEFAULT,
-                PixelFormat = new SharpDX.Direct2D1.PixelFormat(SharpDX.DXGI.Format.Unknown, AlphaMode.Ignore),
+                PixelFormat = new PixelFormat(SharpDX.DXGI.Format.Unknown, AlphaMode.Ignore),
                 Type = RenderTargetType.Default,
                 Usage = RenderTargetUsage.None
             };
@@ -71,7 +86,7 @@ internal class WpfD2DInteropHost : WpfControl
             _factory = new WpfD2DFactory(_renderTarget);
             _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget);
             _renderContext.CanRender = true;
-            //_renderContext.AttachStateProvider(_element);
+            _renderContext.Dpi = _dpi;
         }
 
         if(_renderContext is not null)
@@ -81,9 +96,14 @@ internal class WpfD2DInteropHost : WpfControl
 
     }
 
+    public void Resize()
+    {
+        _image.SetPixelSize((int)(_container.ActualWidth * Dpi), (int)(_container.ActualHeight * Dpi));
+        _image.RequestRender();
+    }
+
     public override void Invalidate()
     {
         _image.RequestRender();
-        //_element.Invalidate();
     }
 }

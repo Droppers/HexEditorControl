@@ -13,7 +13,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 {
     private readonly RenderTarget _context;
     private readonly D2DFactory _d2dFactory;
-    private readonly float _dpi = 2.5f;
+    public float Dpi { get; set; }=  1.0f;
 
     private readonly float[] _dashes = {2, 2};
     private readonly float[] _dots = {1.5f, 1.5f};
@@ -76,7 +76,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     public float Convert(double number)
     {
-        return (float)number * _dpi;
+        return (float)number * Dpi;
     }
 
     public override void PushClip(double x, double y, double width, double height) { }
@@ -125,10 +125,10 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     private RawRectangleF Convert(SharedRectangle rectangle)
     {
-        var left = (int)(rectangle.X * _dpi);
-        var top = (int)(rectangle.Y * _dpi);
-        var width = (int)(rectangle.Width * _dpi);
-        var height = (int)(rectangle.Height * _dpi);
+        var left = (int)(rectangle.X * Dpi);
+        var top = (int)(rectangle.Y * Dpi);
+        var width = (int)(rectangle.Width * Dpi);
+        var height = (int)(rectangle.Height * Dpi);
         return new(left, top, left + width, top + height);
     }
 
@@ -148,7 +148,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         });
     }
 
-    private RawVector2 Convert(SharedPoint position) => new((int)(position.X * _dpi), (int)(position.Y * _dpi));
+    private RawVector2 Convert(SharedPoint position) => new((int)(position.X * Dpi), (int)(position.Y * Dpi));
 
     protected override void DrawPolygon(SolidColorBrush? brush, D2DPen? pen,
         IReadOnlyList<SharedPoint> points)
@@ -224,7 +224,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         if (sharedLayout.BrushRanges.Count == 0)
         {
             _context.DrawText(sharedLayout.Text, _format,
-                new RawRectangleF((int)(sharedLayout.Position.X * _dpi), (int)(sharedLayout.Position.Y * _dpi), int.MaxValue,
+                new RawRectangleF((int)(sharedLayout.Position.X * Dpi), (int)(sharedLayout.Position.Y * Dpi), int.MaxValue,
                     int.MaxValue), brush, DrawTextOptions.None, MeasuringMode.GdiClassic);
             return;
         }

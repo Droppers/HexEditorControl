@@ -53,7 +53,7 @@ internal class StdNamespace : IFunctionNamespace
         {
             var arg = parameters[i];
             var value = arg is PatternDataLiteral pattern
-                ? pattern.Value.ToString(ctx.Buffer)
+                ? pattern.Value.ToString(ctx)
                 : arg.ToString() ?? "";
 
             format = ReplaceFirst(format, "{}", value);

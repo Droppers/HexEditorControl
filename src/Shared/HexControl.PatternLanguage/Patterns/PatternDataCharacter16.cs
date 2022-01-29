@@ -14,5 +14,5 @@ public class PatternDataCharacter16 : PatternData
 
     public override string GetFormattedName() => "char16";
 
-    public override string ToString(BaseBuffer buffer) => buffer.ReadChar(Offset, Endian).ToString();
+    public override string ToString(Evaluator evaluator) => evaluator.Buffer.ReadChar(Offset, Endian ?? evaluator.DefaultEndian).ToString();
 }

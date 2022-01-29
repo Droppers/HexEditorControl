@@ -14,11 +14,11 @@ public class PatternDataString16 : PatternData
 
     public override string GetFormattedName() => "String";
 
-    public override string ToString(BaseBuffer buffer)
+    public override string ToString(Evaluator evaluator)
     {
         var bytes = new byte[Size];
         //std::string buffer(this->getSize(), 0x00);
-        buffer.Read(Offset, bytes);
+        evaluator.Buffer.Read(Offset, bytes);
 
         // TODO: change the endianess
         //for (auto & c : buffer)

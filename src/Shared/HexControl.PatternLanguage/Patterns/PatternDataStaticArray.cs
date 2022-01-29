@@ -31,7 +31,11 @@ public class PatternDataStaticArray : PatternData, IPatternInlinable
                 _template = value;
                 _template.Endian = value.Endian;
                 _template.Parent = this;
-                Color = _template.Color;
+
+                if (_template.UserDefinedColor)
+                {
+                    Color = _template.Color;
+                }
             }
         }
     }

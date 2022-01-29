@@ -44,7 +44,10 @@ public class PatternDataUnion : PatternData, IPatternInlinable
             for (var i = 0; i < _members.Length; i++)
             {
                 var member = _members[i];
-                member.Color = Color;
+                if (!member.UserDefinedColor)
+                {
+                    member.Color = Color;
+                }
             }
         }
     }

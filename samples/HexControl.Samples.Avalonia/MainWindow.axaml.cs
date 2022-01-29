@@ -26,12 +26,16 @@ public class MainWindow : Window
         AvaloniaXamlLoader.Load(this);
         //Document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
 
-        var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        var code = File.ReadAllText(@"C:\Users\joery\Downloads\memory_test.hexpat");
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
+
+        //var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
+        //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+
         var parsed = LanguageParser.Parse(code);
         var eval = new Evaluator();
-        eval.EvaluationDepth = 9999;
-        eval.ArrayLimit = 100000;
+        eval.EvaluationDepth = 9999999;
+        eval.ArrayLimit = 1000000000;
         var patterns = eval.Evaluate(Document.Buffer, parsed);
 
         var markers = new List<PatternMarker>();

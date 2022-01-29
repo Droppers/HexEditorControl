@@ -62,7 +62,10 @@ public class PatternDataDynamicArray : PatternData, IPatternInlinable
             for (var i = 0; i < value.Count; i++)
             {
                 var entry = value[i];
-                entry.Color = Color;
+                if (UserDefinedColor)
+                {
+                    entry.Color = Color;
+                }
                 entry.Parent = this;
                 _entries[i] = entry;
             }

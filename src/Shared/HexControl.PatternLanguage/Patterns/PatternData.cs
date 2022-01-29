@@ -57,10 +57,12 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         // Do not set this.Color since it is a virtual property
         if (color is not 0)
         {
+            SetValue(BooleanValue.UserDefinedColor, true);
             SetColor(color);
         }
         else
         {
+            SetValue(BooleanValue.UserDefinedColor, false);
             var automaticColor =
                 PatternMarker.GlobalPalette[(int)(_currentColor++ % PatternMarker.GlobalPalette.Length)];
             SetColor(ColorExtensions.FromRgb(automaticColor.R, automaticColor.G, automaticColor.B));
@@ -84,7 +86,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     internal StaticPatternData StaticData
     {
-        get => _staticData ??= new StaticPatternData();
+        get => _staticData ?? throw new InvalidOperationException("StaticData for pattern has not been set.");
         set => _staticData = value;
     }
 
@@ -241,6 +243,8 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         set => SetColor(value);
     }
 
+    public bool UserDefinedColor => GetValue(BooleanValue.UserDefinedColor);
+
     public abstract PatternData Clone();
 
     public bool Equals(PatternData? other)
@@ -310,7 +314,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     public abstract string GetFormattedName();
 
-    public virtual string ToString(BaseBuffer buffer) => $"{TypeName} {VariableName} @ 0x{Offset:X}";
+    public virtual string ToString(Evaluator evaluator) => $"{TypeName} {VariableName} @ 0x{Offset:X}";
 
 
     public override bool Equals(object? obj) => ReferenceEquals(this, obj) || Equals(obj as PatternData);
@@ -361,8 +365,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
     {
         IsArrayItem = 1,
         Local = 2,
-
-        //Hidden = 4,
+        UserDefinedColor = 4,
         IsEndianSet = 8,
         IsBigEndian = 16,
         IsLittleEndian = 32

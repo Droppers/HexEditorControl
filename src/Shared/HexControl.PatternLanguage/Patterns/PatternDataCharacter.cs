@@ -14,5 +14,5 @@ public class PatternDataCharacter : PatternData
 
     public override string GetFormattedName() => "char";
 
-    public override string ToString(BaseBuffer buffer) => ((char)buffer.ReadUByte(Offset)).ToString();
+    public override string ToString(Evaluator evaluator) => ((char)evaluator.Buffer.ReadUByte(Offset)).ToString();
 }

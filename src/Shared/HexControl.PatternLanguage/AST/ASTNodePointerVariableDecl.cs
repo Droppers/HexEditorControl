@@ -59,7 +59,7 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
 
         var size = sizePattern.Size;
         var pointerAddress = evaluator.Buffer
-            .ReadInt128(startOffset, (int)size, sizePattern.Endian);
+            .ReadInt128(startOffset, (int)size, sizePattern.Endian ?? evaluator.DefaultEndian);
 
         var pattern = new PatternDataPointer(startOffset, size, evaluator)
         {

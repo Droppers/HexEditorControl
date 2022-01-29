@@ -2,7 +2,7 @@
 
 internal static class ColorExtensions
 {
-    public static int FromRgb(int r, int g, int b) => ((r & 0x0ff) << 16) | ((g & 0x0ff) << 8) | (b & 0x0ff);
+    public static int FromRgb(int r, int g, int b) => (r << 16) | (g << 8) | b;
 
     public static (byte r, byte g, byte b) ToRgb(this int value)
     {

@@ -310,7 +310,7 @@ internal class ASTNodeRValue : ASTNode
         var buffer = evaluator.Buffer;
         var offset = data.Offset;
         var size = (int)data.Size;
-        var endian = data.Endian;
+        var endian = data.Endian ?? evaluator.DefaultEndian;
 
         // TODO: readlocal should have endian conversions
         if (typeof(T) == typeof(UInt128))

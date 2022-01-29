@@ -17,7 +17,6 @@ internal abstract class AttributableASTNode : ASTNode
 
     protected AttributableASTNode(AttributableASTNode other) : base(other)
     {
-        // TODO: didn't clone here, bad?
         _attributes = new List<ASTNodeAttribute>(other.Attributes);
     }
 
@@ -27,7 +26,8 @@ internal abstract class AttributableASTNode : ASTNode
     {
         _attributes.Add(attribute);
     }
-
+    
+    // TODO: refactor this to be normal code
     protected static void ApplyVariableAttributes(Evaluator evaluator, AttributableASTNode attributable,
         PatternData pattern)
     {
@@ -37,12 +37,9 @@ internal abstract class AttributableASTNode : ASTNode
         for (var i = 0; i < attributable._attributes.Count; i++)
         {
             var attribute = attributable._attributes[i];
-            // TODOO: amazingly bad code
             var name = attribute.Attribute;
             var value = attribute.Value;
-
-            var node = (ASTNode)attributable;
-
+            
             var requiresValue = () =>
             {
                 if (value is null)
@@ -65,9 +62,7 @@ internal abstract class AttributableASTNode : ASTNode
 
             if (name == "color" && requiresValue())
             {
-                var color = Convert.ToUInt32(value!, 16);
-                //pattern.Color = color >> 8; // TODO: change endianness :)
-                // TODO: Implement color parsing to SYstem.Drawing.Color
+                pattern.Color = Convert.ToInt32(value!, 16);
             }
             else if (name == "name" && requiresValue())
             {

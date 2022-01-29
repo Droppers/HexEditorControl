@@ -17,7 +17,7 @@ internal abstract class ASTNode : ICloneable<ASTNode>
         _staticData = other._staticData;
     }
 
-    protected PatternData.StaticPatternData StaticData => _staticData ??= new PatternData.StaticPatternData();
+    protected PatternData.StaticPatternData StaticData => _staticData ?? throw new InvalidOperationException("StaticData for pattern has not been set.");
 
     public virtual bool MultiPattern => true;
 

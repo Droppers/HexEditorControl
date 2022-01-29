@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
@@ -32,7 +30,7 @@ namespace HexControl.PatternLanguage.Patterns;
  *     1 bit: IsArrayItem
  *     1 bit: Local
  *     1 bit: unused
- *     1 bit: unused
+ *     1 bit: IsEndianSet
  *     1 bit: IsBigEndian
  *     1 bit: IsLittleEndian
  *     2 bits: unused
@@ -43,7 +41,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
     private static readonly StringDictionary VariableNameDictionary = new(0);
 
     private static long _currentColor;
-    
+
     private BooleanValue _booleanValues;
     private byte _colorB;
     private long _offset;
@@ -63,7 +61,8 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         }
         else
         {
-            var automaticColor = PatternMarker.GlobalPalette[(int)(_currentColor++ % PatternMarker.GlobalPalette.Length)];
+            var automaticColor =
+                PatternMarker.GlobalPalette[(int)(_currentColor++ % PatternMarker.GlobalPalette.Length)];
             SetColor(ColorExtensions.FromRgb(automaticColor.R, automaticColor.G, automaticColor.B));
         }
     }
@@ -74,7 +73,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         Size = other.Size;
 
         SetColor(other.Color);
-        
+
         _booleanValues = other._booleanValues;
         VariableNameIndex = other.VariableNameIndex;
         TypeNameIndex = other.TypeNameIndex;
@@ -163,7 +162,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     public bool? Inlined
     {
-        get => true ? StaticData.Inlined : null;
+        get => this is IPatternInlinable ? StaticData.Inlined : null;
         set
         {
             if (value is not null)
@@ -173,10 +172,15 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         }
     }
 
-    public Endianess Endian
+    public Endianess? Endian
     {
         get
         {
+            if (!GetValue(BooleanValue.IsEndianSet))
+            {
+                return null;
+            }
+
             if (GetValue(BooleanValue.IsBigEndian))
             {
                 return Endianess.Big;
@@ -186,6 +190,15 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         }
         set
         {
+            if (Endian is null)
+            {
+                SetValue(BooleanValue.IsEndianSet, false);
+                SetValue(BooleanValue.IsBigEndian, false);
+                SetValue(BooleanValue.IsLittleEndian, false);
+                return;
+            }
+
+            SetValue(BooleanValue.IsEndianSet, true);
             if (value is Endianess.Big or Endianess.Little)
             {
                 SetValue(BooleanValue.IsBigEndian, value is Endianess.Big);
@@ -276,10 +289,6 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
 
     public virtual void CreateMarkers(List<PatternMarker> markers)
     {
-        if (Offset is 268)
-        {
-            int i = 1;
-        }
         var sameAsLast = false;
         if (markers.Count > 0)
         {
@@ -352,8 +361,9 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
     {
         IsArrayItem = 1,
         Local = 2,
+
         //Hidden = 4,
-        //Inlined = 8,
+        IsEndianSet = 8,
         IsBigEndian = 16,
         IsLittleEndian = 32
     }

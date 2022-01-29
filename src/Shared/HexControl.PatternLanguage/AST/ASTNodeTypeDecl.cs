@@ -46,7 +46,10 @@ internal class ASTNodeTypeDecl : AttributableASTNode
                 pattern.TypeName = Name;
             }
 
-            pattern.Endian = Endian ?? evaluator.DefaultEndian;
+            if (Endian is not null)
+            {
+                pattern.Endian = Endian;
+            }
         }
 
         return patterns;
@@ -65,7 +68,11 @@ internal class ASTNodeTypeDecl : AttributableASTNode
             pattern.TypeName = Name;
         }
 
-        pattern.Endian = Endian ?? evaluator.DefaultEndian;
+        if (Endian is not null)
+        {
+            pattern.Endian = Endian;
+        }
+
         return pattern;
     }
 }

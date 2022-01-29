@@ -55,6 +55,11 @@ internal class ASTNodeTypeDecl : AttributableASTNode
     public override PatternData CreatePattern(Evaluator evaluator)
     {
         var pattern = Type.CreatePattern(evaluator);
+        if (pattern is null)
+        {
+            return null;
+        }
+
         if (Name.Length > 0)
         {
             pattern.TypeName = Name;

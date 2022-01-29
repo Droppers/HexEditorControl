@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
@@ -121,9 +122,10 @@ internal class Parser
 
     private readonly Dictionary<string, ASTNode> _types = new();
 
-    private bool _hasReset = true;
-
+    private bool _matchSequenceStarted;
     private int _originalTokenIndex;
+    private int _originalPartIndex;
+
     private int _tokenIndex;
     private IReadOnlyList<Token> _tokens;
 
@@ -229,28 +231,28 @@ internal class Parser
     {
         var functionName = ParseNamespaceResolution();
 
-        if (!Sequence(SeparatorRoundbracketopen))
+        if (!Matches(Sequence(SeparatorRoundbracketopen)))
         {
             throw new ParserException(this, "expected '(' after function name");
         }
 
         var @params = new List<ASTNode>();
 
-        while (!Sequence(SeparatorRoundbracketclose))
+        while (!Matches(Sequence(SeparatorRoundbracketclose)))
         {
             @params.Add(ParseMathematicalExpression());
 
-            if (Sequence(SeparatorComma, SeparatorRoundbracketclose))
+            if (Matches(Sequence(SeparatorComma, SeparatorRoundbracketclose)))
             {
                 throw new ParserException(this, "unexpected ',' at end of function parameter list");
             }
 
-            if (Sequence(SeparatorRoundbracketclose))
+            if (Matches(Sequence(SeparatorRoundbracketclose)))
             {
                 break;
             }
 
-            if (!Sequence(SeparatorComma))
+            if (!Matches(Sequence(SeparatorComma)))
             {
                 throw new ParserException(this, "missing ',' between parameters");
             }
@@ -280,7 +282,7 @@ internal class Parser
             {
                 builder.Append(GetIdentifier(-1).Value);
 
-                if (Sequence(OperatorScoperesolution, Identifier))
+                if (Matches(Sequence(OperatorScoperesolution, Identifier)))
                 {
                     builder.Append("::");
                 }
@@ -309,7 +311,7 @@ internal class Parser
             {
                 builder.Append(GetIdentifier(-1).Value);
 
-                if (Sequence(OperatorScoperesolution, Identifier))
+                if (Matches(Sequence(OperatorScoperesolution, Identifier)))
                 {
                     if (Peek(OperatorScoperesolution) && Peek(Identifier, 1))
                     {
@@ -341,33 +343,35 @@ internal class Parser
         }
     }
 
-    private ASTNode ParseRValue(ASTNodeRValue.Path path)
+    private ASTNode ParseRValue(ASTNodeRValue.Path? path = null)
     {
+        path ??= new ASTNodeRValue.Path();
+
         if (Peek(Identifier, -1))
         {
-            path.Values.Add(GetIdentifier(-1).Value);
+            path.Value.Values.Add(GetIdentifier(-1).Value);
         }
         else if (Peek(KeywordParent, -1))
         {
-            path.Values.Add("parent");
+            path.Value.Values.Add("parent");
         }
         else if (Peek(KeywordThis, -1))
         {
-            path.Values.Add("this");
+            path.Value.Values.Add("this");
         }
 
-        if (Sequence(SeparatorSquarebracketopen))
+        if (Matches(Sequence(SeparatorSquarebracketopen)))
         {
-            path.Values.Add(ParseMathematicalExpression());
-            if (!Sequence(SeparatorSquarebracketclose))
+            path.Value.Values.Add(ParseMathematicalExpression());
+            if (!Matches(Sequence(SeparatorSquarebracketclose)))
             {
                 throw new ParserException(this, "expected closing ']' at end of array indexing");
             }
         }
 
-        if (Sequence(SeparatorDot))
+        if (Matches(Sequence(SeparatorDot)))
         {
-            if (OneOf(Identifier, KeywordParent))
+            if (Matches(OneOf(Identifier, KeywordParent)))
             {
                 return ParseRValue(path);
             }
@@ -375,39 +379,29 @@ internal class Parser
             throw new ParserException(this, "expected member name or 'parent' keyword", -1);
         }
 
-        return Create(new ASTNodeRValue(path));
+        return Create(new ASTNodeRValue(path.Value));
     }
 
     private ASTNode ParseFactor()
     {
-        if (Sequence(Integer))
+        if (Matches(Sequence(Integer)))
         {
-            var literal = GetValue<Literal>(-1);
-            if (literal is null)
-            {
-                throw new ParserException(this, "previous token was not a literal", -1);
-            }
-
-            return new ASTNodeLiteral(literal);
+            return new ASTNodeLiteral(GetValue<Literal>(-1));
         }
-
-        if (Peek(OperatorPlus) || Peek(OperatorMinus) || Peek(OperatorBitnot) || Peek(OperatorBoolnot))
+        else if (Peek(OperatorPlus) || Peek(OperatorMinus) || Peek(OperatorBitnot) || Peek(OperatorBoolnot))
         {
             return ParseMathematicalExpression();
         }
-
-        if (Sequence(SeparatorRoundbracketopen))
+        else if (Matches(Sequence(SeparatorRoundbracketopen)))
         {
             var node = ParseMathematicalExpression();
-            if (!Sequence(SeparatorRoundbracketclose))
+            if (!Matches(Sequence(SeparatorRoundbracketclose)))
             {
                 throw new ParserException(this, "expected closing parenthesis");
             }
 
             return node;
-        }
-
-        if (Sequence(Identifier))
+        } else if (Matches(Sequence(Identifier)))
         {
             var originalPos = _tokenIndex;
             ParseNamespaceResolution();
@@ -425,35 +419,49 @@ internal class Parser
                 return ParseScopeResolution();
             }
 
-            return ParseRValue(new ASTNodeRValue.Path());
+            return ParseRValue();
         }
 
-        if (OneOf(KeywordParent, KeywordThis))
+        if (Matches(OneOf(KeywordParent, KeywordThis)))
         {
-            return ParseRValue(new ASTNodeRValue.Path());
+            return ParseRValue();
         }
 
-        if (Sequence(OperatorDollar))
+        if (Matches(Sequence(OperatorDollar)))
         {
             return new ASTNodeRValue(new ASTNodeRValue.Path("$"));
         }
 
-        if (OneOf(OperatorAddressof, OperatorSizeof) && Sequence(SeparatorRoundbracketopen))
+        if (Matches(OneOf(OperatorAddressof, OperatorSizeof) && Sequence(SeparatorRoundbracketopen)))
         {
             var op = GetValue<Token.Operator>(-2);
 
-            if (!OneOf(Identifier, KeywordParent, KeywordThis))
+            ASTNode? result = null;
+            if (Matches(OneOf(Identifier, KeywordParent, KeywordThis)))
             {
-                throw new ParserException(this, "expected rvalue identifier");
+                result = Create(new ASTNodeTypeOperator(op, ParseRValue()));
+            }
+            else if (Matches(Sequence(ValuetypeAny)))
+            {
+                if (op is Token.Operator.AddressOf)
+                {
+                    throw new ParserException(this, "addressof cannot be used for built-in types", -2);
+                }
+
+                var type = GetValue<Token.ValueType>(-1);
+                result = new ASTNodeLiteral((UInt128)Token.GetTypeSize(type));
+            }
+            else
+            {
+                throw new ParserException(this, "expected rvalue identifier or built-in type", -1);
             }
 
-            var node = Create(new ASTNodeTypeOperator(op, ParseRValue(new ASTNodeRValue.Path())));
-            if (!Sequence(SeparatorRoundbracketclose))
+            if (!Matches(Sequence(SeparatorRoundbracketclose)))
             {
                 throw new ParserException(this, "expected closing parenthesis");
             }
 
-            return node;
+            return result;
         }
 
         throw new ParserException(this, "expected value or parenthesis");
@@ -485,14 +493,14 @@ internal class Parser
 
     private ASTNode ParseUnaryExpression()
     {
-        if (OneOf(OperatorPlus, OperatorMinus, OperatorBoolnot, OperatorBitnot))
+        if (Matches(OneOf(OperatorPlus, OperatorMinus, OperatorBoolnot, OperatorBitnot)))
         {
             var op = GetValue<Token.Operator>(-1);
 
             return Create(new ASTNodeMathematicalExpression(new ASTNodeLiteral((long)0), ParseCastExpression(), op));
         }
 
-        if (Sequence(String))
+        if (Matches(Sequence(String)))
         {
             return ParseStringLiteral();
         }
@@ -504,7 +512,7 @@ internal class Parser
     {
         var node = ParseUnaryExpression();
 
-        while (OneOf(OperatorStar, OperatorSlash, OperatorPercent))
+        while (Matches(OneOf(OperatorStar, OperatorSlash, OperatorPercent)))
         {
             var op = GetValue<Token.Operator>(-1);
             node = Create(new ASTNodeMathematicalExpression(node, ParseUnaryExpression(), op));
@@ -543,8 +551,7 @@ internal class Parser
     {
         var node = ParseShiftExpression();
 
-        while (Sequence(OperatorBoolgreaterthan) || Sequence(OperatorBoollessthan) ||
-               Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals))
+        while (Matches(Sequence(OperatorBoolgreaterthan) || Sequence(OperatorBoollessthan) || Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals)))
         {
             var op = GetValue<Token.Operator>(-1);
             node = Create(new ASTNodeMathematicalExpression(node, ParseShiftExpression(), op));
@@ -557,7 +564,7 @@ internal class Parser
     {
         var node = ParseRelationExpression();
 
-        while (Sequence(OperatorBoolequals) || Sequence(OperatorBoolnotequals))
+        while (Matches(Sequence(OperatorBoolequals) || Sequence(OperatorBoolnotequals)))
         {
             var op = GetValue<Token.Operator>(-1);
             node = Create(new ASTNodeMathematicalExpression(node, ParseRelationExpression(), op));
@@ -570,7 +577,7 @@ internal class Parser
     {
         var node = ParseEqualityExpression();
 
-        while (Sequence(OperatorBitand))
+        while (Matches(Sequence(OperatorBitand)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseEqualityExpression(), Token.Operator.BitAnd));
         }
@@ -582,7 +589,7 @@ internal class Parser
     {
         var node = ParseBinaryAndExpression();
 
-        while (Sequence(OperatorBitxor))
+        while (Matches(Sequence(OperatorBitxor)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseBinaryAndExpression(), Token.Operator.BitXor));
         }
@@ -594,7 +601,7 @@ internal class Parser
     {
         var node = ParseBinaryXorExpression();
 
-        while (Sequence(OperatorBitor))
+        while (Matches(Sequence(OperatorBitor)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseBinaryXorExpression(), Token.Operator.BitOr));
         }
@@ -606,7 +613,7 @@ internal class Parser
     {
         var node = ParseBinaryOrExpression();
 
-        while (Sequence(OperatorBooland))
+        while (Matches(Sequence(OperatorBooland)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseBinaryOrExpression(), Token.Operator.BoolAnd));
         }
@@ -618,7 +625,7 @@ internal class Parser
     {
         var node = ParseBooleanAnd();
 
-        while (Sequence(OperatorBoolxor))
+        while (Matches(Sequence(OperatorBoolxor)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseBooleanAnd(), Token.Operator.BoolXor));
         }
@@ -630,7 +637,7 @@ internal class Parser
     {
         var node = ParseBooleanXor();
 
-        while (Sequence(OperatorBoolor))
+        while (Matches(Sequence(OperatorBoolor)))
         {
             node = Create(new ASTNodeMathematicalExpression(node, ParseBooleanXor(), Token.Operator.BoolOr));
         }
@@ -642,11 +649,11 @@ internal class Parser
     {
         var node = ParseBooleanOr();
 
-        while (Sequence(OperatorTernaryconditional))
+        while (Matches(Sequence(OperatorTernaryconditional)))
         {
             var second = ParseBooleanOr();
 
-            if (!Sequence(OperatorInherit))
+            if (!Matches(Sequence(OperatorInherit)))
             {
                 throw new ParserException(this, "expected ':' in ternary expression");
             }
@@ -672,7 +679,7 @@ internal class Parser
         {
             var type = ParseType(true);
 
-            if (Sequence(Identifier))
+            if (Matches(Sequence(Identifier)))
             {
                 @params.Add((GetIdentifier(-1).Value, type));
             }
@@ -682,9 +689,9 @@ internal class Parser
                 unnamedParamCount++;
             }
 
-            if (!Sequence(SeparatorComma))
+            if (!Matches(Sequence(SeparatorComma)))
             {
-                if (Sequence(SeparatorRoundbracketclose))
+                if (Matches(Sequence(SeparatorRoundbracketclose)))
                 {
                     break;
                 }
@@ -695,13 +702,13 @@ internal class Parser
 
         if (!hasParams)
         {
-            if (!Sequence(SeparatorRoundbracketclose))
+            if (!Matches(Sequence(SeparatorRoundbracketclose)))
             {
                 throw new ParserException(this, "expected closing ')' after parameter list");
             }
         }
 
-        if (!Sequence(SeparatorCurlybracketopen))
+        if (!Matches(Sequence(SeparatorCurlybracketopen)))
         {
             throw new ParserException(this, "expected opening '{' after function definition");
         }
@@ -710,7 +717,7 @@ internal class Parser
         // Parse function body
         var body = new List<ASTNode>();
 
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
             body.Add(ParseFunctionStatement());
         }
@@ -723,12 +730,12 @@ internal class Parser
         ASTNode? statement;
         var type = ParseType(true);
 
-        if (Sequence(Identifier))
+        if (Matches(Sequence(Identifier)))
         {
             var identifier = GetIdentifier(-1).Value;
             statement = ParseMemberVariable(type);
 
-            if (Sequence(OperatorAssignment))
+            if (Matches(Sequence(OperatorAssignment)))
             {
                 var expression = ParseMathematicalExpression();
 
@@ -749,30 +756,42 @@ internal class Parser
         var needsSemicolon = true;
         ASTNode statement;
 
-        if (Sequence(Identifier, OperatorAssignment))
+        if (Matches(Sequence(Identifier, OperatorAssignment)))
         {
-            statement = ParseFunctionVariableAssignment();
+            statement = ParseFunctionVariableAssignment(GetIdentifier(-2).Value);
         }
-        else if (OneOf(KeywordReturn, KeywordBreak, KeywordContinue))
+        else if (Matches(Sequence(OperatorDollar, OperatorAssignment)))
+        {
+            statement = ParseFunctionVariableAssignment("$");
+        }
+        else if (Matches(OneOf(Identifier) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        {
+            statement = ParseFunctionVariableCompoundAssignment(GetIdentifier(-3).Value);
+        }
+        else if (Matches(OneOf(OperatorDollar) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        {
+            statement = ParseFunctionVariableCompoundAssignment("$");
+        }
+        else if (Matches(OneOf(KeywordReturn, KeywordBreak, KeywordContinue)))
         {
             statement = ParseFunctionControlFlowStatement();
         }
-        else if (Sequence(KeywordIf, SeparatorRoundbracketopen))
+        else if (Matches(Sequence(KeywordIf, SeparatorRoundbracketopen)))
         {
             statement = ParseFunctionConditional();
             needsSemicolon = false;
         }
-        else if (Sequence(KeywordWhile, SeparatorRoundbracketopen))
+        else if (Matches(Sequence(KeywordWhile, SeparatorRoundbracketopen)))
         {
             statement = ParseFunctionWhileLoop();
             needsSemicolon = false;
         }
-        else if (Sequence(KeywordFor, SeparatorRoundbracketopen))
+        else if (Matches(Sequence(KeywordFor, SeparatorRoundbracketopen)))
         {
             statement = ParseFunctionForLoop();
             needsSemicolon = false;
         }
-        else if (Sequence(Identifier))
+        else if (Matches(Sequence(Identifier)))
         {
             var originalPos = _tokenIndex;
             ParseNamespaceResolution();
@@ -798,14 +817,14 @@ internal class Parser
             throw new ParserException(this, "invalid sequence");
         }
 
-        if (needsSemicolon && !Sequence(SeparatorEndofexpression))
+        if (needsSemicolon && !Matches(Sequence(SeparatorEndofexpression)))
         {
             throw new ParserException(this, "missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
-        while (needsSemicolon && Sequence(SeparatorEndofexpression))
+        while (needsSemicolon && Matches(Sequence(SeparatorEndofexpression)))
         {
             // ignore
         }
@@ -813,13 +832,19 @@ internal class Parser
         return statement;
     }
 
-    private ASTNode ParseFunctionVariableAssignment()
+    private ASTNode ParseFunctionVariableAssignment(string lvalue)
     {
-        var lvalue = GetIdentifier(-2).Value;
-
         var rvalue = ParseMathematicalExpression();
 
         return Create(new ASTNodeAssignment(lvalue, rvalue));
+    }
+
+    private ASTNode ParseFunctionVariableCompoundAssignment(string lvalue)
+    {
+        var op = GetValue<Token.Operator>(-2);
+        var rvalue = ParseMathematicalExpression();
+
+        return Create(new ASTNodeAssignment(lvalue, Create(new ASTNodeMathematicalExpression(new ASTNodeRValue(new ASTNodeRValue.Path(lvalue)), rvalue, op))));
     }
 
     private ASTNode ParseFunctionControlFlowStatement()
@@ -854,9 +879,9 @@ internal class Parser
     {
         List<ASTNode> body = new();
 
-        if (Sequence(SeparatorCurlybracketopen))
+        if (Matches(Sequence(SeparatorCurlybracketopen)))
         {
-            while (!Sequence(SeparatorCurlybracketclose))
+            while (!Matches(Sequence(SeparatorCurlybracketclose)))
             {
                 body.Add(ParseFunctionStatement());
             }
@@ -873,7 +898,7 @@ internal class Parser
     {
         var condition = ParseMathematicalExpression();
 
-        if (!Sequence(SeparatorRoundbracketclose))
+        if (!Matches(Sequence(SeparatorRoundbracketclose)))
         {
             throw new ParserException(this, "expected closing ')' after statement head");
         }
@@ -881,7 +906,7 @@ internal class Parser
         var trueBody = ParseStatementBody();
 
         List<ASTNode> falseBody = new();
-        if (Sequence(KeywordElse))
+        if (Matches(Sequence(KeywordElse)))
         {
             falseBody = ParseStatementBody();
         }
@@ -893,7 +918,7 @@ internal class Parser
     {
         var condition = ParseMathematicalExpression();
 
-        if (!Sequence(SeparatorRoundbracketclose))
+        if (!Matches(Sequence(SeparatorRoundbracketclose)))
         {
             throw new ParserException(this, "expected closing ')' after statement head");
         }
@@ -907,26 +932,26 @@ internal class Parser
     {
         var variable = ParseFunctionVariableDecl();
 
-        if (!Sequence(SeparatorComma))
+        if (!Matches(Sequence(SeparatorComma)))
         {
             throw new ParserException(this, "expected ',' after for loop variable declaration");
         }
 
         var condition = ParseMathematicalExpression();
 
-        if (!Sequence(SeparatorComma))
+        if (!Matches(Sequence(SeparatorComma)))
         {
             throw new ParserException(this, "expected ',' after for loop condition");
         }
 
-        if (!Sequence(Identifier, OperatorAssignment))
+        if (!Matches(Sequence(Identifier, OperatorAssignment)))
         {
             throw new ParserException(this, "expected for loop variable assignment");
         }
 
-        var postExpression = ParseFunctionVariableAssignment();
+        var postExpression = ParseFunctionVariableAssignment(GetIdentifier(-2).Value);
 
-        if (!Sequence(SeparatorRoundbracketclose))
+        if (!Matches(Sequence(SeparatorRoundbracketclose)))
         {
             throw new ParserException(this, "expected closing ')' after statement head");
         }
@@ -946,14 +971,14 @@ internal class Parser
 
         do
         {
-            if (!Sequence(Identifier))
+            if (!Matches(Sequence(Identifier)))
             {
                 throw new ParserException(this, "expected attribute expression");
             }
 
             var attribute = GetIdentifier(-1).Value;
 
-            if (Sequence(SeparatorRoundbracketopen, String, SeparatorRoundbracketclose))
+            if (Matches(Sequence(SeparatorRoundbracketopen, String, SeparatorRoundbracketclose)))
             {
                 var value = GetValue<Literal>(-2);
 
@@ -972,7 +997,7 @@ internal class Parser
             }
         } while (Sequence(SeparatorComma));
 
-        if (!Sequence(SeparatorSquarebracketclose, SeparatorSquarebracketclose))
+        if (!Matches(Sequence(SeparatorSquarebracketclose, SeparatorSquarebracketclose)))
         {
             throw new ParserException(this, "expected ']]' to finish attribute");
         }
@@ -984,14 +1009,14 @@ internal class Parser
         List<ASTNode> trueBody = new();
         List<ASTNode> falseBody = new();
 
-        if (Sequence(SeparatorRoundbracketclose, SeparatorCurlybracketopen))
+        if (Matches(Sequence(SeparatorRoundbracketclose, SeparatorCurlybracketopen)))
         {
-            while (!Sequence(SeparatorCurlybracketclose))
+            while (!Matches(Sequence(SeparatorCurlybracketclose)))
             {
                 trueBody.Add(ParseMember());
             }
         }
-        else if (Sequence(SeparatorRoundbracketclose))
+        else if (Matches(Sequence(SeparatorRoundbracketclose)))
         {
             trueBody.Add(ParseMember());
         }
@@ -1000,14 +1025,14 @@ internal class Parser
             throw new ParserException(this, "expected body of conditional statement");
         }
 
-        if (Sequence(KeywordElse, SeparatorCurlybracketopen))
+        if (Matches(Sequence(KeywordElse, SeparatorCurlybracketopen)))
         {
-            while (!Sequence(SeparatorCurlybracketclose))
+            while (!Matches(Sequence(SeparatorCurlybracketclose)))
             {
                 falseBody.Add(ParseMember());
             }
         }
-        else if (Sequence(KeywordElse))
+        else if (Matches(Sequence(KeywordElse)))
         {
             falseBody.Add(ParseMember());
         }
@@ -1019,7 +1044,7 @@ internal class Parser
     {
         var condition = ParseMathematicalExpression();
 
-        if (!Sequence(SeparatorRoundbracketclose))
+        if (!Matches(Sequence(SeparatorRoundbracketclose)))
         {
             throw new ParserException(this, "expected closing ')' after while head");
         }
@@ -1031,16 +1056,16 @@ internal class Parser
     {
         Endianess? endian = null;
 
-        if (Sequence(KeywordLe))
+        if (Matches(Sequence(KeywordLe)))
         {
             endian = Endianess.Little;
         }
-        else if (Sequence(KeywordBe))
+        else if (Matches(Sequence(KeywordBe)))
         {
             endian = Endianess.Big;
         }
 
-        if (Sequence(Identifier))
+        if (Matches(Sequence(Identifier)))
         {
             // Custom type
             var typeName = ParseNamespaceResolution();
@@ -1062,7 +1087,7 @@ internal class Parser
             throw new ParserException(this, $"unknown type '{typeName}'");
         }
 
-        if (Sequence(ValuetypeAny))
+        if (Matches(Sequence(ValuetypeAny)))
         {
             // Builtin type
             var type = GetValue<Token.ValueType>(-1);
@@ -1089,7 +1114,7 @@ internal class Parser
     {
         var name = ParseNamespaceResolution();
 
-        if (!Sequence(OperatorAssignment))
+        if (!Matches(Sequence(OperatorAssignment)))
         {
             throw new ParserException(this, "expected '=' after type name of using declaration");
         }
@@ -1107,7 +1132,7 @@ internal class Parser
     {
         var size = ParseMathematicalExpression();
 
-        if (!Sequence(SeparatorSquarebracketclose))
+        if (!Matches(Sequence(SeparatorSquarebracketclose)))
         {
             throw new ParserException(this, "expected closing ']' at end of array declaration", -1); // -1
         }
@@ -1140,9 +1165,9 @@ internal class Parser
 
         ASTNode? size = null;
 
-        if (!Sequence(SeparatorSquarebracketclose))
+        if (!Matches(Sequence(SeparatorSquarebracketclose)))
         {
-            if (Sequence(KeywordWhile, SeparatorRoundbracketopen))
+            if (Matches(Sequence(KeywordWhile, SeparatorRoundbracketopen)))
             {
                 size = ParseWhileStatement();
             }
@@ -1151,7 +1176,7 @@ internal class Parser
                 size = ParseMathematicalExpression();
             }
 
-            if (!Sequence(SeparatorSquarebracketclose))
+            if (!Matches(Sequence(SeparatorSquarebracketclose)))
             {
                 throw new ParserException(this, "expected closing ']' at end of array declaration", -1);
             }
@@ -1202,17 +1227,16 @@ internal class Parser
             {
                 var type = ParseType();
 
-                // sequenceNot is an ugly hack. it does not use  and therefore when calling reset() it reset back to the previous begin() -> the identifier.
-                if (Sequence(Identifier, SeparatorSquarebracketopen) &&
-                    SequenceNot(SeparatorSquarebracketopen))
+                // sequenceNot is an ugly hack. it does not use  and therefore when calling reset() it resets back to the previous begin() -> the identifier.
+                if (Matches(Sequence(Identifier, SeparatorSquarebracketopen) && SequenceNot(SeparatorSquarebracketopen)))
                 {
                     member = ParseMemberArrayVariable(type);
                 }
-                else if (Sequence(Identifier))
+                else if (Matches(Sequence(Identifier)))
                 {
                     member = ParseMemberVariable(type);
                 }
-                else if (Sequence(OperatorStar, Identifier, OperatorInherit))
+                else if (Matches(Sequence(OperatorStar, Identifier, OperatorInherit)))
                 {
                     member = ParseMemberPointerVariable(type);
                 }
@@ -1222,15 +1246,31 @@ internal class Parser
                 }
             }
         }
-        else if (Sequence(ValuetypePadding, SeparatorSquarebracketopen))
+        else if (Matches(Sequence(ValuetypePadding, SeparatorSquarebracketopen)))
         {
             member = ParsePadding();
         }
-        else if (Sequence(KeywordIf, SeparatorRoundbracketopen))
+        else if (Matches(Sequence(KeywordIf, SeparatorRoundbracketopen)))
         {
             return ParseConditional();
         }
-        else if (Sequence(SeparatorEndofprogram))
+        else if (Matches(Sequence(KeywordBreak)))
+        {
+            member = new ASTNodeControlFlowStatement(ControlFlowStatement.Break, null);
+        }
+        else if (Matches(Sequence(KeywordContinue)))
+        {
+            member = new ASTNodeControlFlowStatement(ControlFlowStatement.Continue, null);
+        }
+        else if (Matches(Sequence(OperatorDollar, OperatorAssignment)))
+        {
+            member = ParseFunctionVariableAssignment("$");
+        }
+        else if (Matches(OneOf(OperatorDollar) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        {
+            member = ParseFunctionVariableCompoundAssignment("$");
+        }
+        else if (Matches(Sequence(SeparatorEndofprogram)))
         {
             throw new ParserException(this, "unexpected end of program", -2);
         }
@@ -1239,19 +1279,19 @@ internal class Parser
             throw new ParserException(this, "invalid struct member");
         }
 
-        if (Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen))
+        if (Matches(Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen)))
         {
             ParseAttribute(member as AttributableASTNode);
         }
 
-        if (!Sequence(SeparatorEndofexpression))
+        if (!Matches(Sequence(SeparatorEndofexpression)))
         {
             throw new ParserException(this, "Missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
-        while (Sequence(SeparatorEndofexpression))
+        while (Matches(Sequence(SeparatorEndofexpression)))
         {
             // do nothing
         }
@@ -1272,7 +1312,7 @@ internal class Parser
         var structNode = Create(new ASTNodeStruct());
         var typeDecl = AddType(typeName, structNode);
 
-        if (Sequence(OperatorInherit, Identifier))
+        if (Matches(Sequence(OperatorInherit, Identifier)))
         {
             // Inheritance
 
@@ -1287,17 +1327,17 @@ internal class Parser
                 structNode.AddInheritance(_types[inheritedTypeName].Clone());
             } while (Sequence(SeparatorComma, Identifier));
         }
-        else if (Sequence(OperatorInherit, ValuetypeAny))
+        else if (Matches(Sequence(OperatorInherit, ValuetypeAny)))
         {
             throw new ParserException(this, "cannot inherit from builtin type");
         }
 
-        if (!Sequence(SeparatorCurlybracketopen))
+        if (!Matches(Sequence(SeparatorCurlybracketopen)))
         {
             throw new ParserException(this, "expected '{' after struct definition", -1);
         }
 
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
             structNode.AddMember(ParseMember());
         }
@@ -1312,7 +1352,7 @@ internal class Parser
         var unionNode = Create(new ASTNodeUnion());
         var typeDecl = AddType(typeName, unionNode);
 
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
             unionNode.AddMember(ParseMember());
         }
@@ -1333,15 +1373,15 @@ internal class Parser
         var enumNode = Create(new ASTNodeEnum(underlyingType));
         var typeDecl = AddType(typeName, enumNode);
 
-        if (!Sequence(SeparatorCurlybracketopen))
+        if (!Matches(Sequence(SeparatorCurlybracketopen)))
         {
             throw new ParserException(this, "expected '{' after enum definition", -1);
         }
 
         ASTNode? lastEntry = null;
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
-            if (Sequence(Identifier, OperatorAssignment))
+            if (Matches(Sequence(Identifier, OperatorAssignment)))
             {
                 var name = GetIdentifier(-2).Value;
                 var value = ParseMathematicalExpression();
@@ -1349,7 +1389,7 @@ internal class Parser
                 enumNode.AddEntry(name, value);
                 lastEntry = value;
             }
-            else if (Sequence(Identifier))
+            else if (Matches(Sequence(Identifier)))
             {
                 ASTNode valueExpr;
                 var name = GetIdentifier(-1).Value;
@@ -1365,7 +1405,7 @@ internal class Parser
 
                 enumNode.AddEntry(name, valueExpr);
             }
-            else if (Sequence(SeparatorEndofprogram))
+            else if (Matches(Sequence(SeparatorEndofprogram)))
             {
                 throw new ParserException(this, "unexpected end of program", -1);
             }
@@ -1374,9 +1414,9 @@ internal class Parser
                 throw new ParserException(this, "invalid enum entry", -1);
             }
 
-            if (!Sequence(SeparatorComma))
+            if (!Matches(Sequence(SeparatorComma)))
             {
-                if (Sequence(SeparatorCurlybracketclose))
+                if (Matches(Sequence(SeparatorCurlybracketclose)))
                 {
                     break;
                 }
@@ -1395,18 +1435,18 @@ internal class Parser
         var bitfieldNode = Create(new ASTNodeBitfield());
         var typeDecl = AddType(typeName, bitfieldNode);
 
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
-            if (Sequence(Identifier, OperatorInherit))
+            if (Matches(Sequence(Identifier, OperatorInherit)))
             {
                 var name = GetIdentifier(-2).Value;
                 bitfieldNode.AddEntry(name, ParseMathematicalExpression());
             }
-            else if (Sequence(ValuetypePadding, OperatorInherit))
+            else if (Matches(Sequence(ValuetypePadding, OperatorInherit)))
             {
                 bitfieldNode.AddEntry("padding", ParseMathematicalExpression());
             }
-            else if (Sequence(SeparatorEndofprogram))
+            else if (Matches(Sequence(SeparatorEndofprogram)))
             {
                 throw new ParserException(this, "unexpected end of program", -2);
             }
@@ -1415,14 +1455,14 @@ internal class Parser
                 throw new ParserException(this, "invalid bitfield member");
             }
 
-            if (!Sequence(SeparatorEndofexpression))
+            if (!Matches(Sequence(SeparatorEndofexpression)))
             {
                 throw new ParserException(this, "missing ';' at end of expression", -1);
             }
 
             // Consume superfluous semicolons
             // ReSharper disable once EmptyEmbeddedStatement
-            while (Sequence(SeparatorEndofexpression))
+            while (Matches(Sequence(SeparatorEndofexpression)))
             {
                 // ignore
             }
@@ -1439,15 +1479,15 @@ internal class Parser
         var name = GetIdentifier(-1).Value;
 
         ASTNode? placementOffset = null;
-        if (Sequence(OperatorAt))
+        if (Matches(Sequence(OperatorAt)))
         {
             placementOffset = ParseMathematicalExpression();
         }
-        else if (Sequence(KeywordIn))
+        else if (Matches(Sequence(KeywordIn)))
         {
             inVariable = true;
         }
-        else if (Sequence(KeywordOut))
+        else if (Matches(Sequence(KeywordOut)))
         {
             outVariable = true;
         }
@@ -1461,9 +1501,9 @@ internal class Parser
 
         ASTNode? size = null;
 
-        if (!Sequence(SeparatorSquarebracketclose))
+        if (!Matches(Sequence(SeparatorSquarebracketclose)))
         {
-            if (Sequence(KeywordWhile, SeparatorRoundbracketopen))
+            if (Matches(Sequence(KeywordWhile, SeparatorRoundbracketopen)))
             {
                 size = ParseWhileStatement();
             }
@@ -1472,13 +1512,13 @@ internal class Parser
                 size = ParseMathematicalExpression();
             }
 
-            if (!Sequence(SeparatorSquarebracketclose))
+            if (!Matches(Sequence(SeparatorSquarebracketclose)))
             {
                 throw new ParserException(this, "expected closing ']' at end of array declaration", -1);
             }
         }
 
-        if (!Sequence(OperatorAt))
+        if (!Matches(Sequence(OperatorAt)))
         {
             throw new ParserException(this, "expected placement instruction", -1);
         }
@@ -1498,7 +1538,7 @@ internal class Parser
             throw new ParserException(this, "invalid type used for pointer size", -1);
         }
 
-        if (!Sequence(OperatorAt))
+        if (!Matches(Sequence(OperatorAt)))
         {
             throw new ParserException(this, "expected placement instruction", -1);
         }
@@ -1511,17 +1551,17 @@ internal class Parser
     {
         var type = ParseType();
 
-        if (Sequence(Identifier, SeparatorSquarebracketopen))
+        if (Matches(Sequence(Identifier, SeparatorSquarebracketopen)))
         {
             return ParseArrayVariablePlacement(type);
         }
 
-        if (Sequence(Identifier))
+        if (Matches(Sequence(Identifier)))
         {
             return ParseVariablePlacement(type);
         }
 
-        if (Sequence(OperatorStar, Identifier, OperatorInherit))
+        if (Matches(Sequence(OperatorStar, Identifier, OperatorInherit)))
         {
             return ParsePointerVariablePlacement(type);
         }
@@ -1533,7 +1573,7 @@ internal class Parser
     {
         List<ASTNode> statements = new();
 
-        if (!Sequence(Identifier))
+        if (!Matches(Sequence(Identifier)))
         {
             throw new ParserException(this, "expected namespace identifier");
         }
@@ -1545,18 +1585,18 @@ internal class Parser
         {
             _currentNamespace.Last().Add(GetIdentifier(-1).Value);
 
-            if (!Sequence(OperatorScoperesolution, Identifier))
+            if (!Matches(Sequence(OperatorScoperesolution, Identifier)))
             {
                 break;
             }
         }
 
-        if (!Sequence(SeparatorCurlybracketopen))
+        if (!Matches(Sequence(SeparatorCurlybracketopen)))
         {
             throw new ParserException(this, "expected '{' at start of namespace");
         }
 
-        while (!Sequence(SeparatorCurlybracketclose))
+        while (!Matches(Sequence(SeparatorCurlybracketclose)))
         {
             statements = ParseStatements();
         }
@@ -1571,7 +1611,7 @@ internal class Parser
     {
         ASTNode? statement;
 
-        if (Sequence(KeywordUsing, Identifier))
+        if (Matches(Sequence(KeywordUsing, Identifier)))
         {
             statement = ParseUsingDeclaration();
         }
@@ -1597,27 +1637,27 @@ internal class Parser
         {
             statement = ParsePlacement();
         }
-        else if (Sequence(KeywordStruct, Identifier))
+        else if (Matches(Sequence(KeywordStruct, Identifier)))
         {
             statement = ParseStruct();
         }
-        else if (Sequence(KeywordUnion, Identifier, SeparatorCurlybracketopen))
+        else if (Matches(Sequence(KeywordUnion, Identifier, SeparatorCurlybracketopen)))
         {
             statement = ParseUnion();
         }
-        else if (Sequence(KeywordEnum, Identifier, OperatorInherit))
+        else if (Matches(Sequence(KeywordEnum, Identifier, OperatorInherit)))
         {
             statement = ParseEnum();
         }
-        else if (Sequence(KeywordBitfield, Identifier, SeparatorCurlybracketopen))
+        else if (Matches(Sequence(KeywordBitfield, Identifier, SeparatorCurlybracketopen)))
         {
             statement = ParseBitfield();
         }
-        else if (Sequence(KeywordFunction, Identifier, SeparatorRoundbracketopen))
+        else if (Matches(Sequence(KeywordFunction, Identifier, SeparatorRoundbracketopen)))
         {
             statement = ParseFunctionDefinition();
         }
-        else if (Sequence(KeywordNamespace))
+        else if (Matches(Sequence(KeywordNamespace)))
         {
             return ParseNamespace();
         }
@@ -1626,19 +1666,19 @@ internal class Parser
             throw new ParserException(this, "invalid sequence");
         }
 
-        if (Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen))
+        if (Matches(Sequence(SeparatorSquarebracketopen, SeparatorSquarebracketopen)))
         {
             ParseAttribute(statement as AttributableASTNode);
         }
 
-        if (!Sequence(SeparatorEndofexpression))
+        if (!Matches(Sequence(SeparatorEndofexpression)))
         {
             throw new ParserException(this, "missing ';' at end of expression", -1);
         }
 
         // Consume superfluous semicolons
         // ReSharper disable once EmptyEmbeddedStatement
-        while (Sequence(SeparatorEndofexpression))
+        while (Matches(Sequence(SeparatorEndofexpression)))
         {
             // ignore
         }
@@ -1660,13 +1700,11 @@ internal class Parser
 
         return typeDecl;
     }
-
-    //private List<ASTNode> ParseTillToken(Token component) => ParseTillToken(component.Type, component.Value);
-
+    
     private List<ASTNode> ParseTillToken(Token token)
     {
         var program = new List<ASTNode>();
-        //this->m_curr->type != endTokenType || (*this->m_curr) != value
+
         while (_tokens[_tokenIndex].Type != token.Type || !_tokens[_tokenIndex].TokenValueEquals(token))
         {
             foreach (var statement in ParseStatements())
@@ -1679,44 +1717,56 @@ internal class Parser
 
         return program;
     }
-
-    //private void ThrowParseError(string error, int token = -1)
-    //{
-    //    throw new LangException(this._tokens[this._tokenIndex + token].lineNumber, "Parser: " + error);
-    //}
-
-    //private void ThrowParseError(string error, uint token)
-    //{
-    //    throw new LangException(this._tokens[this._tokenIndex + (int)token].lineNumber, "Parser: " + error);
-    //}
-
-    /* Token consuming */
-
+    
     private void Begin()
     {
-        if (!_hasReset)
+        if (_matchSequenceStarted)
         {
             return;
         }
 
+        _matchSequenceStarted = true;
         _originalTokenIndex = _tokenIndex;
     }
 
     private void Reset()
     {
-        _hasReset = true;
+        _matchSequenceStarted = false;
         _tokenIndex = _originalTokenIndex;
+    }
+
+    private void PartBegin()
+    {
+        Begin();
+        _originalPartIndex = _tokenIndex;
+    }
+
+    private void PartReset()
+    {
+        _tokenIndex = _originalPartIndex;
+    }
+
+    private bool Matches(bool result)
+    {
+        if (!result)
+        {
+            Reset();
+        }
+
+        _matchSequenceStarted = false;
+
+        return result;
     }
 
     private bool Sequence(params Token[] components)
     {
-        Begin();
+        PartBegin();
 
         for (var i = 0; i < components.Length; i++)
         {
             if (!Peek(components[i]))
             {
-                Reset();
+                PartReset();
                 return false;
             }
 
@@ -1738,13 +1788,13 @@ internal class Parser
             _tokenIndex++;
         }
 
-        Reset();
+        PartReset();
         return false;
     }
 
     private bool OneOf(params Token[] components)
     {
-        Begin();
+        PartBegin();
 
         for (var i = 0; i < components.Length; i++)
         {
@@ -1756,19 +1806,16 @@ internal class Parser
             }
         }
 
-        Reset();
+        PartReset();
         return false;
     }
 
     private bool Variant(Token c1, Token c2)
     {
-        Begin();
-
         if (!Peek(c1))
         {
             if (!Peek(c2))
             {
-                Reset();
                 return false;
             }
         }
@@ -1777,52 +1824,7 @@ internal class Parser
 
         return true;
     }
-
-    //private bool Optional(Token.Type type, object value)
-    //{
-    //    if (Peek(type, value))
-    //    {
-    //        this._mMatchedOptionals.Add(this._tokens[_tokenIndex]);
-    //        this._tokenIndex++;
-    //    }
-
-    //    return true;
-    //}
-
+    
     private bool Peek(Token component, int index = 0) =>
-        //return Peek(component.Type, component.Value, index);
         _tokens[_tokenIndex + index].Type == component.Type && _tokens[_tokenIndex + index].TokenValueEquals(component);
-
-    //private record Component(Token.TokenType Type, Token.ITokenValue Value)
-    //{
-    //    public Component(Token.TokenType type, Token.Separator separator) : this(type,
-    //        new Token.EnumValue<Token.Separator>(separator))
-    //    {
-    //    }
-
-    //    public Component(Token.TokenType type, Token.Keyword keyword) : this(type,
-    //        new Token.EnumValue<Token.Keyword>(keyword))
-    //    {
-    //    }
-
-    //    public Component(Token.TokenType type, Token.Operator @operator) : this(type,
-    //        new Token.EnumValue<Token.Operator>(@operator))
-    //    {
-    //    }
-
-    //    public Component(Token.TokenType type, Token.ValueType valueType) : this(type,
-    //        new Token.EnumValue<Token.ValueType>(valueType))
-    //    {
-    //    }
-
-    //    public Component(Token.TokenType type, Literal literal) : this(type,
-    //        new Token.LiteralValue(literal))
-    //    {
-    //    }
-    //}
-
-    //private bool Peek(Token.Type type, object value, int index = 0)
-    //{
-    //    return this._tokens[_tokenIndex + index].type == type && this._tokens[_tokenIndex + index].TokenValueEquals(value);
-    //}
 }

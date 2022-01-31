@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using HexControl.Core;
+﻿using HexControl.Core;
+using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
@@ -7,7 +7,7 @@ public class PatternDataStaticArray : PatternData, IPatternInlinable
 {
     private readonly PatternData _template = null!;
 
-    public PatternDataStaticArray(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataStaticArray(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color)
     {
         // TODO: Remove whenever required init is a thing
@@ -27,7 +27,6 @@ public class PatternDataStaticArray : PatternData, IPatternInlinable
         {
             if (value is not null)
             {
-
                 _template = value;
                 _template.Endian = value.Endian;
                 _template.Parent = this;
@@ -50,7 +49,7 @@ public class PatternDataStaticArray : PatternData, IPatternInlinable
         }
     }
 
-    public override int Color
+    public override IntegerColor Color
     {
         get => base.Color;
         set
@@ -61,10 +60,10 @@ public class PatternDataStaticArray : PatternData, IPatternInlinable
     }
 
     public int EntryCount { get; init; }
-    
+
     public override PatternData Clone() => new PatternDataStaticArray(this);
 
-    public override void CreateMarkers(List<PatternMarker> markers)
+    public override void CreateMarkers(StaticMarkerProvider markers)
     {
         var entry = Template.Clone();
 

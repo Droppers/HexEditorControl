@@ -6,7 +6,6 @@ internal static class ColorExtensions
 
     public static (byte r, byte g, byte b) ToRgb(this int value)
     {
-
         var red = (value >> 16) & 255;
         var green = (value >> 8) & 255;
         var blue = (value >> 0) & 255;

@@ -9,7 +9,7 @@ public class PatternDataUnion : PatternData, IPatternInlinable
 {
     private PatternData[] _members;
 
-    public PatternDataUnion(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataUnion(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color)
     {
         _members = Array.Empty<PatternData>();
@@ -34,7 +34,7 @@ public class PatternDataUnion : PatternData, IPatternInlinable
         }
     }
 
-    public override int Color
+    public override IntegerColor Color
     {
         get => base.Color;
         set
@@ -52,29 +52,16 @@ public class PatternDataUnion : PatternData, IPatternInlinable
         }
     }
 
-    public IReadOnlyList<PatternData> Members
-    {
-        get => _members;
-        set
-        {
-            _members = new PatternData[value.Count];
-            for (var i = 0; i < value.Count; i++)
-            {
-                var member = value[i];
-                if (member is null)
-                {
-                    continue;
-                }
+    public IReadOnlyList<PatternData> Members => _members;
 
-                member.Parent = this;
-                _members[i] = member;
-            }
-        }
+    public void SetMembers(PatternData[] members)
+    {
+        _members = members;
     }
-    
+
     public override PatternData Clone() => new PatternDataUnion(this);
 
-    public override void CreateMarkers(List<PatternMarker> markers)
+    public override void CreateMarkers(StaticMarkerProvider markers)
     {
         // Only take the largest member in a union type
         PatternData? largestMember = null;

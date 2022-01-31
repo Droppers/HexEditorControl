@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FastCollections" Version="0.2.3" />
+    <PackageReference Include="RangeTree" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
     <ProjectReference Include="..\..\src\Shared\HexControl.Core\HexControl.Core.csproj" />
   </ItemGroup>

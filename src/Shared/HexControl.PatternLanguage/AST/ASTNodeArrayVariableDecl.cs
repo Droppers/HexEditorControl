@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
@@ -168,10 +169,10 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
         return outputPattern;
     }
 
-    private static long AddDynamicArrayEntry(List<PatternData> entries, PatternData parent, PatternData pattern)
+    private static long AddDynamicArrayEntry(List<PatternData> entries, Endianess? endianess, PatternData pattern)
     {
         pattern.ArrayIndex = entries.Count;
-        pattern.Endian = parent.Endian;
+        pattern.Endian = endianess;
         entries.Add(pattern);
         return pattern.Size;
     }
@@ -187,7 +188,8 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
     {
         var arrayPattern = new PatternDataDynamicArray(evaluator.CurrentOffset, 0, evaluator);
 
-        var entries = new List<PatternData>();
+        var endian = arrayPattern.Endian;
+        var entries = ObjectPool<List<PatternData>>.Shared.Rent();
         long size = 0;
         if (_size is not null)
         {
@@ -214,7 +216,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     if (pattern is not null)
                     {
-                        size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
+                        size += AddDynamicArrayEntry(entries, endian, pattern);
                     }
 
                     var ctrlFlow = evaluator.CurrentControlFlowStatement;
@@ -243,7 +245,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                     if (pattern is not null)
                     {
-                        size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
+                        size += AddDynamicArrayEntry(entries, endian, pattern);
                     }
 
                     var ctrlFlow = evaluator.CurrentControlFlowStatement;
@@ -271,58 +273,65 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
 
                 var pattern = _type.CreatePattern(evaluator);
 
-                if (pattern is not null)
+                if (pattern is null)
                 {
-                    if (evaluator.CurrentOffset >= evaluator.Buffer.Length - pattern.Size)
+                    continue;
+                }
+
+                if (evaluator.CurrentOffset >= evaluator.Buffer.Length - pattern.Size)
+                {
+                    throw new Exception("reached end of file before finding end of unsized array");
+                }
+
+                size += AddDynamicArrayEntry(entries, endian, pattern);
+
+                var ctrlFlow = evaluator.CurrentControlFlowStatement;
+                if (ctrlFlow == ControlFlowStatement.Break)
+                {
+                    break;
+                }
+
+                if (ctrlFlow == ControlFlowStatement.Continue)
+                {
+                    size -= DiscardDynamicArrayEntry(entries);
+                    continue;
+                }
+
+
+                var buffer = ExactArrayPool<byte>.Instance.Rent((int)pattern.Size);
+                try
+                {
+                    evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
+                    var reachedEnd = true;
+                    for (var i = 0; i < buffer.Length; i++)
                     {
-                        throw new Exception("reached end of file before finding end of unsized array");
-                    }
-
-                    size += AddDynamicArrayEntry(entries, arrayPattern, pattern);
-
-                    var ctrlFlow = evaluator.CurrentControlFlowStatement;
-                    if (ctrlFlow == ControlFlowStatement.Break)
-                    {
-                        break;
-                    }
-
-                    if (ctrlFlow == ControlFlowStatement.Continue)
-                    {
-                        size -= DiscardDynamicArrayEntry(entries);
-                        continue;
-                    }
-
-
-                    var buffer = ExactArrayPool<byte>.Instance.Rent((int)pattern.Size);
-                    try
-                    {
-                        evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
-                        var reachedEnd = true;
-                        for (var i = 0; i < buffer.Length; i++)
+                        var @byte = buffer[i];
+                        if (@byte != 0x00)
                         {
-                            var @byte = buffer[i];
-                            if (@byte != 0x00)
-                            {
-                                reachedEnd = false;
-                                break;
-                            }
-                        }
-
-                        if (reachedEnd)
-                        {
+                            reachedEnd = false;
                             break;
                         }
                     }
-                    finally
+
+                    if (reachedEnd)
                     {
-                        ExactArrayPool<byte>.Instance.Return(buffer);
+                        break;
                     }
+                }
+                finally
+                {
+                    ExactArrayPool<byte>.Instance.Return(buffer);
                 }
             }
         }
 
-        arrayPattern.Entries = entries;
+        //arrayPattern.Entries = entries;
+        arrayPattern.SetEntries(entries.ToArray());
         arrayPattern.Size = size;
+
+        // Return to pool
+        entries.Clear();
+        ObjectPool<List<PatternData>>.Shared.Return(entries);
 
         // Copy type from first entry to the array
         if (arrayPattern.Entries.Count > 0)

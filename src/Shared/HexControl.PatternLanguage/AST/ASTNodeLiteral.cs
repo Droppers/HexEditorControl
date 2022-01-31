@@ -8,7 +8,7 @@ internal class ASTNodeLiteral : ASTNode
     {
         Literal = literal;
     }
-    
+
     public Literal Literal { get; }
 
     // No reason to clone a literal, since it is a literal.

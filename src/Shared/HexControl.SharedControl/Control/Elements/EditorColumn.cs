@@ -21,7 +21,6 @@ internal class EditorColumn : VisualElement
 
     private readonly char[] _characterBuffer;
     private readonly ObjectCache<Color, ISharedBrush> _colorToBrushCache;
-    private readonly List<IDocumentMarker> _markers;
 
     private readonly SharedHexControl _parent;
     private readonly byte[] _readBuffer;
@@ -29,17 +28,21 @@ internal class EditorColumn : VisualElement
     private readonly SynchronizationContext? _syncContext;
 
     private ColumnSide _activeColumn = ColumnSide.Left;
+
+    private IDocumentMarker? _activeMarker;
     private bool _cursorTick;
 
     private Timer? _cursorTimer;
     private int _horizontalCharacterOffset;
 
     private int _horizontalOffset;
+    private IDocumentMarker? _inactiveMarker;
 
     private bool _keyboardSelectMode;
     private ISharedBrush?[] _markerForegroundLookup;
 
     private SharedPoint? _mouseDownPosition;
+    private bool _mouseSelectMode;
     private long? _startSelectionOffset;
 
     public EditorColumn(
@@ -48,7 +51,6 @@ internal class EditorColumn : VisualElement
         _parent = parent;
 
         _colorToBrushCache = new ObjectCache<Color, ISharedBrush>(color => new ColorBrush(color));
-        _markers = new List<IDocumentMarker>();
         _markerForegroundLookup = Array.Empty<ISharedBrush?>();
         _characterBuffer = new char[8];
         _readBuffer = new byte[8];
@@ -222,9 +224,10 @@ internal class EditorColumn : VisualElement
 
     private int GetLeft(int offsetFromLeft, ColumnSide column, bool excludeLastGroup = false)
     {
+        var isLastOfGroup = offsetFromLeft % Configuration.GroupSize == 0;
         var characterSet = GetCharacterSetForColumn(column);
-        var groups = (characterSet.Groupable ? offsetFromLeft / Configuration.GroupSize : 0) -
-                     (excludeLastGroup && characterSet.Groupable ? 1 : 0);
+        var groups = Math.Max(0, (characterSet.Groupable ? offsetFromLeft / Configuration.GroupSize : 0) -
+                                 (excludeLastGroup && characterSet.Groupable && isLastOfGroup ? 1 : 0));
         return (offsetFromLeft * characterSet.Width + groups) * CharacterWidth;
     }
 
@@ -235,18 +238,19 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        _markers.Clear();
+        // 'High performance' static markers (do not change when modifying document)
+        ResizeForegroundLookup();
+        DrawStaticMarkers(Document, context);
 
-        UpdateUserMarkers(Document);
-        UpdateSelectionMarkers(Document);
+        // Different foreground for modified bytes
+        UpdateModificationBrushOverrides();
 
         // Draw the markers that should be drawn behind the text
+        UpdateSelectionMarkers();
         DrawMarkers(context, marker => marker.BehindText);
 
         if (TextBuilder is not null)
         {
-            UpdateBrushOverrides();
-
             TextBuilder.Clear();
             if (Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText &&
                 HexCharacterSet.Groupable)
@@ -270,50 +274,33 @@ internal class EditorColumn : VisualElement
         DrawCursors(context, Document);
     }
 
-    private void UpdateUserMarkers(Document document)
+    private void UpdateSelectionMarkers()
     {
-        for (var i = 0; i < document.Markers.Count; i++)
-        {
-            var marker = document.Markers[i];
-            if (marker.Offset >= Offset + Bytes.Length || marker.Offset + marker.Length < Offset)
-            {
-                continue;
-            }
-
-            _markers.Add(marker);
-        }
-    }
-
-    private void UpdateSelectionMarkers(Document document)
-    {
-        if (document.Selection is null || document.Selection.End < Offset ||
-            document.Selection.Start > Offset + Bytes.Length)
+        if (Document?.Selection is null)
         {
             return;
         }
 
-        if (document.Selection.Length <= 0)
-        {
-            return;
-        }
+        // Active
+        _activeMarker ??= new Marker(Document.Selection.Start, Document.Selection.Length);
+        _activeMarker.Offset = Document.Selection.Start;
+        _activeMarker.Length = Document.Selection.Length;
+        _activeMarker.Foreground = Color.White;
+        _activeMarker.Background = Color.FromArgb(255, 21, 103, 210);
+        _activeMarker.BehindText = true;
+        _activeMarker.Column = Document.Selection.Column is ColumnSide.Left ? ColumnSide.Left : ColumnSide.Right;
 
-        _markers.Add(new Marker(document.Selection.Start, document.Selection.Length)
-        {
-            Foreground = Color.White,
-            Background = Color.FromArgb(255, 21, 103, 210),
-            BehindText = true,
-            Column = document.Selection.Column is ColumnSide.Left ? ColumnSide.Left : ColumnSide.Right
-        });
-        _markers.Add(new Marker(document.Selection.Start, document.Selection.Length)
-        {
-            Border = Color.FromArgb(255, 21, 103, 210),
-            Background = Color.FromArgb(100, 21, 103, 210),
-            BehindText = true,
-            Column = document.Selection.Column is ColumnSide.Right ? ColumnSide.Left : ColumnSide.Right
-        });
+        // Inactive
+        _inactiveMarker ??= new Marker(Document.Selection.Start, Document.Selection.Length);
+        _inactiveMarker.Offset = Document.Selection.Start;
+        _inactiveMarker.Length = Document.Selection.Length;
+        _inactiveMarker.Border = Color.FromArgb(255, 21, 103, 210);
+        _inactiveMarker.Background = Color.FromArgb(100, 21, 103, 210);
+        _inactiveMarker.BehindText = true;
+        _inactiveMarker.Column = Document.Selection.Column is ColumnSide.Right ? ColumnSide.Left : ColumnSide.Right;
     }
 
-    private void UpdateBrushOverrides()
+    private void ResizeForegroundLookup()
     {
         if (Bytes.Length * 2 > _markerForegroundLookup.Length)
         {
@@ -326,9 +313,6 @@ internal class EditorColumn : VisualElement
                 _markerForegroundLookup[i] = null;
             }
         }
-
-        UpdateModificationBrushOverrides();
-        UpdateMarkerBrushOverrides();
     }
 
     private void UpdateModificationBrushOverrides()
@@ -362,79 +346,169 @@ internal class EditorColumn : VisualElement
         return 255 - delta < threshold ? Color.Black : Color.White;
     }
 
-    private void UpdateMarkerBrushOverrides()
+    private int GetMarkerCount()
+    {
+        if (Document is null)
+        {
+            return 0;
+        }
+
+        if (Document.Selection is null || Document.Selection.End < Offset ||
+            Document.Selection.Start > Offset + Bytes.Length || Document.Selection.Length <= 0)
+        {
+            return Document.Markers.Count;
+        }
+
+        return Document.Markers.Count + 2;
+    }
+
+    private IDocumentMarker GetMarker(int index)
+    {
+        var count = Document?.Markers.Count ?? 0;
+        if (index < count)
+        {
+            return Document?.Markers[index]!;
+        }
+
+        var selectionIndex = index - count;
+        return selectionIndex switch
+        {
+            0 => _activeMarker!,
+            1 => _inactiveMarker!,
+            _ => throw new IndexOutOfRangeException("Marker index out of range.")
+        };
+    }
+
+    private void UpdateMarkerBrushOverrides(IDocumentMarker marker)
     {
         var rightOffset = _markerForegroundLookup.Length / 2;
-        // ReSharper disable once ForCanBeConvertedToForeach
-        for (var i = 0; i < _markers.Count; i++)
+        var foreground = marker.Foreground ?? DetermineTextColor(marker.Background);
+        if (foreground is null || _colorToBrushCache[foreground.Value] is not { } foregroundBrush)
         {
-            var marker = _markers[i];
-            if (marker.Offset > Offset + Bytes.Length || marker.Offset + marker.Length < Offset)
+            return;
+        }
+
+        var startOffset = Math.Max(0, marker.Offset - Offset);
+        var length = Math.Min(Bytes.Length - startOffset,
+            marker.Length - (marker.Offset < Offset ? Offset - marker.Offset : 0));
+        for (var j = 0; j < length; j++)
+        {
+            if (marker.Column is ColumnSide.Both)
             {
-                continue;
+                _markerForegroundLookup[startOffset + j] = foregroundBrush;
+                _markerForegroundLookup[rightOffset + startOffset + j] = foregroundBrush;
+            }
+            else
+            {
+                var offset = marker.Column is ColumnSide.Left ? 0 : rightOffset;
+                _markerForegroundLookup[offset + startOffset + j] = foregroundBrush;
+            }
+        }
+    }
+
+    private void DrawStaticMarkers(Document document, IRenderContext context)
+    {
+        if (document.StaticMarkerProvider is null)
+        {
+            return;
+        }
+
+        ResizeForegroundLookup();
+
+        var rightOffset = _markerForegroundLookup.Length / 2;
+
+        // A fake marker that can be passed to the drawing methods (used as drawing parameters)
+        var fakeMarker = new Marker(0, 0);
+        var startOffset = -1L;
+        var startColor = IntegerColor.Zero;
+        for (var i = Offset; i < Offset + Bytes.Length; i++)
+        {
+            var color = document.StaticMarkerProvider.Lookup(i);
+
+            if (color?.A is 255)
+            {
+                var c = color.Value;
+                var foreground = DetermineTextColor(Color.FromArgb(c.A, c.R, c.G, c.B));
+
+                if (foreground is not null && _colorToBrushCache[foreground.Value] is { } foregroundBrush)
+                {
+                    var relative = i - Offset;
+                    _markerForegroundLookup[relative] = foregroundBrush;
+                    _markerForegroundLookup[rightOffset + relative] = foregroundBrush;
+                }
             }
 
-            var foreground = marker.Foreground ?? DetermineTextColor(marker.Background);
-            if (foreground is null || _colorToBrushCache[foreground.Value] is not { } foregroundBrush)
+            if (startOffset != -1 && (color is null || !color.Value.Equals(startColor)))
             {
-                continue;
+                var c = startColor;
+                fakeMarker.Offset = startOffset;
+                fakeMarker.Length = i - startOffset;
+                fakeMarker.Background = Color.FromArgb(c.A, c.R, c.G, c.B);
+                DrawLeftMarker(context, fakeMarker);
+                DrawRightMarker(context, fakeMarker);
+                startOffset = -1;
             }
 
-            var startOffset = Math.Max(0, marker.Offset - Offset);
-            var length = Math.Min(Bytes.Length - startOffset,
-                marker.Length - (marker.Offset < Offset ? Offset - marker.Offset : 0));
-            for (var j = 0; j < length; j++)
+            if (startOffset is -1 && color is not null)
             {
-                if (marker.Column is ColumnSide.Both)
-                {
-                    _markerForegroundLookup[startOffset + j] = foregroundBrush;
-                    _markerForegroundLookup[rightOffset + startOffset + j] = foregroundBrush;
-                }
-                else
-                {
-                    var offset = marker.Column is ColumnSide.Left ? 0 : rightOffset;
-                    _markerForegroundLookup[offset + startOffset + j] = foregroundBrush;
-                }
+                startOffset = i;
+                startColor = color.Value;
             }
         }
     }
 
     private void DrawMarkers(IRenderContext context, Func<IDocumentMarker, bool> condition)
     {
-        for (var i = 0; i < _markers.Count; i++)
+        for (var i = 0; i < GetMarkerCount(); i++)
         {
-            var marker = _markers[i];
+            var marker = GetMarker(i);
+            if (marker.Offset + marker.Length <= Offset || marker.Offset >= Offset + Bytes.Length)
+            {
+                continue;
+            }
+
             if (!condition(marker))
             {
                 continue;
             }
 
-            if (_horizontalCharacterOffset < Configuration.BytesPerRow &&
-                marker.Column is ColumnSide.Left or ColumnSide.Both)
-            {
-                DrawMarkerArea(context, ColumnSide.Left, marker);
-            }
+            UpdateMarkerBrushOverrides(marker);
 
-            if (marker.Column is ColumnSide.Left)
-            {
-                continue;
-            }
+            DrawLeftMarker(context, marker);
+            DrawRightMarker(context, marker);
+        }
+    }
 
-            if (_horizontalCharacterOffset < Configuration.BytesPerRow)
-            {
-                context.PushTranslate(GetVisibleColumnWidth(ColumnSide.Left) + SPACING_BETWEEN_COLUMNS * CharacterWidth,
-                    0);
-            }
+    private void DrawLeftMarker(IRenderContext context, IDocumentMarker marker)
+    {
+        if (_horizontalCharacterOffset < Configuration.BytesPerRow &&
+            marker.Column is ColumnSide.Left or ColumnSide.Both)
+        {
+            DrawMarkerArea(context, ColumnSide.Left, marker);
+        }
+    }
 
-            if (Configuration.ColumnsVisible is VisibleColumns.HexText)
-            {
-                DrawMarkerArea(context, ColumnSide.Right, marker);
-            }
+    private void DrawRightMarker(IRenderContext context, IDocumentMarker marker)
+    {
+        if (marker.Column is ColumnSide.Left)
+        {
+            return;
+        }
 
-            if (_horizontalCharacterOffset < Configuration.BytesPerRow)
-            {
-                context.Pop();
-            }
+        if (_horizontalCharacterOffset < Configuration.BytesPerRow)
+        {
+            context.PushTranslate(GetVisibleColumnWidth(ColumnSide.Left) + SPACING_BETWEEN_COLUMNS * CharacterWidth,
+                0);
+        }
+
+        if (Configuration.ColumnsVisible is VisibleColumns.HexText)
+        {
+            DrawMarkerArea(context, ColumnSide.Right, marker);
+        }
+
+        if (_horizontalCharacterOffset < Configuration.BytesPerRow)
+        {
+            context.Pop();
         }
     }
 
@@ -507,7 +581,8 @@ internal class EditorColumn : VisualElement
         if (column == document.Cursor.Column)
         {
             var topOffset = 0;
-            var leftOffset = document.Selection?.End == document.Cursor.Offset && characterSet.Groupable
+            var leftOffset = characterSet.Groupable && IsEndOfGroup(document.Cursor.Offset) &&
+                             document.Selection?.End == document.Cursor.Offset
                 ? _parent.CharacterWidth
                 : 1;
 
@@ -575,6 +650,12 @@ internal class EditorColumn : VisualElement
         }
     }
 
+    private bool IsEndOfGroup(long offset)
+    {
+        var column = offset % Configuration.BytesPerRow;
+        return column % Configuration.GroupSize == 0;
+    }
+
     private MarkerPosition CalculateMarkerPosition(IDocumentMarker marker, ColumnSide column)
     {
         var startOffset = Math.Max(0, marker.Offset - Offset);
@@ -586,8 +667,23 @@ internal class EditorColumn : VisualElement
         var startX = Math.Max(0, GetLeftRelativeToColumn((int)(startOffset % Configuration.BytesPerRow), column));
         var startY = startOffset / Configuration.BytesPerRow * RowHeight + _parent.HeaderHeight;
 
+        var charset = GetCharacterSetForColumn(column);
+
+        var startColumn = startOffset % Configuration.BytesPerRow;
+        var extendPastEdge = charset.Groupable && startColumn % Configuration.GroupSize == 0;
+        if (extendPastEdge)
+        {
+            startX -= _parent.CharacterWidth / 2;
+        }
+
         var endX = Math.Max(0, GetLeftRelativeToColumn((int)(endOffset % Configuration.BytesPerRow) + 1, column, true));
         var endY = endRow * RowHeight + _parent.HeaderHeight;
+
+        extendPastEdge = charset.Groupable && IsEndOfGroup(endOffset + 1);
+        if (extendPastEdge)
+        {
+            endX += _parent.CharacterWidth / 2;
+        }
 
         return new MarkerPosition(startOffset, startRow, new SharedPoint(startX, startY), endOffset, endRow,
             new SharedPoint(endX, endY));
@@ -604,7 +700,7 @@ internal class EditorColumn : VisualElement
         // TODO: fix funky rectangle borders, introduce a 'render flags' option in IRenderContext to determine how borders behave :)!
         var columnWidth = GetVisibleColumnWidth(column);
         var aliasOffset = GetLineAntiAliasOffset(pen);
-        
+
         if (position.StartRow == position.EndRow)
         {
             var rect = new SharedRectangle(position.Start.X + aliasOffset, position.Start.Y + aliasOffset,
@@ -639,13 +735,15 @@ internal class EditorColumn : VisualElement
         ColumnSide column,
         MarkerPosition position)
     {
+        var characterSet = GetCharacterSetForColumn(column);
         var columnWidth = GetVisibleColumnWidth(column);
         var aliasOffset = GetLineAntiAliasOffset(pen);
 
-        var points = new List<SharedPoint>();
+        var extendPastEdge = characterSet.Groupable ? _parent.CharacterWidth / 2 : 0;
+        var points = ObjectPool<List<SharedPoint>>.Shared.Rent();
         if (position.StartOffset == 0 || position.End.Y == 0)
         {
-            points.Add(new SharedPoint(aliasOffset, position.Start.Y + aliasOffset));
+            points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + aliasOffset));
         }
         else
         {
@@ -654,23 +752,26 @@ internal class EditorColumn : VisualElement
             points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y + aliasOffset));
         }
 
-        points.Add(new SharedPoint(columnWidth - aliasOffset, position.Start.Y + aliasOffset + 0));
+        points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.Start.Y + aliasOffset + 0));
 
         if (position.EndOffset == Configuration.BytesPerRow - 1)
         {
-            points.Add(new SharedPoint(columnWidth - aliasOffset, position.End.Y - aliasOffset));
+            points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y - aliasOffset));
         }
         else
         {
-            points.Add(new SharedPoint(columnWidth - aliasOffset, position.End.Y - aliasOffset));
+            points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y - aliasOffset));
             points.Add(new SharedPoint(position.End.X - aliasOffset, position.End.Y - aliasOffset));
             points.Add(new SharedPoint(position.End.X - aliasOffset, position.End.Y + RowHeight - aliasOffset));
         }
 
-        points.Add(new SharedPoint(-aliasOffset, position.End.Y + RowHeight - aliasOffset));
-        points.Add(new SharedPoint(-aliasOffset, position.Start.Y + RowHeight + aliasOffset));
+        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.End.Y + RowHeight - aliasOffset));
+        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + RowHeight + aliasOffset));
 
         context.DrawPolygon(brush, pen, points);
+
+        points.Clear();
+        ObjectPool<List<SharedPoint>>.Shared.Return(points);
     }
 
     private int GetFirstVisibleColumn()
@@ -923,14 +1024,12 @@ internal class EditorColumn : VisualElement
         }
 
         var position = e.PointRelativeTo(this);
-        var (column, offset, nibble) = GetOffsetFromPoint(position);
+        var (column, offset, _) = GetOffsetFromPoint(position);
 
         // Track the mouse down position for determining initial drag direction and whether it is a click or selection.
         _mouseDownPosition = position;
         _activeColumn = column;
         _startSelectionOffset = offset;
-
-        SetCursorOffset(_activeColumn, offset, nibble);
 
         CaptureMouse();
     }
@@ -954,6 +1053,7 @@ internal class EditorColumn : VisualElement
         }
 
         _startSelectionOffset = null;
+        _mouseSelectMode = false;
     }
 
     private void SetCursorOffset(long offset, int nibble = 0, bool scrollToCursor = false)
@@ -987,12 +1087,20 @@ internal class EditorColumn : VisualElement
 
     private void OnMouseMove(object? sender, HostMouseEventArgs e)
     {
-        if (_startSelectionOffset is null || Document is null)
+        if (_startSelectionOffset is null || Document is null || _keyboardSelectMode && !_mouseSelectMode)
         {
             return;
         }
 
         var position = e.PointRelativeTo(this);
+
+        // Allow for some mouse movement tolerance before not considering it a mouse click
+        if (_mouseDownPosition is not null && Math.Abs(position.X - _mouseDownPosition.Value.X) +
+            Math.Abs(position.Y - _mouseDownPosition.Value.Y) < 2)
+        {
+            return;
+        }
+
         var (column, offset, nibble) = GetOffsetFromPoint(position);
 
         // Allow selecting from middle of character rather than entire character
@@ -1010,6 +1118,7 @@ internal class EditorColumn : VisualElement
         }
 
         _mouseDownPosition = null;
+        _mouseSelectMode = true;
         Select(offset, _activeColumn);
     }
 
@@ -1098,11 +1207,17 @@ internal class EditorColumn : VisualElement
 
     private void TextBoxOnKeyUp(object? sender, HostKeyEventArgs e)
     {
-        if (e.Key is HostKey.Shift)
+        if (e.Key is not HostKey.Shift)
+        {
+            return;
+        }
+
+        if (!_mouseSelectMode)
         {
             _startSelectionOffset = null;
-            _keyboardSelectMode = false;
         }
+
+        _keyboardSelectMode = false;
     }
 
     private async void TextBoxOnTextChanged(object? sender, ProxyTextChangedEventArgs e)
@@ -1223,7 +1338,11 @@ internal class EditorColumn : VisualElement
         nibble = Math.Max(0, nibble);
 
         // TODO: Don't set cursor offset when selecting, this is already handeled by Select()
-        SetCursorOffset(offset, nibble, true);
+        if (document.Selection is null)
+        {
+            SetCursorOffset(offset, nibble, true);
+        }
+
         Select(offset, _activeColumn); // TODO, should be minus one?
     }
 
@@ -1233,31 +1352,6 @@ internal class EditorColumn : VisualElement
         _keyboardSelectMode = false;
 
         Document?.Deselect();
-    }
-
-    private readonly struct BrushOverrideKey : IEquatable<BrushOverrideKey>
-    {
-        private readonly ColumnSide _column;
-        private readonly long _offset;
-
-        public BrushOverrideKey(ColumnSide column, long offset)
-        {
-            _column = column;
-            _offset = offset;
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                var hash = ((int)_column).GetHashCode();
-                return 31 * hash + _offset.GetHashCode();
-            }
-        }
-
-        public bool Equals(BrushOverrideKey other) => _column == other._column && _offset == other._offset;
-
-        public override bool Equals(object? obj) => obj is BrushOverrideKey other && Equals(other);
     }
 
     private record struct MarkerPosition(long StartOffset, long StartRow, SharedPoint Start, long EndOffset,

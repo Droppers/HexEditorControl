@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;
@@ -8,29 +9,36 @@ namespace HexControl.PatternLanguage.AST;
 
 internal abstract class AttributableASTNode : ASTNode
 {
-    private readonly List<ASTNodeAttribute> _attributes;
+    private List<ASTNodeAttribute>? _attributes;
 
-    protected AttributableASTNode()
-    {
-        _attributes = new List<ASTNodeAttribute>();
-    }
+    protected AttributableASTNode() { }
 
     protected AttributableASTNode(AttributableASTNode other) : base(other)
     {
-        _attributes = new List<ASTNodeAttribute>(other.Attributes);
+        if (other._attributes is not null)
+        {
+            _attributes = new List<ASTNodeAttribute>(other.Attributes);
+        }
     }
 
-    public IReadOnlyList<ASTNodeAttribute> Attributes => _attributes;
+    public IReadOnlyList<ASTNodeAttribute> Attributes =>
+        _attributes as IReadOnlyList<ASTNodeAttribute> ?? Array.Empty<ASTNodeAttribute>();
 
     public void AddAttribute(ASTNodeAttribute attribute)
     {
+        _attributes ??= new List<ASTNodeAttribute>();
         _attributes.Add(attribute);
     }
-    
+
     // TODO: refactor this to be normal code
     protected static void ApplyVariableAttributes(Evaluator evaluator, AttributableASTNode attributable,
         PatternData pattern)
     {
+        if (attributable._attributes is null)
+        {
+            return;
+        }
+
         var endOffset = evaluator.CurrentOffset;
         evaluator.CurrentOffset = pattern.Offset;
 
@@ -39,7 +47,7 @@ internal abstract class AttributableASTNode : ASTNode
             var attribute = attributable._attributes[i];
             var name = attribute.Attribute;
             var value = attribute.Value;
-            
+
             var requiresValue = () =>
             {
                 if (value is null)
@@ -62,7 +70,7 @@ internal abstract class AttributableASTNode : ASTNode
 
             if (name == "color" && requiresValue())
             {
-                pattern.Color = Convert.ToInt32(value!, 16);
+                pattern.Color = new IntegerColor(Convert.ToInt32(value!, 16));
             }
             else if (name == "name" && requiresValue())
             {

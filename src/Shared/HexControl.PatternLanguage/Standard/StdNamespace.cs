@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Literals;
+#if DEBUG
+using System.Diagnostics;
+#endif
 
 namespace HexControl.PatternLanguage.Standard;
 

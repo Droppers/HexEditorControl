@@ -1,4 +1,5 @@
 ﻿using System;
+using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
@@ -7,7 +8,7 @@ public class PatternDataBitfieldField : PatternData, IPatternInlinable
     private readonly PatternData _bitField;
 
     public PatternDataBitfieldField(long offset, byte bitOffset, byte bitSize, PatternData bitField,
-        Evaluator evaluator, int color = 0)
+        Evaluator evaluator, IntegerColor? color = null)
         : base(offset, 0, evaluator, color)
     {
         BitOffset = bitOffset;
@@ -24,7 +25,7 @@ public class PatternDataBitfieldField : PatternData, IPatternInlinable
 
     public byte BitOffset { get; }
     public byte BitSize { get; }
-    
+
     public override PatternData Clone() => new PatternDataBitfieldField(this);
 
     public override string GetFormattedName() => "bits";

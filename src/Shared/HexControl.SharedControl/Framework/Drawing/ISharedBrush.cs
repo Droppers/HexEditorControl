@@ -1,7 +1,3 @@
-﻿using System.Drawing;
+﻿namespace HexControl.SharedControl.Framework.Drawing;
 
-namespace HexControl.SharedControl.Framework.Drawing;
-
-public interface ISharedBrush
-{
-}
+public interface ISharedBrush { }

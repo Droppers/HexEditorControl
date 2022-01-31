@@ -68,9 +68,9 @@ internal class ASTNodeUnion : AttributableASTNode
         }
 
         evaluator.CurrentOffset = startOffset + size;
-        pattern.Members = memberPatterns;
+        pattern.SetMembers(memberPatterns.ToArray());
         pattern.Size = size;
-        
+
         // MUST be called AFTER setting pattern.Members, the 'memberPatterns' collection will be cleared.
         evaluator.PopScope();
 

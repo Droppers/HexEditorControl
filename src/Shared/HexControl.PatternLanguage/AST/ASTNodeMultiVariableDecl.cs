@@ -31,7 +31,14 @@ internal class ASTNodeMultiVariableDecl : ASTNode
 
             if (node.MultiPattern)
             {
-                patterns.AddRange(node.CreatePatterns(evaluator));
+                var newPatterns = node.CreatePatterns(evaluator);
+                for (var j = 0; j < newPatterns.Count; j++)
+                {
+                    if (newPatterns[j] is not null)
+                    {
+                        patterns.Add(newPatterns[j]);
+                    }
+                }
             }
             else
             {

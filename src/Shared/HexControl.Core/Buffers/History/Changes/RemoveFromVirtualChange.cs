@@ -29,7 +29,8 @@ internal class RemoveFromVirtualChange : IChunkChange<ReadOnlyChunk>
         return this;
     }
 
-    public IChunkChange<ReadOnlyChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode, ReadOnlyChunk chunk)
+    public IChunkChange<ReadOnlyChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
+        ReadOnlyChunk chunk)
     {
         if (_removeOffset > 0)
         {

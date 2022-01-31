@@ -2,7 +2,7 @@
 	u32 index;
 	u32 hash;
 	u32 size;
-};
+} [[static]];
 
 struct ContentBlockInformation {
 	u32 hash;
@@ -12,7 +12,7 @@ struct ContentBlockInformation {
 	u32 file_offset;
 	u32 compressed_size;
 	u32 uncompressed_size;
-};
+} [[static]];
 
 struct MetaContainer {
 	u32 version;

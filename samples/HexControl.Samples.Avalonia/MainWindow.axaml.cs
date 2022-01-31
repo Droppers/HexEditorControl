@@ -1,10 +1,8 @@
-using Avalonia;
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.Core;
 using HexControl.PatternLanguage;
-using System.Collections.Generic;
-using System.IO;
 
 namespace HexControl.Samples.Avalonia;
 
@@ -38,15 +36,14 @@ public class MainWindow : Window
         eval.ArrayLimit = 1000000000;
         var patterns = eval.Evaluate(Document.Buffer, parsed);
 
-        var markers = new List<PatternMarker>();
+        var markers = new StaticMarkerProvider();
         foreach (var pattern in patterns)
         {
             pattern.CreateMarkers(markers);
         }
 
-        foreach (var marker in markers)
-        {
-            Document.AddMarker(marker);
-        }
+        markers.Complete();
+
+        Document.StaticMarkerProvider = markers;
     }
 }

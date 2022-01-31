@@ -86,6 +86,7 @@ public abstract class BaseBuffer : IBuffer
             {
                 modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
             }
+
             return await node.Value.ReadAsync(buffer, readOffset, buffer.Length, cancellationToken);
         }
 
@@ -230,7 +231,8 @@ public abstract class BaseBuffer : IBuffer
 
         var changes = ChangeCollection.Delete(deleteOffset, deleteLength);
 
-        if (node?.Value is ReadOnlyChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length && deleteOffset - currentOffset is not 0)
+        if (node?.Value is ReadOnlyChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length &&
+            deleteOffset - currentOffset is not 0)
         {
             DeleteInMiddleOfChunk(changes, node, deleteOffset - currentOffset, deleteLength);
             PushChanges(changes, oldLength);
@@ -286,7 +288,7 @@ public abstract class BaseBuffer : IBuffer
         }
 
         var (node, currentOffset) = GetNodeAt(readOffset);
-        
+
         // Shortcut for in case all data can be read from the current node
         if (node is not null && readOffset + buffer.Length < currentOffset + node.Value.Length)
         {
@@ -294,6 +296,7 @@ public abstract class BaseBuffer : IBuffer
             {
                 modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
             }
+
             return node.Value.Read(buffer, readOffset, buffer.Length);
         }
 
@@ -419,7 +422,7 @@ public abstract class BaseBuffer : IBuffer
         Changes.Push(changes);
         OnModified(changes.Modification, ModificationSource.User);
 
-        if(oldLength != Length)
+        if (oldLength != Length)
         {
             OnLengthChanged(oldLength, Length);
         }

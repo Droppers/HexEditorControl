@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace HexControl.Samples.WinForms;
@@ -9,11 +10,13 @@ internal static class Program
     ///     The main entry point for the application.
     /// </summary>
     [STAThread]
-    static void Main()
+    private static void Main()
     {
         // ***this line is added***
         if (Environment.OSVersion.Version.Major >= 6)
+        {
             SetProcessDPIAware();
+        }
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -21,6 +24,6 @@ internal static class Program
     }
 
     // ***also dllimport of that function***
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [DllImport("user32.dll")]
     private static extern bool SetProcessDPIAware();
 }

@@ -9,7 +9,7 @@ public class PatternDataStruct : PatternData, IPatternInlinable
 {
     private PatternData[] _members;
 
-    public PatternDataStruct(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataStruct(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color)
     {
         _members = Array.Empty<PatternData>();
@@ -35,7 +35,7 @@ public class PatternDataStruct : PatternData, IPatternInlinable
         }
     }
 
-    public override int Color
+    public override IntegerColor Color
     {
         get => base.Color;
         set
@@ -53,25 +53,28 @@ public class PatternDataStruct : PatternData, IPatternInlinable
         }
     }
 
-    public IReadOnlyList<PatternData> Members
-    {
-        get => _members;
-        set
-        {
-            _members = new PatternData[value.Count];
+    public IReadOnlyList<PatternData> Members => _members;
 
-            for (var i = 0; i < value.Count; i++)
-            {
-                var member = value[i];
-                member.Parent = this;
-                _members[i] = member;
-            }
-        }
+    //set => _members = Members.ToArray();
+    //set
+    //{
+    //    var count = value.Count;
+    //    _members = new PatternData[count];
+    //    for (var i = 0; i < count; i++)
+    //    {
+    //        var member = value[i];
+    //        member.Parent = this;
+    //        _members[i] = member;
+    //    }
+    //}
+    public void SetMembers(PatternData[] members)
+    {
+        _members = members;
     }
-    
+
     public override PatternData Clone() => new PatternDataStruct(this);
 
-    public override void CreateMarkers(List<PatternMarker> markers)
+    public override void CreateMarkers(StaticMarkerProvider markers)
     {
         for (var i = 0; i < Members.Count; i++)
         {

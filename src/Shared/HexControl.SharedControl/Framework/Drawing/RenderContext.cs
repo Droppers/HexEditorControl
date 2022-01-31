@@ -8,9 +8,9 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     where TNativeBrush : class
     where TNativePen : class
 {
+    private readonly ObjectCache<ISharedBrush, TNativeBrush?> _brushes;
     private readonly RenderFactory<TNativeBrush, TNativePen> _factory;
     private readonly LinkedList<IDisposable> _garbage;
-    private readonly ObjectCache<ISharedBrush, TNativeBrush?> _brushes;
     private readonly ObjectCache<ISharedPen, TNativePen?> _pens;
 
     private IRenderStateProvider? _stateProvider;

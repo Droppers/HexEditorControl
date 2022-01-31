@@ -1,8 +1,10 @@
-﻿namespace HexControl.PatternLanguage.Patterns;
+﻿using HexControl.Core.Helpers;
+
+namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataPadding : PatternData
 {
-    public PatternDataPadding(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataPadding(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color) { }
 
     private PatternDataPadding(PatternDataPadding other) : base(other) { }

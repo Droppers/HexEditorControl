@@ -8,7 +8,7 @@ public class PatternDataBitfield : PatternData
 {
     private PatternData[] _fields;
 
-    public PatternDataBitfield(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataBitfield(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color)
     {
         _fields = Array.Empty<PatternData>();

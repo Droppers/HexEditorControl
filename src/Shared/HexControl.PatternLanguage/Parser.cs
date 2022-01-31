@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
@@ -123,8 +122,8 @@ internal class Parser
     private readonly Dictionary<string, ASTNode> _types = new();
 
     private bool _matchSequenceStarted;
-    private int _originalTokenIndex;
     private int _originalPartIndex;
+    private int _originalTokenIndex;
 
     private int _tokenIndex;
     private IReadOnlyList<Token> _tokens;
@@ -388,11 +387,13 @@ internal class Parser
         {
             return new ASTNodeLiteral(GetValue<Literal>(-1));
         }
-        else if (Peek(OperatorPlus) || Peek(OperatorMinus) || Peek(OperatorBitnot) || Peek(OperatorBoolnot))
+
+        if (Peek(OperatorPlus) || Peek(OperatorMinus) || Peek(OperatorBitnot) || Peek(OperatorBoolnot))
         {
             return ParseMathematicalExpression();
         }
-        else if (Matches(Sequence(SeparatorRoundbracketopen)))
+
+        if (Matches(Sequence(SeparatorRoundbracketopen)))
         {
             var node = ParseMathematicalExpression();
             if (!Matches(Sequence(SeparatorRoundbracketclose)))
@@ -401,7 +402,9 @@ internal class Parser
             }
 
             return node;
-        } else if (Matches(Sequence(Identifier)))
+        }
+
+        if (Matches(Sequence(Identifier)))
         {
             var originalPos = _tokenIndex;
             ParseNamespaceResolution();
@@ -551,7 +554,8 @@ internal class Parser
     {
         var node = ParseShiftExpression();
 
-        while (Matches(Sequence(OperatorBoolgreaterthan) || Sequence(OperatorBoollessthan) || Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals)))
+        while (Matches(Sequence(OperatorBoolgreaterthan) || Sequence(OperatorBoollessthan) ||
+                       Sequence(OperatorBoolgreaterthanorequals) || Sequence(OperatorBoollessthanorequals)))
         {
             var op = GetValue<Token.Operator>(-1);
             node = Create(new ASTNodeMathematicalExpression(node, ParseShiftExpression(), op));
@@ -764,11 +768,17 @@ internal class Parser
         {
             statement = ParseFunctionVariableAssignment("$");
         }
-        else if (Matches(OneOf(Identifier) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        else if (Matches(OneOf(Identifier) &&
+                         OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent,
+                             OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) &&
+                         Sequence(OperatorAssignment)))
         {
             statement = ParseFunctionVariableCompoundAssignment(GetIdentifier(-3).Value);
         }
-        else if (Matches(OneOf(OperatorDollar) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        else if (Matches(OneOf(OperatorDollar) &&
+                         OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent,
+                             OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) &&
+                         Sequence(OperatorAssignment)))
         {
             statement = ParseFunctionVariableCompoundAssignment("$");
         }
@@ -844,7 +854,8 @@ internal class Parser
         var op = GetValue<Token.Operator>(-2);
         var rvalue = ParseMathematicalExpression();
 
-        return Create(new ASTNodeAssignment(lvalue, Create(new ASTNodeMathematicalExpression(new ASTNodeRValue(new ASTNodeRValue.Path(lvalue)), rvalue, op))));
+        return Create(new ASTNodeAssignment(lvalue,
+            Create(new ASTNodeMathematicalExpression(new ASTNodeRValue(new ASTNodeRValue.Path(lvalue)), rvalue, op))));
     }
 
     private ASTNode ParseFunctionControlFlowStatement()
@@ -1228,7 +1239,8 @@ internal class Parser
                 var type = ParseType();
 
                 // sequenceNot is an ugly hack. it does not use  and therefore when calling reset() it resets back to the previous begin() -> the identifier.
-                if (Matches(Sequence(Identifier, SeparatorSquarebracketopen) && SequenceNot(SeparatorSquarebracketopen)))
+                if (Matches(Sequence(Identifier, SeparatorSquarebracketopen) &&
+                            SequenceNot(SeparatorSquarebracketopen)))
                 {
                     member = ParseMemberArrayVariable(type);
                 }
@@ -1266,7 +1278,10 @@ internal class Parser
         {
             member = ParseFunctionVariableAssignment("$");
         }
-        else if (Matches(OneOf(OperatorDollar) && OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent, OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) && Sequence(OperatorAssignment)))
+        else if (Matches(OneOf(OperatorDollar) &&
+                         OneOf(OperatorPlus, OperatorMinus, OperatorStar, OperatorSlash, OperatorPercent,
+                             OperatorShiftleft, OperatorShiftright, OperatorBitor, OperatorBitand, OperatorBitxor) &&
+                         Sequence(OperatorAssignment)))
         {
             member = ParseFunctionVariableCompoundAssignment("$");
         }
@@ -1700,7 +1715,7 @@ internal class Parser
 
         return typeDecl;
     }
-    
+
     private List<ASTNode> ParseTillToken(Token token)
     {
         var program = new List<ASTNode>();
@@ -1717,7 +1732,7 @@ internal class Parser
 
         return program;
     }
-    
+
     private void Begin()
     {
         if (_matchSequenceStarted)
@@ -1824,7 +1839,7 @@ internal class Parser
 
         return true;
     }
-    
+
     private bool Peek(Token component, int index = 0) =>
         _tokens[_tokenIndex + index].Type == component.Type && _tokens[_tokenIndex + index].TokenValueEquals(component);
 }

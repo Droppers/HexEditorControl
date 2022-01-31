@@ -7,6 +7,8 @@ namespace HexControl.PatternLanguage.AST;
 
 internal class ASTNodeBitfield : AttributableASTNode
 {
+    // Can be re-used since none of the properties are actually used for fields
+    private static readonly PatternData.StaticPatternData FieldStaticData = new();
     private readonly List<(string, ASTNode)> _entries;
 
     public ASTNodeBitfield()
@@ -62,7 +64,8 @@ internal class ASTNodeBitfield : AttributableASTNode
                 var field = new PatternDataBitfieldField(evaluator.CurrentOffset, bitOffset, bitSize, pattern,
                     evaluator)
                 {
-                    VariableName = name
+                    VariableName = name,
+                    StaticData = FieldStaticData
                 };
                 fields.Add(field);
             }
@@ -70,11 +73,11 @@ internal class ASTNodeBitfield : AttributableASTNode
             bitOffset += bitSize;
         }
 
-        evaluator.PopScope();
-
         pattern.StaticData = StaticData;
         pattern.Size = (bitOffset + 7) / 8;
         pattern.Fields = fields;
+
+        evaluator.PopScope();
 
         evaluator.CurrentOffset += pattern.Size;
         return pattern;

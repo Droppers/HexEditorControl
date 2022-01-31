@@ -180,7 +180,13 @@ public class Evaluator
                     if (node.MultiPattern)
                     {
                         var newPatterns = node.CreatePatterns(this);
-                        patterns.AddRange(newPatterns);
+                        for (var i = 0; i < newPatterns.Count; i++)
+                        {
+                            if (newPatterns[i] is not null)
+                            {
+                                patterns.Add(newPatterns[i]);
+                            }
+                        }
                     }
                     else
                     {

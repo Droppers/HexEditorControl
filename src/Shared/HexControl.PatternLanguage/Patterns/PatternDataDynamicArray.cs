@@ -9,7 +9,8 @@ public class PatternDataDynamicArray : PatternData, IPatternInlinable
 {
     private PatternData[] _entries;
 
-    public PatternDataDynamicArray(long offset, long size, Evaluator evaluator, int color = 0) : base(offset, size,
+    public PatternDataDynamicArray(long offset, long size, Evaluator evaluator, IntegerColor? color = null) : base(
+        offset, size,
         evaluator, color)
     {
         _entries = Array.Empty<PatternData>();
@@ -37,7 +38,7 @@ public class PatternDataDynamicArray : PatternData, IPatternInlinable
         }
     }
 
-    public override int Color
+    public override IntegerColor Color
     {
         get => base.Color;
         set
@@ -52,29 +53,39 @@ public class PatternDataDynamicArray : PatternData, IPatternInlinable
         }
     }
 
-    public IReadOnlyList<PatternData> Entries
-    {
-        get => _entries;
-        set
-        {
-            _entries = new PatternData[value.Count];
+    public IReadOnlyList<PatternData> Entries => _entries;
 
-            for (var i = 0; i < value.Count; i++)
+    //set
+    //{
+    //    //_entries = new PatternData[value.Count];
+    //    //for (var i = 0; i < value.Count; i++)
+    //    //{
+    //    //    var entry = value[i];
+    //    //    if (UserDefinedColor)
+    //    //    {
+    //    //        entry.Color = Color;
+    //    //    }
+    //    //    entry.Parent = this;
+    //    //    _entries[i] = entry;
+    //    //}
+    //}
+    public void SetEntries(PatternData[] entries)
+    {
+        _entries = entries;
+
+        for (var i = 0; i < _entries.Length; i++)
+        {
+            var entry = _entries[i];
+            if (UserDefinedColor)
             {
-                var entry = value[i];
-                if (UserDefinedColor)
-                {
-                    entry.Color = Color;
-                }
-                entry.Parent = this;
-                _entries[i] = entry;
+                entry.Color = Color;
             }
         }
     }
-    
+
     public override PatternData Clone() => new PatternDataDynamicArray(this);
 
-    public override void CreateMarkers(List<PatternMarker> markers)
+    public override void CreateMarkers(StaticMarkerProvider markers)
     {
         for (var i = 0; i < _entries.Length; i++)
         {

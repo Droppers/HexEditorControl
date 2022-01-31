@@ -13,12 +13,11 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 {
     private readonly RenderTarget _context;
     private readonly D2DFactory _d2dFactory;
-    public float Dpi { get; set; }=  1.0f;
 
     private readonly float[] _dashes = {2, 2};
     private readonly float[] _dots = {1.5f, 1.5f};
     private readonly DWFactory _dwFactory;
-    
+
     private readonly Stack<RawMatrix3x2> _transforms;
 
     private TextFormat? _format;
@@ -33,6 +32,8 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
         _transforms = new Stack<RawMatrix3x2>();
     }
+
+    public float Dpi { get; set; } = 1.0f;
 
     public override bool PreferTextLayout => true;
     public override bool RequiresClear => true;
@@ -72,10 +73,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _context.Transform = matrix;
     }
 
-    public float Convert(double number)
-    {
-        return (float)number * Dpi;
-    }
+    public float Convert(double number) => (float)number * Dpi;
 
     public override void PushClip(double x, double y, double width, double height) { }
 
@@ -93,7 +91,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     {
         if (brush is not null)
         {
-            _context.Clear(brush.Color);
+            _context.Clear(new RawColor4(0, 0, 0, 1f));
         }
     }
 
@@ -127,7 +125,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         var top = (int)(rectangle.Y * Dpi);
         var width = (int)(rectangle.Width * Dpi);
         var height = (int)(rectangle.Height * Dpi);
-        return new(left, top, left + width, top + height);
+        return new RawRectangleF(left, top, left + width, top + height);
     }
 
     private StrokeStyle Convert(PenStyle style)
@@ -217,7 +215,8 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         if (sharedLayout.BrushRanges.Count == 0)
         {
             _context.DrawText(sharedLayout.Text, _format,
-                new RawRectangleF((int)(sharedLayout.Position.X * Dpi), (int)(sharedLayout.Position.Y * Dpi), int.MaxValue,
+                new RawRectangleF((int)(sharedLayout.Position.X * Dpi), (int)(sharedLayout.Position.Y * Dpi),
+                    int.MaxValue,
                     int.MaxValue), brush, DrawTextOptions.None, MeasuringMode.GdiClassic);
             return;
         }

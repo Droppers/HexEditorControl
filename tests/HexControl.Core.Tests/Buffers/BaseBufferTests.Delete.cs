@@ -109,7 +109,7 @@ public partial class BaseBufferTests
         for (var i = 0; i < 10; i++)
         {
             var copyOfI = i;
-            
+
             _buffer.ValidateDelete(200 - copyOfI, 1, expects =>
                 expects
                     .Length(546 - (copyOfI + 1))

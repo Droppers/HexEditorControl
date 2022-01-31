@@ -6,7 +6,7 @@ internal class ObjectCache<TKey, TValue> : IDisposable
     private readonly Dictionary<TKey, TValue> _entries;
     private readonly Func<TKey, TValue> _factory;
     private readonly object _lock;
-    
+
     public ObjectCache(Func<TKey, TValue> factory)
     {
         _factory = factory;
@@ -22,17 +22,14 @@ internal class ObjectCache<TKey, TValue> : IDisposable
         {
             foreach (var (_, entry) in _entries)
             {
-                if (entry is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
+                using var _ = entry as IDisposable;
             }
 
             _entries.Clear();
         }
     }
 
-    public TValue? Get(TKey? key)
+    private TValue? Get(TKey? key)
     {
         if (key is null)
         {

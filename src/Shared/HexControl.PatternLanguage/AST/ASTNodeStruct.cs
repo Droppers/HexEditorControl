@@ -34,8 +34,9 @@ internal class ASTNodeStruct : AttributableASTNode
     {
         if (_members.Count == 10)
         {
-            int i = 1;
+            var i = 1;
         }
+
         var pattern = new PatternDataStruct(evaluator.CurrentOffset, 0, evaluator)
         {
             StaticData = StaticData
@@ -82,7 +83,7 @@ internal class ASTNodeStruct : AttributableASTNode
             }
         }
 
-        pattern.Members = memberPatterns;
+        pattern.SetMembers(memberPatterns.ToArray());
         pattern.Size = evaluator.CurrentOffset - startOffset;
 
         // MUST be called after setting "Members" property, since memberPatterns will be cleared immediately

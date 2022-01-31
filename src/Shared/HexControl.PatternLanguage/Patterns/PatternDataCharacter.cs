@@ -1,11 +1,11 @@
-﻿using HexControl.Core.Buffers;
-using HexControl.Core.Buffers.Extensions;
+﻿using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataCharacter : PatternData
 {
-    public PatternDataCharacter(long offset, Evaluator evaluator, int color = 0)
+    public PatternDataCharacter(long offset, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, 1, evaluator, color) { }
 
     private PatternDataCharacter(PatternDataCharacter other) : base(other) { }

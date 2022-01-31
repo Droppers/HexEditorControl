@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-using HexControl.Core.Buffers;
+﻿using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
 using HexControl.Core.Events;
 
@@ -65,6 +64,8 @@ public class Document
         _markers = new List<IDocumentMarker>();
         Cursor = new Cursor(0, 0, ColumnSide.Left);
     }
+
+    public StaticMarkerProvider? StaticMarkerProvider { get; set; }
 
     public Cursor Cursor { get; private set; }
 
@@ -217,7 +218,7 @@ public class Document
     public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCursor = true,
         bool requestCenter = false)
     {
-        Select(new Selection(startOffset, endOffset, column), requestCenter);
+        Select(new Selection(startOffset, endOffset, column), moveCursor, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).
@@ -243,13 +244,13 @@ public class Document
 
     public Guid AddMarker(Guid id, IDocumentMarker marker)
     {
-        for (var i = 0; i < _markers.Count; i++)
-        {
-            if (_markers[i].Id == id)
-            {
-                throw new ArgumentException($"A marker with id '{id}' already exists.", nameof(id));
-            }
-        }
+        //for (var i = 0; i < _markers.Count; i++)
+        //{
+        //    if (_markers[i].Id == id)
+        //    {
+        //        throw new ArgumentException($"A marker with id '{id}' already exists.", nameof(id));
+        //    }
+        //}
 
         _markers.Add(marker);
         OnMarkersChanged();

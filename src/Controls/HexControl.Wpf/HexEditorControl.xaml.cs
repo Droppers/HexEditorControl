@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
-using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 using Microsoft.Win32;
-using Microsoft.Wpf.Interop.DirectX;
 
 namespace HexControl.Wpf;
 
@@ -64,7 +61,7 @@ public partial class HexEditorControl : UserControl
 //        var skiaCanvas = new SKElement();
 //        Container.Children.Insert(0, skiaCanvas);
 //        skiaCanvas.PaintSurface += SkiaCanvasOnPaintSurface;
-        
+
 //        _host = new WpfSkiaHost(skiaCanvas, new WpfSkiaRenderFactory())
 //#else
 //        _host = new WpfHost(this)
@@ -85,7 +82,7 @@ public partial class HexEditorControl : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
-        
+
         var window = Window.GetWindow(this);
         if (window is null)
         {

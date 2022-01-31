@@ -59,7 +59,7 @@ public class DocumentConfiguration : ObservableObject
     private static readonly int[] ValidBytesPerRowValues = {8, 16, 24, 32, 48, 64, 128, 256, 512, 1024};
     private int _bytesPerRow = 16;
     private VisibleColumns _columnsVisible = VisibleColumns.HexText;
-    private int _groupSize = 1;
+    private int _groupSize = 4;
 
     private CharacterSet _leftCharacterSet = new HexCharacterSet();
     private Base _offsetBase = Base.Decimal;

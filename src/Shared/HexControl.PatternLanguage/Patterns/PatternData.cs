@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using HexControl.Core.Buffers;
+using HexControl.Core;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
-using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Helpers;
 using HexControl.PatternLanguage.Literals;
@@ -29,7 +27,7 @@ namespace HexControl.PatternLanguage.Patterns;
  * byte _booleanValues:
  *     1 bit: IsArrayItem
  *     1 bit: Local
- *     1 bit: unused
+ *     1 bit: UserDefinedColor
  *     1 bit: IsEndianSet
  *     1 bit: IsBigEndian
  *     1 bit: IsLittleEndian
@@ -37,42 +35,64 @@ namespace HexControl.PatternLanguage.Patterns;
  */
 public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternData>
 {
+    public static byte MarkerOpacity = 160;
+
+    public static IntegerColor[] GlobalPalette =
+    {
+        new(252, 92, 101),
+        new(253, 150, 68),
+        new(254, 211, 48),
+        new(38, 222, 129),
+        new(43, 203, 186),
+        new(69, 170, 242),
+        new(165, 94, 234),
+        new(209, 216, 224),
+        new(119, 140, 163),
+        new(235, 59, 90),
+        new(250, 130, 49),
+        new(32, 191, 107),
+        new(56, 103, 214),
+        new(15, 185, 177),
+        new(165, 177, 194),
+        new(136, 84, 208),
+        new(45, 152, 218),
+        new(75, 101, 132),
+        new(165, 177, 194)
+    };
+
     private static readonly StringDictionary TypeNameDictionary = new(1000, ConvertStringToValueType);
     private static readonly StringDictionary VariableNameDictionary = new(0);
 
     private static long _currentColor;
 
     private BooleanValue _booleanValues;
-    private byte _colorB;
     private long _offset;
     private long _size;
 
     private StaticPatternData? _staticData;
 
-    protected PatternData(long offset, long size, Evaluator evaluator, int color = 0)
+    protected PatternData(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
     {
         _offset = offset.StoreLargeValue(offset);
         _size = size.StoreLargeValue(size);
 
         // Do not set this.Color since it is a virtual property
-        if (color is not 0)
+        if (color is not null)
         {
             SetValue(BooleanValue.UserDefinedColor, true);
-            SetColor(color);
+            SetColor(color.Value);
         }
         else
         {
             SetValue(BooleanValue.UserDefinedColor, false);
-            var automaticColor =
-                PatternMarker.GlobalPalette[(int)(_currentColor++ % PatternMarker.GlobalPalette.Length)];
-            SetColor(ColorExtensions.FromRgb(automaticColor.R, automaticColor.G, automaticColor.B));
+            SetColor(GlobalPalette[(int)(_currentColor++ % GlobalPalette.Length)]);
         }
     }
 
     protected PatternData(PatternData other)
     {
-        _offset = other.Offset;
-        Size = other.Size;
+        _offset = other._offset;
+        _size = other._size;
 
         SetColor(other.Color);
 
@@ -81,7 +101,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         TypeNameIndex = other.TypeNameIndex;
 
         Local = other.Local;
-        StaticData = other.StaticData;
+        _staticData = other._staticData;
     }
 
     internal StaticPatternData StaticData
@@ -192,7 +212,7 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         }
         set
         {
-            if (Endian is null)
+            if (value is null)
             {
                 SetValue(BooleanValue.IsEndianSet, false);
                 SetValue(BooleanValue.IsBigEndian, false);
@@ -233,13 +253,13 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         set => _size = _size.StoreLargeValue(value);
     }
 
-    public int ColorR => _offset.GetSmallValue();
-    public int ColorG => _size.GetSmallValue();
-    public int ColorB => _colorB;
+    public byte ColorR => _offset.GetSmallValue();
+    public byte ColorG => _size.GetSmallValue();
+    public byte ColorB { get; private set; }
 
-    public virtual int Color
+    public virtual IntegerColor Color
     {
-        get => ColorExtensions.FromRgb(_offset.GetSmallValue(), _size.GetSmallValue(), _colorB);
+        get => new(MarkerOpacity, _offset.GetSmallValue(), _size.GetSmallValue(), ColorB);
         set => SetColor(value);
     }
 
@@ -263,12 +283,11 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
                Local == other.Local;
     }
 
-    private void SetColor(int color)
+    private void SetColor(IntegerColor color)
     {
-        var (r, g, b) = color.ToRgb();
-        _offset = _offset.StoreSmallValue(r); // high byte store red component
-        _size = _size.StoreSmallValue(g); // high byte stores blue component
-        _colorB = b;
+        _offset = _offset.StoreSmallValue(color.R); // high byte store red component
+        _size = _size.StoreSmallValue(color.G); // high byte stores blue component
+        ColorB = color.B;
     }
 
     private static uint ConvertStringToValueType(StringDictionary dictionary, string str)
@@ -291,25 +310,9 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         }
     }
 
-    public virtual void CreateMarkers(List<PatternMarker> markers)
+    public virtual void CreateMarkers(StaticMarkerProvider markers)
     {
-        var sameAsLast = false;
-        if (markers.Count > 0)
-        {
-            var last = markers[^1];
-            sameAsLast = last.Offset + last.Length == Offset && last.Background?.R == ColorR &&
-                         last.Background?.G == ColorG &&
-                         last.Background?.B == ColorB;
-            if (sameAsLast)
-            {
-                last.Length += Size;
-            }
-        }
-
-        if (!sameAsLast)
-        {
-            markers.Add(new PatternMarker(Offset, Size, Color));
-        }
+        markers.Add(Offset, Size, Color);
     }
 
     public abstract string GetFormattedName();
@@ -370,4 +373,16 @@ public abstract class PatternData : IEquatable<PatternData>, ICloneable<PatternD
         IsBigEndian = 16,
         IsLittleEndian = 32
     }
+#pragma warning disable IDE1006 // Naming Styles
+
+    // ReSharper disable once FieldCanBeMadeReadOnly.Global
+    // ReSharper disable once InconsistentNaming
+    // ReSharper disable once ConvertToConstant.Global
+
+
+    // ReSharper disable once FieldCanBeMadeReadOnly.Global
+    // ReSharper disable once InconsistentNaming
+    // ReSharper disable once ConvertToConstant.Global
+
+#pragma warning restore IDE1006
 }

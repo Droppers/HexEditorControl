@@ -28,6 +28,7 @@ internal class RenderEventArgs : EventArgs
 
 internal class D2DControl : Image, IRenderStateProvider
 {
+    private readonly float _dpi = 2.5f;
     private bool _canRender;
 
     private Factory? _d2dFactory;
@@ -35,7 +36,6 @@ internal class D2DControl : Image, IRenderStateProvider
     private Dx11ImageSource? _d3dSurface;
     private Device? _device;
     private Texture2D? _renderTarget;
-    private readonly float _dpi = 2.5f;
 
     public D2DControl()
     {

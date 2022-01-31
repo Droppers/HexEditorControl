@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using HexControl.Core;
+﻿using HexControl.Core;
+using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;
 
@@ -7,7 +7,8 @@ public class PatternDataPointer : PatternData
 {
     private PatternData _pointedAt;
 
-    public PatternDataPointer(long offset, long size, Evaluator evaluator, int color = 0) : base(offset, size,
+    public PatternDataPointer(long offset, long size, Evaluator evaluator, IntegerColor? color = null) : base(offset,
+        size,
         evaluator, color)
     {
         _pointedAt = null!;
@@ -30,7 +31,7 @@ public class PatternDataPointer : PatternData
 
     public long PointedAtAddress { get; set; }
 
-    public override int Color
+    public override IntegerColor Color
     {
         get => base.Color;
         set
@@ -42,7 +43,7 @@ public class PatternDataPointer : PatternData
 
     public override PatternData Clone() => new PatternDataPointer(this);
 
-    public override void CreateMarkers(List<PatternMarker> markers)
+    public override void CreateMarkers(StaticMarkerProvider markers)
     {
         base.CreateMarkers(markers);
         PointedAtPattern.CreateMarkers(markers);

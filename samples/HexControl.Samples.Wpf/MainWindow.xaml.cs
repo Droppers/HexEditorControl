@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows;
@@ -80,30 +79,30 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
-        
+
         //_doc = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
         //_doc.Buffer.Write(38, new byte[100]);
 
-        _doc = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
-        Document = _doc;
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        //Document = _doc;
 
         var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
+        //Document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
         var parsed = LanguageParser.Parse(code);
         var eval = new Evaluator();
-        eval.EvaluationDepth = 9999;
-        eval.ArrayLimit = 100000;
+        eval.EvaluationDepth = 99999999;
+        eval.ArrayLimit = 1000000000;
         var patterns = eval.Evaluate(Document.Buffer, parsed);
 
-        var markers = new List<PatternMarker>();
+        var markers = new StaticMarkerProvider();
         foreach (var pattern in patterns)
         {
             pattern.CreateMarkers(markers);
         }
 
-        foreach (var marker in markers)
-        {
-            Document.AddMarker(marker);
-        }
+        markers.Complete();
+
+        Document.StaticMarkerProvider = markers;
     }
 
     public Document Document { get; set; }

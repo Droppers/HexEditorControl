@@ -1,15 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace HexControl.PatternLanguage.Helpers;
 
 internal sealed class StringDictionary
 {
-    private readonly Dictionary<string, uint> _backward;
+    private readonly ConcurrentDictionary<int, uint> _backward;
 
-    private readonly Dictionary<uint, string> _forward;
+    private readonly ConcurrentDictionary<uint, string> _forward;
 
     private readonly Func<StringDictionary, string, uint>? _reservedSpaceHandler;
+
     private uint _indexCount;
 
     public StringDictionary(uint reservedSpace, Func<StringDictionary, string, uint>? reservedSpaceHandler = null)
@@ -18,8 +20,8 @@ internal sealed class StringDictionary
         _reservedSpaceHandler = reservedSpaceHandler;
         _indexCount = (uint)((short)NullIndex + 1);
 
-        _forward = new Dictionary<uint, string>();
-        _backward = new Dictionary<string, uint>();
+        _forward = new ConcurrentDictionary<uint, string>();
+        _backward = new ConcurrentDictionary<int, uint>();
     }
 
     public uint NullIndex { get; }
@@ -38,14 +40,14 @@ internal sealed class StringDictionary
             return reservedIndex;
         }
 
-        if (_backward.TryGetValue(str, out var storedIndex))
+        if (_backward.TryGetValue(str.GetHashCode(), out var storedIndex))
         {
             return storedIndex;
         }
 
-        var index = _indexCount++;
-        _forward.Add(index, str);
-        _backward.Add(str, index);
+        var index = Interlocked.Increment(ref _indexCount);
+        _forward.TryAdd(index, str);
+        _backward.TryAdd(str.GetHashCode(), index);
         return index;
     }
 

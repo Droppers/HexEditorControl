@@ -1,8 +1,10 @@
-﻿namespace HexControl.PatternLanguage.Patterns;
+﻿using HexControl.Core.Helpers;
+
+namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataFloat : PatternData
 {
-    public PatternDataFloat(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataFloat(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color) { }
 
     private PatternDataFloat(PatternDataFloat other) : base(other) { }

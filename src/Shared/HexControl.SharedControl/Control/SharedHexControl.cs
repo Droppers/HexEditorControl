@@ -66,13 +66,13 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private readonly OffsetColumn _offsetColumn;
 
-    private string _fontFamily = "Default";
-    private int _fontSize = 13;
-
 
     private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
     private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
+
+    private string _fontFamily = "Default";
+    private int _fontSize = 13;
     private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
     private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
@@ -419,8 +419,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             }
 
 
-            // TODO: not always necessary to invalidate when cursor has changed, for example when the selection has changed it will already be invalidated before.
-            //Host?.Invalidate();
+            // TODO: not always necessary to invalidate when cursor has changed, for example when the selection has changed it will already have been invalidated before.
+            Host?.Invalidate();
         }
         else
         {
@@ -676,7 +676,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     protected override void RenderAfter(IRenderContext context)
     {
         base.RenderAfter(context);
-        
+
         if (_renderApi is not null)
         {
             var details = CreateApiDetails();

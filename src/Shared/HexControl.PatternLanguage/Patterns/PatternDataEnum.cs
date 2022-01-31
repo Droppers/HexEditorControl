@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 
 namespace HexControl.PatternLanguage.Patterns;
 
 public class PatternDataEnum : PatternData
 {
-    public PatternDataEnum(long offset, long size, Evaluator evaluator, int color = 0)
+    public PatternDataEnum(long offset, long size, Evaluator evaluator, IntegerColor? color = null)
         : base(offset, size, evaluator, color)
     {
         EnumValues = new List<(Literal, string)>();

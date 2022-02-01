@@ -1,4 +1,7 @@
-﻿struct ContentContainerInformation {
+﻿#pragma array_limit 0xFFFFFF
+#pragma pattern_limit 0xFFFFFF
+
+struct ContentContainerInformation {
 	u32 index;
 	u32 hash;
 	u32 size;

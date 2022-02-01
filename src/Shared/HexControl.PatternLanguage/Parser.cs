@@ -1153,21 +1153,25 @@ internal class Parser
             new ASTNodeTypeDecl("", new ASTNodeBuiltinType(Token.ValueType.Padding)), size));
     }
 
+    private ASTNode ParseMemberVariableVariableLength(ASTNodeTypeDecl type) =>
+        Create(new ASTNodeVariableVariableLengthDecl(GetIdentifier(-1).Value, type));
+
     private ASTNode ParseMemberVariable(ASTNodeTypeDecl type)
     {
-        if (Peek(SeparatorComma))
+        if (!Peek(SeparatorComma))
         {
-            var variables = new List<ASTNode>();
-
-            do
-            {
-                variables.Add(Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type.Clone())));
-            } while (Sequence(SeparatorComma, Identifier));
-
-            return Create(new ASTNodeMultiVariableDecl(variables));
+            return Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type));
         }
 
-        return Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type));
+        // Multi variable declaration
+        var variables = new List<ASTNode>();
+
+        do
+        {
+            variables.Add(Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type.Clone())));
+        } while (Sequence(SeparatorComma, Identifier));
+
+        return Create(new ASTNodeMultiVariableDecl(variables));
     }
 
     private ASTNode ParseMemberArrayVariable(ASTNodeTypeDecl type)
@@ -1246,7 +1250,14 @@ internal class Parser
                 }
                 else if (Matches(Sequence(Identifier)))
                 {
-                    member = ParseMemberVariable(type);
+                    if (type.Type is ASTNodeBuiltinType {Type: Token.ValueType.VariableLengthQuantity})
+                    {
+                        member = ParseMemberVariableVariableLength(type);
+                    }
+                    else
+                    {
+                        member = ParseMemberVariable(type);
+                    }
                 }
                 else if (Matches(Sequence(OperatorStar, Identifier, OperatorInherit)))
                 {

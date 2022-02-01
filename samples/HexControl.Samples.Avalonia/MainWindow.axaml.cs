@@ -3,6 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.Core;
 using HexControl.PatternLanguage;
+#if DEBUG
+using Avalonia;
+#endif
 
 namespace HexControl.Samples.Avalonia;
 
@@ -30,20 +33,7 @@ public class MainWindow : Window
         //var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
 
-        var parsed = LanguageParser.Parse(code);
-        var eval = new Evaluator();
-        eval.EvaluationDepth = 9999999;
-        eval.ArrayLimit = 1000000000;
-        var patterns = eval.Evaluate(Document.Buffer, parsed);
-
-        var markers = new StaticMarkerProvider();
-        foreach (var pattern in patterns)
-        {
-            pattern.CreateMarkers(markers);
-        }
-
-        markers.Complete();
-
-        Document.StaticMarkerProvider = markers;
+        var runner = new PatternRunner(Document);
+        runner.Run(code);
     }
 }

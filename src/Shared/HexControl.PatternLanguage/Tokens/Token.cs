@@ -100,6 +100,7 @@ internal abstract class Token
         Signed64Bit = 0x81,
         Unsigned128Bit = 0x100,
         Signed128Bit = 0x101,
+        VariableLengthQuantity = 0x102,
         Character = 0x13,
         Character16 = 0x23,
         Boolean = 0x14,

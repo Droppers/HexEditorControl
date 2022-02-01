@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Extensions;
 using HexControl.Core.Helpers;
@@ -110,14 +109,7 @@ public class Evaluator
 
     public FunctionRegistry CustomFunctions { get; }
 
-    public IEnumerable<PatternData>? Evaluate(Document document, ParsedLanguage parsed)
-    {
-        var patterns = Evaluate(document.Buffer, parsed);
-        throw new NotImplementedException();
-        return patterns;
-    }
-
-    public IEnumerable<PatternData>? Evaluate(BaseBuffer buffer, ParsedLanguage parsed)
+    internal IReadOnlyList<PatternData> Evaluate(BaseBuffer buffer, IReadOnlyList<ASTNode> nodes)
     {
         Buffer = buffer;
 
@@ -139,7 +131,7 @@ public class Evaluator
         CurrentControlFlowStatement = ControlFlowStatement.None;
         PushScope(null, patterns);
 
-        foreach (var node in parsed.Nodes)
+        foreach (var node in nodes)
         {
             switch (node)
             {

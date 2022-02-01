@@ -1,8 +1,6 @@
-﻿using System;
+﻿namespace HexControl.PatternLanguage.Exceptions;
 
-namespace HexControl.PatternLanguage.Exceptions;
-
-public class ParserException : Exception
+public class ParserException : PatternException
 {
     internal ParserException(Parser parser, string message, int tokenOffset = 0) : base(FormatMessage(parser, message,
         tokenOffset)) { }

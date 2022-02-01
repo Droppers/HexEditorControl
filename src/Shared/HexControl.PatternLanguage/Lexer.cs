@@ -762,6 +762,9 @@ internal class Lexer
                     case "s128":
                         Add(Token.TokenType.ValueType, Token.ValueType.Signed128Bit, length);
                         break;
+                    case "vlq":
+                        Add(Token.TokenType.ValueType, Token.ValueType.VariableLengthQuantity, length);
+                        break;
                     case "float":
                         Add(Token.TokenType.ValueType, Token.ValueType.Float, length);
                         break;

@@ -36,11 +36,7 @@ internal class ASTNodeBuiltinType : ASTNode
         evaluator.CurrentOffset += size;
 
         PatternData pattern;
-        if (Type == Token.ValueType.VariableLengthQuantity)
-        {
-            pattern = new PatternDataUnsigned(offset, 1, evaluator);
-        }
-        else if (Token.IsUnsigned(Type))
+        if (Token.IsUnsigned(Type))
         {
             pattern = new PatternDataUnsigned(offset, size, evaluator);
         }

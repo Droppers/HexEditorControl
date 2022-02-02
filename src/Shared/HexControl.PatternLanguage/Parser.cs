@@ -1152,10 +1152,7 @@ internal class Parser
         return Create(new ASTNodeArrayVariableDecl("",
             new ASTNodeTypeDecl("", new ASTNodeBuiltinType(Token.ValueType.Padding)), size));
     }
-
-    private ASTNode ParseMemberVariableVariableLength(ASTNodeTypeDecl type) =>
-        Create(new ASTNodeVariableVariableLengthDecl(GetIdentifier(-1).Value, type));
-
+    
     private ASTNode ParseMemberVariable(ASTNodeTypeDecl type)
     {
         if (!Peek(SeparatorComma))
@@ -1250,14 +1247,7 @@ internal class Parser
                 }
                 else if (Matches(Sequence(Identifier)))
                 {
-                    if (type.Type is ASTNodeBuiltinType {Type: Token.ValueType.VariableLengthQuantity})
-                    {
-                        member = ParseMemberVariableVariableLength(type);
-                    }
-                    else
-                    {
-                        member = ParseMemberVariable(type);
-                    }
+                    member = ParseMemberVariable(type);
                 }
                 else if (Matches(Sequence(OperatorStar, Identifier, OperatorInherit)))
                 {

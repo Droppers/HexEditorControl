@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Input;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;
@@ -18,39 +19,30 @@ internal class WpfControl : HostControl
         element.MouseDown += ElementOnMouseDown;
         element.MouseUp += ElementOnMouseUp;
         element.MouseMove += ElementOnMouseMove;
+        element.MouseWheel += ElementOnMouseWheel;
+
+        element.MouseEnter += ElementOnMouseEnter;
+        element.MouseLeave += ElementOnMouseLeave;
+
         element.SizeChanged += ElementOnSizeChanged;
+
         element.PreviewKeyDown += ElementOnKeyDown;
         element.PreviewKeyUp += ElementOnKeyUp;
-        element.MouseWheel += ElementOnMouseWheel;
     }
 
     public override double Width => _element.ActualWidth;
-
     public override double Height => _element.ActualHeight;
 
-    private void ElementOnMouseWheel(object sender, MouseWheelEventArgs e)
+    public override bool Visible
     {
-        var point = e.GetPosition(_element);
-        RaiseMouseWheel(new SharedPoint(point.X, point.Y), e.Delta);
+        get => _element.Visibility is Visibility.Visible;
+        set => _element.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void ElementOnKeyDown(object sender, KeyEventArgs e)
+    public override HostCursor? Cursor
     {
-        _modifiers |= MapKeyModifier(e.Key);
-        RaiseKeyDown(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
-    }
-
-    private void ElementOnKeyUp(object sender, KeyEventArgs e)
-    {
-        _modifiers &= ~MapKeyModifier(e.Key);
-        RaiseKeyUp(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
-    }
-
-
-    private void ElementOnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        RaiseSizeChanged(new SharedSize(e.PreviousSize.Width, e.PreviousSize.Height),
-            new SharedSize(e.NewSize.Width, e.NewSize.Height));
+        get => MapHostCursor(Mouse.OverrideCursor);
+        set => Mouse.OverrideCursor = MapHostCursor(value);
     }
 
     private void ElementOnMouseDown(object sender, MouseButtonEventArgs e)
@@ -73,6 +65,40 @@ internal class WpfControl : HostControl
     {
         var point = e.GetPosition(_element);
         RaiseMouseMove(new SharedPoint(point.X, point.Y));
+    }
+
+    private void ElementOnMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        var point = e.GetPosition(_element);
+        RaiseMouseWheel(new SharedPoint(point.X, point.Y), e.Delta);
+    }
+
+    private void ElementOnKeyDown(object sender, KeyEventArgs e)
+    {
+        _modifiers |= MapKeyModifier(e.Key);
+        RaiseKeyDown(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
+    }
+
+    private void ElementOnKeyUp(object sender, KeyEventArgs e)
+    {
+        _modifiers &= ~MapKeyModifier(e.Key);
+        RaiseKeyUp(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
+    }
+
+    private void ElementOnMouseEnter(object sender, MouseEventArgs e)
+    {
+        RaiseMouseEnter();
+    }
+
+    private void ElementOnMouseLeave(object sender, MouseEventArgs e)
+    {
+        RaiseMouseLeave();
+    }
+
+    private void ElementOnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        RaiseSizeChanged(new SharedSize(e.PreviousSize.Width, e.PreviousSize.Height),
+            new SharedSize(e.NewSize.Width, e.NewSize.Height));
     }
 
     private static HostKeyModifier MapKeyModifier(Key key)
@@ -116,6 +142,46 @@ internal class WpfControl : HostControl
             MouseButton.Middle => HostMouseButton.Middle,
             MouseButton.Right => HostMouseButton.Right,
             _ => HostMouseButton.Unknown
+        };
+    }
+
+    private static Cursor? MapHostCursor(HostCursor? cursor)
+    {
+        if (cursor is null)
+        {
+            return null;
+        }
+
+        return cursor switch
+        {
+            HostCursor.Arrow => Cursors.Arrow,
+            HostCursor.Hand => Cursors.Hand,
+            HostCursor.Text => Cursors.IBeam,
+            HostCursor.SizeNs => Cursors.SizeNS,
+            HostCursor.SizeNesw => Cursors.SizeNESW,
+            HostCursor.SizeWe => Cursors.SizeWE,
+            HostCursor.SizeNwse => Cursors.SizeNWSE,
+            _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
+        };
+    }
+
+    private static HostCursor? MapHostCursor(Cursor? cursor)
+    {
+        if (cursor is null)
+        {
+            return null;
+        }
+
+        return cursor switch
+        {
+            _ when cursor == Cursors.Arrow => HostCursor.Arrow,
+            _ when cursor == Cursors.Hand => HostCursor.Hand,
+            _ when cursor == Cursors.IBeam => HostCursor.Text,
+            _ when cursor == Cursors.SizeNS => HostCursor.SizeNs,
+            _ when cursor == Cursors.SizeNESW => HostCursor.SizeNesw,
+            _ when cursor == Cursors.SizeWE => HostCursor.SizeWe,
+            _ when cursor == Cursors.SizeNWSE => HostCursor.SizeNwse,
+            _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
         };
     }
 

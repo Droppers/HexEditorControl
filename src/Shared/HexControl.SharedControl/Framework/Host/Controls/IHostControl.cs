@@ -1,5 +1,6 @@
 ﻿using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host.EventArgs;
+using HexControl.SharedControl.Framework.Visual;
 
 namespace HexControl.SharedControl.Framework.Host.Controls;
 
@@ -7,12 +8,19 @@ internal interface IHostControl
 {
     double Width { get; set; }
     double Height { get; set; }
+
+    bool Visible { get; set; }
+    HostCursor? Cursor { get; set; }
+
     event EventHandler<HostSizeChangedEventArgs>? SizeChanged;
 
     event EventHandler<HostMouseWheelEventArgs>? MouseWheel;
     event EventHandler<HostMouseButtonEventArgs>? MouseDown;
     event EventHandler<HostMouseButtonEventArgs>? MouseUp;
     event EventHandler<HostMouseEventArgs>? MouseMove;
+    
+    event EventHandler<HandledEventArgs>? MouseEnter;
+    event EventHandler<HandledEventArgs>? MouseLeave;
 
     event EventHandler<HostKeyEventArgs>? KeyDown;
     event EventHandler<HostKeyEventArgs>? KeyUp;

@@ -5,6 +5,7 @@ namespace HexControl.SharedControl.Framework.Visual;
 
 public enum EventStrategy
 {
+    Direct,
     Bubble,
     Tunnel
 }
@@ -84,7 +85,7 @@ internal class EventManager
         return handlers;
     }
 
-    public void Raise(
+    public VisualElement Raise(
         VisualElement source,
         string name,
         HandledEventArgs args,
@@ -92,18 +93,21 @@ internal class EventManager
     {
         switch (strategy)
         {
+            case EventStrategy.Direct:
+                Direct(source, name, source, args);
+                return source;
             case EventStrategy.Bubble:
                 Bubble(source, name, source, args);
-                break;
+                return source;
             case EventStrategy.Tunnel:
                 Tunnel(source, name, source, args);
-                break;
+                return source;
             default:
                 throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null);
         }
     }
 
-    public void Raise(
+    public VisualElement Raise(
         VisualElement source,
         string name,
         HandledEventArgs args,
@@ -112,18 +116,24 @@ internal class EventManager
     {
         switch (strategy)
         {
+            case EventStrategy.Direct:
+                Direct(source, name, source, args);
+                return source;
             case EventStrategy.Bubble:
-            {
                 var target = GetTargetElement(_tree.Root, predicate);
                 Bubble(target, name, source, args);
-                break;
-            }
+                return target;
             case EventStrategy.Tunnel:
                 Tunnel(source, name, source, args);
-                break;
+                return source;
             default:
                 throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null);
         }
+    }
+
+    private void Direct(VisualElement target, string name, object sender, HandledEventArgs args)
+    {
+        InvokeHandlers(target, name, sender, args);
     }
 
     private void Tunnel(VisualElement startElement, string name, object sender, HandledEventArgs args)
@@ -138,6 +148,11 @@ internal class EventManager
             {
                 var currentElement = queue.Dequeue();
                 InvokeHandlers(currentElement, name, sender, args);
+
+                if (args.Handled)
+                {
+                    return;
+                }
 
                 for (var i = 0; i < currentElement.Children.Count; i++)
                 {
@@ -169,8 +184,9 @@ internal class EventManager
     private void InvokeHandlers(VisualElement element, string name, object sender, HandledEventArgs args)
     {
         var handlers = GetHandlers(element, name);
-        foreach (var handler in handlers)
+        for (var i = 0; i < handlers.Count; i++)
         {
+            var handler = handlers[i];
             if (args.Handled)
             {
                 return;
@@ -185,7 +201,6 @@ internal class EventManager
         var queue = QueuePool.Rent();
         try
         {
-            queue.Clear();
             queue.Enqueue(startElement);
 
             while (queue.Count > 0)
@@ -215,6 +230,7 @@ internal class EventManager
         }
         finally
         {
+            queue.Clear();
             QueuePool.Return(queue);
         }
     }

@@ -10,16 +10,17 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
 {
     public AvaloniaGlyphTypeface(string typefaceName)
     {
-        var typeface = new Typeface(typefaceName);
-        Typeface = new GlyphTypeface(typeface);
+        RegularTypeface = new Typeface(typefaceName);
+        Typeface = new GlyphTypeface(RegularTypeface);
     }
 
     public AvaloniaGlyphTypeface(EmbeddedAsset asset)
     {
-        var typeface = new Typeface($"resm:{asset.Assembly}.{asset.File}?assembly={asset.Assembly}#{asset.Name}");
-        Typeface = new GlyphTypeface(typeface);
+        RegularTypeface = new Typeface($"resm:{asset.Assembly}.{asset.File}?assembly={asset.Assembly}#{asset.Name}");
+        Typeface = new GlyphTypeface(RegularTypeface);
     }
 
+    public Typeface RegularTypeface { get; }
     public override GlyphTypeface Typeface { get; }
 
     public override double GetWidth(double size)

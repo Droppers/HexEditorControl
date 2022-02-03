@@ -2,13 +2,33 @@
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Rendering.SceneGraph;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
+using TextAlignment = Avalonia.Media.TextAlignment;
 
 namespace HexControl.Avalonia.Host;
 
 internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 {
+    private class ClearDrawingOperation : ICustomDrawOperation
+    {
+        public void Dispose()
+        {
+        }
+
+        public bool HitTest(Point p) => true;
+
+        public void Render(IDrawingContextImpl context)
+        {
+            context.Clear(Colors.Transparent);
+        }
+
+        public Rect Bounds { get; } = new Rect(0, 0, int.MaxValue, int.MaxValue);
+        public bool Equals(ICustomDrawOperation? other) => other is ClearDrawingOperation;
+    }
+
     private readonly Stack<State> _states;
 
     public AvaloniaRenderContext(DrawingContext context) : base(new AvaloniaRenderFactory())
@@ -17,16 +37,19 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         Context = context;
         _states = new Stack<State>();
+
+        _clearDrawingOperation = new ClearDrawingOperation();
     }
 
     public override bool RequiresClear => true;
 
     public DrawingContext Context { get; set; }
 
+    private readonly ClearDrawingOperation _clearDrawingOperation;
+
     protected override void Clear(IBrush? brush)
     {
-        // TODO: this is absolutely terrible but a temporary workaround since there is no Clear() API
-        Context.DrawRectangle(brush, null, new Rect(0, 0, int.MaxValue, int.MaxValue));
+        Context.Custom(_clearDrawingOperation);
     }
 
     protected override void DrawRectangle(IBrush? brush, IPen? pen, SharedRectangle rectangle)
@@ -72,7 +95,11 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     protected override void DrawTextLayout(IBrush? brush, SharedTextLayout layout)
     {
-        throw new NotImplementedException();
+        var typeFace = ((AvaloniaGlyphTypeface)layout.Typeface).RegularTypeface;
+
+        var formattedText = new FormattedText(layout.Text, typeFace, layout.Size, TextAlignment.Left,
+            TextWrapping.NoWrap, Size.Infinity);
+        Context.DrawText(brush, Convert(layout.Position), formattedText);
     }
 
     private static GlyphRun CreateGlyphRun(SharedGlyphRun data)

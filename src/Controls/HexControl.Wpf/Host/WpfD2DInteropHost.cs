@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.Host.Controls;
@@ -28,8 +29,9 @@ internal class WpfD2DInteropHost : WpfControl
 
     private RenderTarget? _renderTarget;
 
-    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image) : base(element)
+    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image, bool antiAliased) : base(element)
     {
+        this.antiAliased = antiAliased;
         _container = container;
         _element = element;
         _image = image;
@@ -37,6 +39,8 @@ internal class WpfD2DInteropHost : WpfControl
         container.SizeChanged += OnSizeChanged;
         _image.OnRender += OnRender;
     }
+
+    private readonly bool antiAliased;
 
     public float Dpi
     {
@@ -63,10 +67,11 @@ internal class WpfD2DInteropHost : WpfControl
         {
             _d2dFactory?.Dispose();
             _renderTarget?.Dispose();
+            _renderContext?.Dispose();
 
-            var comObject = new ComObject(handle);
-            var resource = comObject.QueryInterface<Resource>();
-            var texture = resource.QueryInterface<Texture2D>();
+            using var comObject = new ComObject(handle);
+            using var resource = comObject.QueryInterface<Resource>();
+            using var texture = resource.QueryInterface<Texture2D>();
             using var surface = texture.QueryInterface<Surface>();
 
             var properties = new RenderTargetProperties
@@ -74,17 +79,15 @@ internal class WpfD2DInteropHost : WpfControl
                 DpiX = 0,
                 DpiY = 0,
                 MinLevel = FeatureLevel.Level_DEFAULT,
-                PixelFormat = new PixelFormat(Format.Unknown, AlphaMode.Ignore),
+                PixelFormat = new PixelFormat(Format.Unknown, AlphaMode.Premultiplied),
                 Type = RenderTargetType.Default,
                 Usage = RenderTargetUsage.None
             };
 
             _d2dFactory = new Factory();
             _renderTarget = new RenderTarget(_d2dFactory, surface, properties);
-            _renderTarget.AntialiasMode = AntialiasMode.Aliased;
+            _renderTarget.AntialiasMode =  antiAliased ? AntialiasMode.PerPrimitive : AntialiasMode.Aliased;
             _renderTarget.TextAntialiasMode = TextAntialiasMode.Cleartype;
-
-            _renderContext?.Dispose();
 
             _factory = new WpfD2DFactory(_renderTarget);
             _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget);
@@ -97,7 +100,7 @@ internal class WpfD2DInteropHost : WpfControl
             RaiseRender(_renderContext);
         }
     }
-
+    
     public void Resize()
     {
         _image.SetPixelSize((int)(_container.ActualWidth * Dpi), (int)(_container.ActualHeight * Dpi));

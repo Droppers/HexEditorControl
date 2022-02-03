@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using HexControl.Core;
 using HexControl.PatternLanguage;
+using HexControl.PatternLanguage.Patterns;
 using HexControl.SharedControl.Control;
 using HexControl.SharedControl.Framework.Drawing;
 
@@ -87,25 +90,13 @@ public partial class MainWindow : Window
         //Document = _doc;
 
         var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
-        //Document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
-        var parsed = LanguageParser.Parse(code);
-        var eval = new Evaluator();
-        eval.EvaluationDepth = 99999999;
-        eval.ArrayLimit = 1000000000;
-        var patterns = eval.Evaluate(Document.Buffer, parsed);
 
-        var markers = new StaticMarkerProvider();
-        foreach (var pattern in patterns)
-        {
-            pattern.CreateMarkers(markers);
-        }
-
-        markers.Complete();
-
-        Document.StaticMarkerProvider = markers;
+        var runner = new PatternRunner(Document);
+        Patterns = runner.Run(code).ToList();
     }
 
     public Document Document { get; set; }
+    public List<PatternData>? Patterns { get; set; }
     public HexRenderApi Api { get; set; } = new TestApi();
 
     private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
@@ -119,12 +110,12 @@ public partial class MainWindow : Window
 
     private void Clear_OnClick(object sender, RoutedEventArgs e)
     {
-        EditorControl.Document = null!;
+        //EditorControl.Document = null!;
     }
 
     private void Restore_OnClick(object sender, RoutedEventArgs e)
     {
-        EditorControl.Document = _doc;
+        //EditorControl.Document = _doc;
     }
 
     private void Insert_OnClick(object sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
@@ -82,7 +83,7 @@ internal class EditorColumn : VisualElement
 
     public long Offset { get; set; }
     public byte[] Bytes { get; set; }
-    public List<ModifiedRange> Modifications { get; set; }
+    public List<ModifiedRange> Modifications { get; }
 
     public int HorizontalOffset
     {
@@ -186,6 +187,7 @@ internal class EditorColumn : VisualElement
         MouseDown += OnMouseDown;
         MouseMove += OnMouseMove;
         MouseUp += OnMouseUp;
+        MouseLeave += OnMouseLeave;
     }
 
     protected override void OnTreeDetached()
@@ -193,6 +195,7 @@ internal class EditorColumn : VisualElement
         MouseDown -= OnMouseDown;
         MouseMove -= OnMouseMove;
         MouseUp -= OnMouseUp;
+        MouseLeave -= OnMouseLeave;
     }
 
     private int GetVisibleColumnWidth(ColumnSide column)
@@ -572,12 +575,11 @@ internal class EditorColumn : VisualElement
         var characterSet = GetCharacterSetForColumn(column);
         var position = CalculateCursorPosition(document, characterSet, column);
 
-        if (position.X < 0 || position.Y > Width)
+        if (position.X < 0 || position.Y > Height)
         {
             return;
         }
-
-        // TODO: figure out a good default style for a cursor and make it configurable
+        
         if (column == document.Cursor.Column)
         {
             var topOffset = 0;
@@ -1024,6 +1026,11 @@ internal class EditorColumn : VisualElement
         }
 
         var position = e.PointRelativeTo(this);
+        if (!IsPointInEditableArea(position))
+        {
+            return; // Use clicked outside editable area, don't count this as valid click to prevent weird behavior
+        }
+
         var (column, offset, _) = GetOffsetFromPoint(position);
 
         // Track the mouse down position for determining initial drag direction and whether it is a click or selection.
@@ -1052,6 +1059,7 @@ internal class EditorColumn : VisualElement
             Deselect();
         }
 
+        _mouseDownPosition = null;
         _startSelectionOffset = null;
         _mouseSelectMode = false;
     }
@@ -1085,14 +1093,37 @@ internal class EditorColumn : VisualElement
         _cursorTimer.Enabled = true;
     }
 
+    private bool IsPointInEditableArea(SharedPoint point)
+    {
+        var leftWidth = GetVisibleColumnWidth(ColumnSide.Left);
+        var rightWidth = GetVisibleColumnWidth(ColumnSide.Right);
+
+
+        var inLeftColumn = point.X < leftWidth;
+        var pastHeader = point.Y > _parent.HeaderHeight;
+        var rowCount = Math.Ceiling(Bytes.Length / (float)Configuration.BytesPerRow);
+        var beforeEnd = point.Y < rowCount * _parent.RowHeight + _parent.HeaderHeight;
+
+        // Only left column is visible, don't check right column
+        if (Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return inLeftColumn && pastHeader && beforeEnd;
+        }
+
+        var rightColumnX = leftWidth + SPACING_BETWEEN_COLUMNS * _parent.CharacterWidth;
+        var inRightColumn = leftWidth >= 0 && point.X >= rightColumnX && point.X < rightColumnX + rightWidth;
+        return (inLeftColumn || inRightColumn) && pastHeader && beforeEnd;
+    }
+
     private void OnMouseMove(object? sender, HostMouseEventArgs e)
     {
+        var position = e.PointRelativeTo(this);
+        Cursor = IsPointInEditableArea(position) ? HostCursor.Text : null;
+
         if (_startSelectionOffset is null || Document is null || _keyboardSelectMode && !_mouseSelectMode)
         {
             return;
         }
-
-        var position = e.PointRelativeTo(this);
 
         // Allow for some mouse movement tolerance before not considering it a mouse click
         if (_mouseDownPosition is not null && Math.Abs(position.X - _mouseDownPosition.Value.X) +
@@ -1120,6 +1151,11 @@ internal class EditorColumn : VisualElement
         _mouseDownPosition = null;
         _mouseSelectMode = true;
         Select(offset, _activeColumn);
+    }
+
+    private void OnMouseLeave(object? sender, HandledEventArgs e)
+    {
+        Cursor = null;
     }
 
     private void Select(long newOffset, ColumnSide column)
@@ -1336,14 +1372,13 @@ internal class EditorColumn : VisualElement
 
         offset = Math.Max(0, Math.Min(document.Length, offset));
         nibble = Math.Max(0, nibble);
-
-        // TODO: Don't set cursor offset when selecting, this is already handeled by Select()
+        
         if (document.Selection is null)
         {
             SetCursorOffset(offset, nibble, true);
         }
 
-        Select(offset, _activeColumn); // TODO, should be minus one?
+        Select(offset, _activeColumn);
     }
 
     private void Deselect()

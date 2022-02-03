@@ -11,6 +11,12 @@ namespace HexControl.Renderer.Direct2D;
 
 internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 {
+    private enum PushedType
+    {
+        Transform,
+        Clip
+    }
+
     private readonly RenderTarget _context;
     private readonly D2DFactory _d2dFactory;
 
@@ -19,6 +25,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     private readonly DWFactory _dwFactory;
 
     private readonly Stack<RawMatrix3x2> _transforms;
+    private readonly Stack<PushedType> _pushedTypes;
 
     private TextFormat? _format;
 
@@ -31,6 +38,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _dwFactory = new DWFactory();
 
         _transforms = new Stack<RawMatrix3x2>();
+        _pushedTypes = new Stack<PushedType>();
     }
 
     public float Dpi { get; set; } = 1.0f;
@@ -66,6 +74,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         }
 
         _transforms.Push(_context.Transform);
+        _pushedTypes.Push(PushedType.Transform);
 
         var matrix = _context.Transform;
         matrix.M31 += Convert(offsetX);
@@ -75,7 +84,11 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     public float Convert(double number) => (float)number * Dpi;
 
-    public override void PushClip(double x, double y, double width, double height) { }
+    public override void PushClip(double x, double y, double width, double height)
+    {
+        _context.PushAxisAlignedClip(new RawRectangleF((float)x, (float)y, (float)(x + width), (float)(y + height)), AntialiasMode.Aliased);
+        _pushedTypes.Push(PushedType.Clip);
+    }
 
     public override void Pop()
     {
@@ -84,14 +97,23 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
             return;
         }
 
-        _context.Transform = _transforms.Pop();
+        var type = _pushedTypes.Pop();
+        switch (type)
+        {
+            case PushedType.Transform:
+                _context.Transform = _transforms.Pop();
+                break;
+            case PushedType.Clip:
+                _context.PopAxisAlignedClip();
+                break;
+        }
     }
 
     protected override void Clear(SolidColorBrush? brush)
     {
         if (brush is not null)
         {
-            _context.Clear(new RawColor4(0, 0, 0, 1f));
+            _context.Clear(new RawColor4(0, 0, 0, 0));
         }
     }
 
@@ -144,7 +166,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         });
     }
 
-    private RawVector2 Convert(SharedPoint position) => new((int)(position.X * Dpi), (int)(position.Y * Dpi));
+    private RawVector2 Convert(SharedPoint position) => new((float)(position.X * Dpi), (float)(position.Y * Dpi));
 
     protected override void DrawPolygon(SolidColorBrush? brush, D2DPen? pen,
         IReadOnlyList<SharedPoint> points)
@@ -208,7 +230,8 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     protected override void DrawTextLayout(SolidColorBrush? brush, SharedTextLayout sharedLayout)
     {
-        _format ??= new TextFormat(_dwFactory, "Courier New", FontWeight.Normal, FontStyle.Normal,
+        var fontFamily = ((D2DGlyphTypeface)sharedLayout.Typeface).FontFamily;
+        _format ??= new TextFormat(_dwFactory, fontFamily, FontWeight.Normal, FontStyle.Normal,
             FontStretch.Normal, Convert(sharedLayout.Size));
 
         // Simple mode

@@ -12,9 +12,12 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
 
     public D2DGlyphTypeface(string fontFamily)
     {
+        FontFamily = fontFamily;
         _factory = new Factory();
         Typeface = GetFontFace(fontFamily);
     }
+
+    public string FontFamily { get; }
 
     public override FontFace Typeface { get; }
 

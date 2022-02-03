@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using HexControl.Core;
 using HexControl.SharedControl.Framework.Drawing;
+using HexControl.SharedControl.Framework.Host;
 using HexControl.SharedControl.Framework.Host.Controls;
 using HexControl.SharedControl.Framework.Host.EventArgs;
 
@@ -65,6 +66,18 @@ internal abstract class VisualElement : ObservableObject
         remove => _tree?.Events.RemoveHandler(this, value);
     }
 
+    public event EventHandler<HandledEventArgs>? MouseLeave
+    {
+        add => _tree?.Events.AddHandler(this, value);
+        remove => _tree?.Events.RemoveHandler(this, value);
+    }
+
+    public event EventHandler<HandledEventArgs>? MouseEnter
+    {
+        add => _tree?.Events.AddHandler(this, value);
+        remove => _tree?.Events.RemoveHandler(this, value);
+    }
+
     public event EventHandler<HostSizeChangedEventArgs>? SizeChanged
     {
         add => _tree?.Events.AddHandler(this, value);
@@ -83,6 +96,8 @@ internal abstract class VisualElement : ObservableObject
         remove => _tree?.Events.RemoveHandler(this, value);
     }
 
+    private VisualElement? _oldMouseOwner;
+
     public void AttachHost(IHostControl attachHost)
     {
         Host = attachHost;
@@ -95,6 +110,8 @@ internal abstract class VisualElement : ObservableObject
             attachHost.MouseWheel += HostOnMouseWheel;
             attachHost.SizeChanged += HostOnSizeChanged;
 
+            attachHost.MouseEnter += HostOnMouseEnter;
+            attachHost.MouseLeave += HostOnMouseLeave;
             attachHost.KeyDown += HostOnKeyDown;
             attachHost.KeyUp += HostOnKeyUp;
 
@@ -108,6 +125,16 @@ internal abstract class VisualElement : ObservableObject
         }
 
         OnHostAttached(attachHost);
+    }
+
+    private void HostOnMouseEnter(object? sender, HandledEventArgs e)
+    {
+        RaiseTunnelEvent(nameof(MouseEnter), e);
+    }
+
+    private void HostOnMouseLeave(object? sender, HandledEventArgs e)
+    {
+        RaiseTunnelEvent(nameof(MouseLeave), e);
     }
 
     private void HostOnKeyDown(object? sender, HostKeyEventArgs e)
@@ -138,7 +165,17 @@ internal abstract class VisualElement : ObservableObject
 
     private void HostOnSizeChanged(object? sender, HostSizeChangedEventArgs e)
     {
-        _tree?.Events.Raise(_tree.Root, nameof(SizeChanged), e, EventStrategy.Tunnel);
+        RaiseTunnelEvent(nameof(SizeChanged), e);
+    }
+
+    private void RaiseTunnelEvent(string name, HandledEventArgs e)
+    {
+        _tree?.Events.Raise(_tree.Root, name, e, EventStrategy.Tunnel);
+    }
+
+    private void RaiseDirectEvent(VisualElement target, string name, HandledEventArgs e)
+    {
+        _tree?.Events.Raise(target, name, e, EventStrategy.Direct);
     }
 
     private void HostOnMouseDown(object? sender, HostMouseButtonEventArgs e)
@@ -148,7 +185,23 @@ internal abstract class VisualElement : ObservableObject
 
     private void HostOnMouseMove(object? sender, HostMouseEventArgs e)
     {
-        RaiseMouseEvent(nameof(MouseMove), e);
+        var newMouseOwner = RaiseMouseEvent(nameof(MouseMove), e);
+
+        // Our own mouse leave / enter implementation to handle mouse owner changing between visual elements
+        if (_oldMouseOwner != newMouseOwner)
+        {
+            if (_oldMouseOwner is not null)
+            {
+                RaiseDirectEvent(_oldMouseOwner, nameof(MouseLeave), new HandledEventArgs());
+            }
+
+            if (newMouseOwner is not null)
+            {
+                RaiseDirectEvent(newMouseOwner, nameof(MouseEnter), new HandledEventArgs());
+            }
+        }
+
+        _oldMouseOwner = newMouseOwner;
     }
 
     private void HostOnMouseUp(object? sender, HostMouseButtonEventArgs e)
@@ -161,7 +214,7 @@ internal abstract class VisualElement : ObservableObject
         RaiseMouseEvent(nameof(MouseWheel), e);
     }
 
-    private void RaiseMouseEvent(string name, PointerEventArgs args)
+    private VisualElement? RaiseMouseEvent(string name, PointerEventArgs args)
     {
         static bool PointInBounds(SharedPoint point, VisualElement element) =>
             point.X >= element.Left && point.Y >= element.Top && point.X <= element.Left + element.Width &&
@@ -169,17 +222,12 @@ internal abstract class VisualElement : ObservableObject
 
         if (_tree is null)
         {
-            return;
+            return null;
         }
 
-        if (_tree.State.CapturedElement is not null)
-        {
-            _tree.Events.Raise(_tree.State.CapturedElement, name, args);
-        }
-        else
-        {
-            _tree.Events.Raise(_tree.Root, name, args, element => PointInBounds(args.Point, element));
-        }
+        return _tree.State.CapturedElement is not null
+            ? _tree.Events.Raise(_tree.State.CapturedElement, name, args)
+            : _tree.Events.Raise(_tree.Root, name, args, element => PointInBounds(args.Point, element));
     }
 
     private void RaiseFocusDependentEvent(string name, HandledEventArgs args)
@@ -212,6 +260,18 @@ internal abstract class VisualElement : ObservableObject
     protected virtual void ReleaseFocus()
     {
         _tree?.State.ReleaseFocus();
+    }
+
+    public HostCursor? Cursor
+    {
+        get => Host?.Cursor;
+        set
+        {
+            if (Host is not null)
+            {
+                Host.Cursor = value;
+            }
+        }
     }
 
     internal void AttachToTree(VisualElementTree tree)

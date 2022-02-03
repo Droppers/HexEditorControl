@@ -7,16 +7,19 @@
     xmlns:dx="clr-namespace:Microsoft.Wpf.Interop.DirectX;assembly=Microsoft.Wpf.Interop.DirectX"
     d:DesignHeight="450"
     d:DesignWidth="800"
+    Background="#181b20"
+    SnapsToDevicePixels="True" 
+    UseLayoutRounding="True"
     IsTabStop="False"
     mc:Ignorable="d">
     <Grid x:Name="Container">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="17" />
+            <ColumnDefinition x:Name="VerticalRow" Width="Auto" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
-            <RowDefinition Height="17" />
+            <RowDefinition x:Name="HorizontalRow" Height="Auto" />
         </Grid.RowDefinitions>
         <Grid x:Name="ImageContainer">
             <Image x:Name="MainImage">
@@ -47,7 +50,9 @@
         <Rectangle
             Grid.Row="1"
             Grid.Column="1"
-            Fill="#f0f0f0" />
+            Width="{Binding Source={x:Static SystemParameters.VerticalScrollBarWidth}}"
+            Height="{Binding Source={x:Static SystemParameters.HorizontalScrollBarHeight}}"
+            Fill="{Binding Source={x:Static SystemColors.ControlBrush}}" />
 
         <!--  ReSharper disable once Xaml.MissingGridIndex  -->
         <TextBox

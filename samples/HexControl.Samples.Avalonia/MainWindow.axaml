@@ -7,5 +7,8 @@
         x:Class="HexControl.Samples.Avalonia.MainWindow"
         Title="Avalonia"
         x:Name="Root">
-    <avalonia:HexEditorControl Document="{Binding Document}" />
+    <Grid>
+        <avalonia:HexEditorControl Document="{Binding Document}" />
+        <avalonia:PatternControl Width="500" Height="500" Patterns="{Binding Patterns}" />
+    </Grid>
 </Window>

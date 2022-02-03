@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net5.0</TargetFramework>
 		<Nullable>enable</Nullable>
@@ -11,6 +11,9 @@
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
 	</ItemGroup>
 	<ItemGroup>
+		<Compile Update="PatternControl.axaml.cs">
+		  <DependentUpon>PatternControl.axaml</DependentUpon>
+		</Compile>
 		<Compile Update="HexEditorControl.axaml.cs">
 			<DependentUpon>HexEditorControl.axaml</DependentUpon>
 		</Compile>

@@ -73,10 +73,23 @@ public partial class HexEditorControl : UserControl
 //        };
 
         Control = new SharedHexControl();
+        Control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
         //Control.AttachHost(_host);
 
         var factory = new WpfNativeFactory();
         Mapper = new HexControlPropertyMapper(Control, factory);
+    }
+
+    private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
+    {
+        if (e.ScrollBar is SharedScrollBar.Horizontal)
+        {
+            HorizontalRow.Height = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
+        else
+        {
+            VerticalRow.Width = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -86,13 +99,14 @@ public partial class HexEditorControl : UserControl
         var window = Window.GetWindow(this);
         if (window is null)
         {
+            return;
             throw new Exception("Could not obtain window.");
         }
 
         window.DpiChanged += WindowOnDpiChanged;
         var owner = new WindowInteropHelper(window).Handle;
         InteropImage.WindowOwner = owner;
-        _host = new WpfD2DInteropHost(ImageContainer, MainImage, InteropImage)
+        _host = new WpfD2DInteropHost(ImageContainer, MainImage, InteropImage, false)
         {
             {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
             {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},

@@ -21,6 +21,18 @@ internal enum SharedScrollBar
     Horizontal
 }
 
+internal class ScrollBarVisibilityChangedEventArgs : EventArgs
+{
+    public SharedScrollBar ScrollBar { get; }
+    public bool Visible { get; }
+
+    public ScrollBarVisibilityChangedEventArgs(SharedScrollBar scrollBar, bool visible)
+    {
+        ScrollBar = scrollBar;
+        Visible = visible;
+    }
+}
+
 public abstract class HexRenderApi
 {
     public virtual void BeforeRender(IRenderContextApi context, Details details) { }
@@ -63,10 +75,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     public const string HorizontalScrollBarName = "HorizontalScrollBar";
     public const string FakeTextBoxName = "FakeTextBox";
     private readonly EditorColumn _editorColumn;
-
     private readonly OffsetColumn _offsetColumn;
-
-
+    
     private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
     private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
@@ -108,6 +118,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn = new EditorColumn(this);
         AddChild(_editorColumn);
     }
+
+    public event EventHandler<ScrollBarVisibilityChangedEventArgs>? ScrollBarVisibilityChanged;
 
     public ISharedBrush Background
     {
@@ -265,6 +277,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             HorizontalScrollBar.Scroll += HorizontalScrollBar_OnScroll;
         }
+        
+        UpdateScrollBars();
     }
 
     private void VerticalScrollBar_OnScroll(object? sender, HostScrollEventArgs e)
@@ -290,8 +304,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private async void OnSizeChanged(object? sender, HostSizeChangedEventArgs e)
     {
-        UpdateScrollbars();
         UpdateDimensions();
+        UpdateScrollBars();
 
         await RefreshDocument();
     }
@@ -305,7 +319,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         UpdateChildDimensions();
     }
 
-    public void UpdateScrollbars()
+    public void UpdateScrollBars()
     {
         UpdateScrollBar(SharedScrollBar.Vertical);
         UpdateScrollBar(SharedScrollBar.Horizontal);
@@ -321,7 +335,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
         double newViewport;
         double newMaximum;
-        //double newValue;
+        var visible = false;
 
         if (scrollBar is SharedScrollBar.Vertical)
         {
@@ -329,24 +343,25 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
             newViewport = Height / RowHeight;
             newMaximum = Math.Min(1000, documentLength / Configuration.BytesPerRow);
-            //newValue = newMaximum / documentLength * (Document?.Offset ?? 0);
+            visible = HeaderHeight + (documentLength / Configuration.BytesPerRow) * RowHeight > _editorColumn.Height;
         }
         else
         {
             var visibleWidth = (int)(_editorColumn.Width / CharacterWidth) - 1;
             newViewport = Math.Max(1, visibleWidth);
             newMaximum = _editorColumn.TotalWidth - visibleWidth;
-            //newValue = Document?.HorizontalOffset ?? 0;
+            visible = (_editorColumn.TotalWidth * CharacterWidth) > _editorColumn.Width;
         }
 
-        if (Math.Abs(newViewport - hostScrollBar.Viewport) > double.Epsilon ||
-            Math.Abs(newMaximum - hostScrollBar.Maximum) > double.Epsilon) // ||
-            //Math.Abs(newValue - hostScrollBar.Value) > double.Epsilon)
-        {
-            //hostScrollBar.Value = newValue;
-            hostScrollBar.Maximum = newMaximum;
-            hostScrollBar.Viewport = newViewport;
-        }
+        //if (Math.Abs(newViewport - hostScrollBar.Viewport) > double.Epsilon ||
+        //    Math.Abs(newMaximum - hostScrollBar.Maximum) > double.Epsilon) // ||
+        //    //Math.Abs(newValue - hostScrollBar.Value) > double.Epsilon)
+        //{
+        hostScrollBar.Maximum = newMaximum;
+        hostScrollBar.Viewport = newViewport;
+        ScrollBarVisibilityChanged?.Invoke(this, new ScrollBarVisibilityChangedEventArgs(scrollBar, visible));
+
+        //}
     }
 
     private IHostScrollBar? GetScrollBar(SharedScrollBar scrollBar)
@@ -387,9 +402,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             _offsetColumn.Configuration = newDocument.Configuration;
             _editorColumn.Configuration = newDocument.Configuration;
             _editorColumn.Document = newDocument;
-
+            
             ApplyConfiguration();
-
             await InitDocument();
         }
         else
@@ -431,8 +445,9 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)
     {
         _offsetColumn.Length = Document?.Length ?? 0;
-        UpdateScrollbars();
+
         UpdateChildDimensions();
+        UpdateScrollBars();
     }
 
     private async void BufferOnModified(object? sender, ModifiedEventArgs e)
@@ -527,7 +542,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
                 break;
         }
 
-        UpdateScrollbars();
+        UpdateScrollBars();
 
         if (e.Property is not nameof(DocumentConfiguration.BytesPerRow))
         {
@@ -540,10 +555,10 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn.HorizontalOffset = Document?.HorizontalOffset ?? 0;
         _offsetColumn.Length = Document?.Length ?? 0;
 
-        UpdateScrollbars();
-        UpdateChildDimensions();
-
         await RefreshDocument();
+
+        UpdateChildDimensions();
+        UpdateScrollBars();
     }
 
     private async void DocumentOnOffsetChanged(object? sender, OffsetChangedEventArgs e)

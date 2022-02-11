@@ -1,4 +1,5 @@
 ﻿using HexControl.Renderer.Direct2D;
+using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.DXGI;
 using Factory = SharpDX.Direct2D1.Factory;
@@ -15,14 +16,14 @@ internal class WinUIRenderContextX : D2DRenderContext
         _swapChain = swapChain;
     }
 
-    public override void End()
+    public override void End(SharedRectangle? dirtyRect)
     {
         if (!CanRender)
         {
             return;
         }
 
-        base.End();
+        base.End(dirtyRect);
         _swapChain.Present(0, PresentFlags.None);
     }
 }

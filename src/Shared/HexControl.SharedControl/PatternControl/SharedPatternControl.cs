@@ -82,6 +82,7 @@ internal class SharedPatternControl : VisualElement
     {
         InitializeScrollBar();
         RecalculateHeight();
+        Host?.Invalidate();
     }
 
     private IHostScrollBar? VerticalScrollBar => Host?.GetChild<IHostScrollBar>(VerticalScrollBarName);
@@ -417,7 +418,7 @@ internal class SharedPatternControl : VisualElement
             return;
         }
 
-        if (_calculatedHeight < Height)
+        if (_calculatedHeight < Height - RowHeight)
         {
             scrollBar.Visible = false;
         }
@@ -657,6 +658,8 @@ internal class SharedPatternControl : VisualElement
         
         context.DrawRectangle(new ColorBrush(Color.FromArgb(24, 27, 32)), null,
             new SharedRectangle(0, 0, Width, Height));
+
+        AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
 
         RenderHeader(context);
         RenderEntries(context);

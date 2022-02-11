@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
+using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 using Microsoft.Win32;
@@ -27,54 +29,20 @@ public partial class HexEditorControl : UserControl
     public static readonly DependencyProperty RenderApiProperty = DependencyProperty.Register(nameof(RenderApi),
         typeof(HexRenderApi), typeof(HexEditorControl), new PropertyMetadata(null, OnPropertyChanged));
 
-#if D2D_RENDER
-    private WpfD2DInteropHost _host;
-    //private readonly Image _image;
-    //private readonly D3D11Image _d3dImage;
-#elif SKIA_RENDER
-    private readonly WpfSkiaHost _host;
-#else
-    private readonly WpfHost _host;
-#endif
-
     public HexEditorControl()
     {
         InitializeComponent();
-
-        Loaded += OnLoaded;
-        Unloaded += OnUnloaded;
-
-//#if D2D_RENDER
-        //_image = new Image();
-        //_d3dImage = new D3D11Image();
-        //_image.Source = _d3dImage;
-        //Container.Children.Insert(0, _image);
-
-        //var d2dControl = new D2DControl();
-
-        //Container.Children.Insert(0, d2dControl);
-
-        //_host = new WpfD2DHost(d2dControl)
-//        var owner = Process.GetCurrentProcess().MainWindowHandle;
-//        _host = new WpfD2InteropDHost(owner, image, d3dImage)
-//#elif SKIA_RENDER
-//        var skiaCanvas = new SKElement();
-//        Container.Children.Insert(0, skiaCanvas);
-//        skiaCanvas.PaintSurface += SkiaCanvasOnPaintSurface;
-
-//        _host = new WpfSkiaHost(skiaCanvas, new WpfSkiaRenderFactory())
-//#else
-//        _host = new WpfHost(this)
-//#endif
-//        {
-//            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
-//            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
-//            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
-//        };
+        
+        var host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
+        {
+            { "VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
+            { "HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
+            { "FakeTextBox", new WpfTextBox(FakeTextBox)}
+        };
 
         Control = new SharedHexControl();
         Control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
-        //Control.AttachHost(_host);
+        Control.AttachHost(host);
 
         var factory = new WpfNativeFactory();
         Mapper = new HexControlPropertyMapper(Control, factory);
@@ -84,107 +52,14 @@ public partial class HexEditorControl : UserControl
     {
         if (e.ScrollBar is SharedScrollBar.Horizontal)
         {
-            HorizontalRow.Height = e.Visible ? GridLength.Auto : new GridLength(0);
+            GridRow.Height = e.Visible ? GridLength.Auto : new GridLength(0);
         }
         else
         {
-            VerticalRow.Width = e.Visible ? GridLength.Auto : new GridLength(0);
+            GridColumn.Width = e.Visible ? GridLength.Auto : new GridLength(0);
         }
     }
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        SystemEvents.PowerModeChanged += OnPowerModeChanged;
-
-        var window = Window.GetWindow(this);
-        if (window is null)
-        {
-            return;
-            throw new Exception("Could not obtain window.");
-        }
-
-        window.DpiChanged += WindowOnDpiChanged;
-        var owner = new WindowInteropHelper(window).Handle;
-        InteropImage.WindowOwner = owner;
-        _host = new WpfD2DInteropHost(ImageContainer, MainImage, InteropImage, false)
-        {
-            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
-            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
-            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
-        };
-        Control.AttachHost(_host);
-
-        _host.Resize();
-    }
-
-    private void WindowOnDpiChanged(object sender, DpiChangedEventArgs e)
-    {
-        _host.Invalidate();
-    }
-
-    private void OnUnloaded(object sender, RoutedEventArgs e)
-    {
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-
-        var window = Window.GetWindow(this);
-        if (window is null)
-        {
-            throw new Exception("Could not obtain window.");
-        }
-
-        window.DpiChanged -= WindowOnDpiChanged;
-    }
-
-    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
-    {
-        if (e.Mode is PowerModes.Resume)
-        {
-            _host.Invalidate();
-        }
-    }
-
-#if D2D_RENDER
-#elif SKIA_RENDER
-    private float _scale = 1;
-    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
-    {
-        base.OnRenderSizeChanged(sizeInfo);
-
-        _scale = DetermineSkiaScale();
-    }
-
-    private void SkiaCanvasOnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
-    {
-        e.Surface.Canvas.SetMatrix(SKMatrix.CreateScale(_scale, _scale));
-
-        var canvas = e.Surface.Canvas;
-        _host.DoRender(canvas);
-    }
-
-    private float DetermineSkiaScale()
-    {
-        var presentationSource = PresentationSource.FromVisual(this);
-        if (presentationSource == null) throw new Exception("PresentationSource is null");
-        var compositionTarget = presentationSource.CompositionTarget;
-        if (compositionTarget == null) throw new Exception("CompositionTarget is null");
-
-        var matrix = compositionTarget.TransformToDevice;
-
-        var dpiX = matrix.M11;
-        var dpiY = matrix.M22;
-
-        if (dpiX != dpiY) throw new ArgumentException();
-
-        return (float)dpiX;
-    }
-#else
-    protected override void OnRender(DrawingContext context)
-    {
-        base.OnRender(context);
-        _host.DoRender(context);
-    }
-#endif
-
+    
     private HexControlPropertyMapper Mapper { get; }
 
     private SharedHexControl Control { get; }

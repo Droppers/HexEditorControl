@@ -23,6 +23,7 @@ internal abstract class VisualElement : ObservableObject
         }
 
         _tree = new VisualElementTree(this);
+        _queue = new RenderQueue(this);
     }
 
     protected VisualElement()
@@ -147,9 +148,12 @@ internal abstract class VisualElement : ObservableObject
         RaiseFocusDependentEvent(nameof(KeyUp), e);
     }
 
-    private void HostOnRender(object? sender, IRenderContext e)
+    protected RenderQueue _queue;
+
+    private async void HostOnRender(object? sender, IRenderContext e)
     {
-        InvokeRender(e);
+        await _queue.Render(e);
+        //InvokeRender(e);
     }
 
     public void DetachHost(IHostControl detachHost)
@@ -262,6 +266,27 @@ internal abstract class VisualElement : ObservableObject
         _tree?.State.ReleaseFocus();
     }
 
+    protected void AddDirtyRect(SharedRectangle rectangle, int grow = 0)
+    {
+        if (Left is not 0 || Top is not 0)
+        {
+            // Relative to current control location
+            rectangle = new SharedRectangle(Left + rectangle.X, Top + rectangle.Y, rectangle.Width, rectangle.Height);
+        }
+
+        if (grow > 0)
+        {
+            rectangle = new SharedRectangle(
+                Math.Max(0, rectangle.X - grow),
+                Math.Max(0, rectangle.Y - grow),
+                rectangle.Width + 2 * grow,
+                rectangle.Height + 2 * grow
+            );
+        }
+
+        _tree?.AddDirtyRect(rectangle);
+    }
+
     public HostCursor? Cursor
     {
         get => Host?.Cursor;
@@ -354,8 +379,8 @@ internal abstract class VisualElement : ObservableObject
             DetachAllFromTree(child);
         }
     }
-
-    private void InvokeRender(IRenderContext context)
+    
+    public void InvokeRender(IRenderContext context)
     {
         if (Parent is null)
         {
@@ -376,7 +401,7 @@ internal abstract class VisualElement : ObservableObject
                 continue;
             }
 
-            var shouldTranslate = child.Left is not 0 && child.Top is not 0;
+            var shouldTranslate = child.Left is not 0 || child.Top is not 0;
             if (shouldTranslate)
             {
                 context.PushTranslate(child.Left, child.Top);
@@ -392,9 +417,11 @@ internal abstract class VisualElement : ObservableObject
 
         RenderAfter(context);
 
-        if (Parent is null && _sw is not null)
+        if (_tree?.Root == this && _sw is not null)
         {
-            context.End();
+            context.End(_tree.DirtyRect);
+            _tree?.ClearDirtyRect();
+
             Debug.WriteLine($"Render: {_sw.ElapsedMilliseconds}");
         }
     }

@@ -23,12 +23,12 @@ public class HexEditorControl : UserControl
 
     private readonly SharedHexControl _control;
     private readonly HexControlPropertyMapper _mapper;
-    private TextBox? _fakeTextBox;
-    private ScrollBar? _horizontalScrollBar;
-
     private AvaloniaControl? _host;
 
+    private TextBox? _fakeTextBox;
+    private ScrollBar? _horizontalScrollBar;
     private ScrollBar? _verticalScrollBar;
+    private Grid? _grid;
 
     static HexEditorControl()
     {
@@ -40,11 +40,31 @@ public class HexEditorControl : UserControl
     public HexEditorControl()
     {
         _control = new SharedHexControl();
+        _control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
 
         var factory = new AvaloniaNativeFactory();
         _mapper = new HexControlPropertyMapper(_control, factory);
 
         InitializeComponent();
+    }
+
+    private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
+    {
+        if (_grid is null)
+        {
+            return;
+        }
+
+        if (e.ScrollBar is SharedScrollBar.Horizontal)
+        {
+            var row = _grid.RowDefinitions[1];
+            row.Height = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
+        else
+        {
+            var column = _grid.ColumnDefinitions[1];
+            column.Width = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
     }
 
     public Document? Document
@@ -72,6 +92,8 @@ public class HexEditorControl : UserControl
         _verticalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.VerticalScrollBarName);
         _horizontalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.HorizontalScrollBarName);
         _fakeTextBox = this.FindControl<TextBox>(SharedHexControl.FakeTextBoxName);
+
+        _grid = this.FindControl<Grid>("Container");
 
         if (_verticalScrollBar is null || _horizontalScrollBar is null || _fakeTextBox is null)
         {

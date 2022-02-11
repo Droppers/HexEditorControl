@@ -85,14 +85,18 @@ internal class WpfD2DInteropHost : WpfControl
             };
 
             _d2dFactory = new Factory();
-            _renderTarget = new RenderTarget(_d2dFactory, surface, properties);
-            _renderTarget.AntialiasMode =  antiAliased ? AntialiasMode.PerPrimitive : AntialiasMode.Aliased;
-            _renderTarget.TextAntialiasMode = TextAntialiasMode.Cleartype;
+            _renderTarget = new RenderTarget(_d2dFactory, surface, properties)
+            {
+                AntialiasMode = antiAliased ? AntialiasMode.PerPrimitive : AntialiasMode.Aliased,
+                TextAntialiasMode = TextAntialiasMode.Cleartype
+            };
 
             _factory = new WpfD2DFactory(_renderTarget);
-            _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget);
-            _renderContext.CanRender = true;
-            _renderContext.Dpi = _dpi;
+            _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget)
+            {
+                CanRender = true,
+                Dpi = _dpi
+            };
         }
 
         if (_renderContext is not null)

@@ -99,6 +99,19 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         var formattedText = new FormattedText(layout.Text, typeFace, layout.Size, TextAlignment.Left,
             TextWrapping.NoWrap, Size.Infinity);
+
+        if (layout.BrushRanges.Count > 0)
+        {
+            var spans = new FormattedTextStyleSpan[layout.BrushRanges.Count];
+            for (var i = 0; i < layout.BrushRanges.Count; i++)
+            {
+                var range = layout.BrushRanges[i];
+                spans[i] = new FormattedTextStyleSpan(range.Start, range.Length, GetBrush(range.Brush));
+            }
+
+            formattedText.Spans = spans;
+        }
+
         Context.DrawText(brush, Convert(layout.Position), formattedText);
     }
 
@@ -165,7 +178,6 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         public double TranslateX { get; init; }
         public double TranslateY { get; init; }
-
 
         public State(DrawingContext.PushedState state)
         {

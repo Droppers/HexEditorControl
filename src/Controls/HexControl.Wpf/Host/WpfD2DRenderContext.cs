@@ -1,23 +1,33 @@
-﻿using HexControl.Renderer.Direct2D;
+﻿using System.Drawing;
+using HexControl.Renderer.Direct2D;
+using HexControl.SharedControl.Framework.Drawing;
 using HexControl.Wpf.D2D;
 using SharpDX.Direct2D1;
+using SharpDX.Mathematics.Interop;
 
 namespace HexControl.Wpf.Host;
 
 internal class WpfD2DRenderContext : D2DRenderContext
 {
+    private readonly RenderTarget _context;
     private readonly D2DControl _control;
 
     public WpfD2DRenderContext(D2DRenderFactory factory, Factory d2dFactory, RenderTarget context, D2DControl control) :
         base(factory, d2dFactory, context)
     {
+        _context = context;
         _control = control;
     }
 
-    public override void End()
+    public override void End(SharedRectangle? dirtyRect)
     {
-        base.End();
+        base.End(dirtyRect);
 
-        _control.InvalidateImage();
+        if (dirtyRect is {} rect)
+        {
+            dirtyRect = new SharedRectangle(rect.X * Dpi, rect.Y * Dpi, rect.Width * Dpi, rect.Height * Dpi);
+        }
+
+        _control.InvalidateImage(dirtyRect);
     }
 }

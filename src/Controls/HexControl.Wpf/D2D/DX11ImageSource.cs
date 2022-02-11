@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct3D11;
 using SharpDX.Direct3D9;
 using Resource = SharpDX.DXGI.Resource;
@@ -37,8 +38,8 @@ internal static class NativeMethods
 internal class Dx11ImageSource : D3DImage, IDisposable
 {
     private static int _activeClients;
-    private Direct3DEx? _d3dContext;
-    private DeviceEx? _d3dDevice;
+    private static Direct3DEx? _d3dContext;
+    private static DeviceEx? _d3dDevice;
 
     private Texture? _renderTarget;
 
@@ -59,18 +60,32 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         EndD3D();
     }
 
-    public void InvalidateD3DImage()
+    public void InvalidateD3DImage(SharedRectangle? dirtyRect)
     {
-        if (_renderTarget is null)
+        if (_renderTarget is null || dirtyRect is not { } rect)
+        {
+            return;
+        }
+        
+        if (rect.X > PixelWidth || rect.Y > PixelHeight)
         {
             return;
         }
 
-        if (TryLock(new Duration(default)))
+        var width = rect.Width;
+        if (rect.X + rect.Width > PixelWidth)
         {
-            AddDirtyRect(new Int32Rect(0, 0, PixelWidth, PixelHeight));
+            width = PixelWidth - rect.X;
         }
 
+        var height = rect.Height;
+        if (rect.Y + rect.Height > PixelHeight)
+        {
+            height = PixelHeight - rect.Y;
+        }
+
+        Lock();
+        AddDirtyRect(new Int32Rect((int)rect.X, (int)rect.Y, (int)width, (int)height));
         Unlock();
     }
 
@@ -80,7 +95,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         {
             if (TryLock(new Duration(default)))
             {
-                SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero);
+                SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
                 Unlock();
             }
 
@@ -105,7 +120,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
             throw new ArgumentException("Invalid handle");
         }
 
-        _renderTarget = new Texture(_d3dDevice, target.Description.Width, target.Description.Height, 1,
+         _renderTarget = new Texture(_d3dDevice, target.Description.Width, target.Description.Height, 1,
             Usage.RenderTarget, format, Pool.Default, ref handle);
 
         using var surface = _renderTarget.GetSurfaceLevel(0);
@@ -130,8 +145,8 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
         var presentParams = GetPresentParameters();
 
-        _d3dContext = new Direct3DEx();
-        _d3dDevice = new DeviceEx(_d3dContext, 0, DeviceType.Hardware, NativeMethods.GetDesktopWindow(), createFlags,
+        _d3dContext ??= new Direct3DEx();
+        _d3dDevice ??= new DeviceEx(_d3dContext, 0, DeviceType.Hardware, NativeMethods.GetDesktopWindow(), createFlags,
             presentParams);
     }
 

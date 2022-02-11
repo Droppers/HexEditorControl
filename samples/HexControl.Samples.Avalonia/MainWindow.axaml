@@ -6,9 +6,10 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="HexControl.Samples.Avalonia.MainWindow"
         Title="Avalonia"
+        Background="White"
         x:Name="Root">
-    <Grid>
-        <avalonia:HexEditorControl Document="{Binding Document}" />
-        <avalonia:PatternControl Width="500" Height="500" Patterns="{Binding Patterns}" />
+    <Grid ColumnDefinitions="*,*">
+        <avalonia:HexEditorControl Grid.Column="0" Document="{Binding Document}" />
+        <avalonia:PatternControl Grid.Column="1" Patterns="{Binding Patterns}" />
     </Grid>
 </Window>

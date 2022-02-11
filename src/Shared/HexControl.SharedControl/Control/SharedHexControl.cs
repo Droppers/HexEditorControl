@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Events;
@@ -307,14 +308,15 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         UpdateDimensions();
         UpdateScrollBars();
 
+        AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
+
         await RefreshDocument();
     }
 
     private void UpdateDimensions()
     {
-        Width = Math.Max(0, (Host?.Width ?? 0) - (VerticalScrollBar is {AutoHide: true} ? VerticalScrollBar.Width : 0));
-        Height = Math.Max(0,
-            (Host?.Height ?? 0) - (HorizontalScrollBar is {AutoHide: true} ? HorizontalScrollBar.Height : 0));
+        Width = Math.Max(0, (Host?.Width ?? 0));
+        Height = Math.Max(0,(Host?.Height ?? 0));
 
         UpdateChildDimensions();
     }
@@ -576,11 +578,42 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         Host?.Invalidate();
     }
 
+    public Stopwatch? _sw;
+    public long _lastRefresh;
+    private bool _isRefreshing;
+
     private async Task RefreshDocument()
     {
-        if (Document is null || BytesToRead < 0)
+        if (_isRefreshing)
+        {
+            return;
+        }
+        //if (_sw is null)
+        //{
+        //    _sw = new Stopwatch();
+        //    _sw.Start();
+        //}
+
+        //var now = _sw.ElapsedMilliseconds;
+        //var diff = (now - _lastRefresh);
+        //if (diff < 16)
+        //{
+        //    Debug.WriteLine("We are reading too much!");
+        //    return;
+        //}
+
+        //_lastRefresh = now;
+        if (Document is null || BytesToRead <= 0)
         {
             _editorColumn.Bytes = Array.Empty<byte>();
+            _isRefreshing = false;
+            return;
+        }
+
+        var canDoIO = await _queue.StartIOTask();
+        if (!canDoIO)
+        {
+            Debug.WriteLine("Already doing IO!");
             return;
         }
 
@@ -602,6 +635,12 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn.Bytes = displayBuffer;
         _editorColumn.Offset = Document.Offset;
 
+        _isRefreshing = false;
+        _queue.StopIOTask();
+
+        var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
+        var width = (_editorColumn.Left + editorWidth) - _offsetColumn.Left;
+        AddDirtyRect(new SharedRectangle(_offsetColumn.Left, _editorColumn.Top + HeaderHeight, width, _editorColumn.Height), CharacterWidth);
         Host?.Invalidate();
     }
 
@@ -651,6 +690,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn.HorizontalOffset = (int)scrollValue;
         Document.HorizontalOffset = (int)scrollValue;
 
+        AddDirtyRect(new SharedRectangle(_editorColumn.Left, _editorColumn.Top, _editorColumn.Width, _editorColumn.Height), CharacterWidth);
         Host?.Invalidate();
     }
 
@@ -671,7 +711,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             context.Clear(Background);
         }
-
+        
         // Invoke the user-specified render API, this allows the user to manually draw things like backgrounds, separation lines, etc.
         if (_renderApi is not null)
         {

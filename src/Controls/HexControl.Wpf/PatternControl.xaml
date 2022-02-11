@@ -12,13 +12,7 @@
             <ColumnDefinition />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0" x:Name="ImageContainer">
-            <Image x:Name="MainImage">
-                <Image.Source>
-                    <directX:D3D11Image x:Name="InteropImage" />
-                </Image.Source>
-            </Image>
-        </Grid>
+        <Grid  x:Name="HostContainer" />
         <ScrollBar Name="VerticalScrollBar" Grid.Column="1" />
     </Grid>
 </UserControl>

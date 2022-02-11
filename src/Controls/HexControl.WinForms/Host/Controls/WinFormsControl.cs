@@ -11,10 +11,73 @@ internal class WinFormsControl : HostControl
     public WinFormsControl(Control control)
     {
         _control = control;
+
         _control.SizeChanged += ControlOnSizeChanged;
+
         _control.MouseDown += ControlOnMouseDown;
         _control.MouseMove += ControlOnMouseMove;
         _control.MouseUp += ControlOnMouseUp;
+        _control.MouseWheel += ControlOnMouseWheel;
+
+        _control.MouseLeave += ControlOnMouseLeave;
+        _control.MouseEnter += ControlOnMouseEnter;
+    }
+
+    public override HostCursor? Cursor
+    {
+        get => currentCursor;
+        set
+        {
+            if (currentCursor == value)
+            {
+                return;
+            }
+
+            _control.Cursor = MapCursor(value);
+            currentCursor = value;
+
+        }
+    }
+
+    private static Cursor MapCursor(HostCursor? cursor)
+    {
+        if (cursor is null)
+        {
+            return Cursors.Default;
+        }
+
+        return cursor switch
+        {
+            HostCursor.Arrow => Cursors.Arrow,
+            HostCursor.Hand => Cursors.Hand,
+            HostCursor.Text => Cursors.IBeam,
+            HostCursor.SizeNs => Cursors.SizeNS,
+            HostCursor.SizeNesw => Cursors.SizeNESW,
+            HostCursor.SizeWe => Cursors.SizeWE,
+            HostCursor.SizeNwse => Cursors.SizeNWSE,
+            _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
+        };
+    }
+
+    public override bool Visible
+    {
+        get => _control.Visible;
+        set => _control.Visible = value;
+    }
+
+    private void ControlOnMouseLeave(object? sender, EventArgs e)
+    {
+        RaiseMouseLeave();
+    }
+
+    private void ControlOnMouseEnter(object? sender, EventArgs e)
+    {
+        RaiseMouseEnter();
+    }
+
+    private void ControlOnMouseWheel(object? sender, MouseEventArgs e)
+    {
+        RaiseMouseWheel(MapPoint(e.Location), e.Delta);
     }
 
     public override double Width => _control.Width;

@@ -17,16 +17,12 @@ public class PatternControl : UserControl
 {
     private readonly SharedPatternControl _control;
     private readonly PatternControlPropertyMapper _mapper;
-    private TextBox? _fakeTextBox;
-    private ScrollBar? _horizontalScrollBar;
 
     public static readonly StyledProperty<List<PatternData>?> PatternsProperty =
         AvaloniaProperty.Register<PatternControl, List<PatternData>?>(nameof(Patterns));
 
     private AvaloniaControl? _host;
-
-    private ScrollBar? _verticalScrollBar;
-
+    
     static PatternControl()
     {
         PatternsProperty.Changed.AddClassHandler<PatternControl>(OnPropertyChanged);
@@ -52,20 +48,15 @@ public class PatternControl : UserControl
     {
         AvaloniaXamlLoader.Load(this);
 
-        //_verticalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.VerticalScrollBarName);
-        //_horizontalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.HorizontalScrollBarName);
-        //_fakeTextBox = this.FindControl<TextBox>(SharedHexControl.FakeTextBoxName);
-
-        //if (_verticalScrollBar is null || _horizontalScrollBar is null || _fakeTextBox is null)
-        //{
-        //    return;
-        //}
+        var verticalScrollBar = this.FindControl<ScrollBar>(SharedPatternControl.VerticalScrollBarName);
+        if (verticalScrollBar is null)
+        {
+            return;
+        }
 
         _host = new AvaloniaControl(this)
         {
-            //{SharedHexControl.VerticalScrollBarName, new AvaloniaScrollBar(_verticalScrollBar)},
-            //{SharedHexControl.HorizontalScrollBarName, new AvaloniaScrollBar(_horizontalScrollBar)},
-            //{SharedHexControl.FakeTextBoxName, new AvaloniaTextBox(_fakeTextBox)}
+            {SharedPatternControl.VerticalScrollBarName, new AvaloniaScrollBar(verticalScrollBar)},
         };
         _control.AttachHost(_host);
     }

@@ -56,7 +56,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _context.BeginDraw();
     }
 
-    public override void End()
+    public override void End(SharedRectangle? dirtyRect)
     {
         if (!CanRender)
         {
@@ -113,7 +113,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     {
         if (brush is not null)
         {
-            _context.Clear(new RawColor4(0, 0, 0, 0));
+            _context.Clear(new RawColor4(1, 1, 1, 0));
         }
     }
 

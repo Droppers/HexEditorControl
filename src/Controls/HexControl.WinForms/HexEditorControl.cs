@@ -25,10 +25,11 @@ public partial class HexEditorControl : UserControl
 
     public HexEditorControl()
     {
+        PropertyChanged += OnPropertyChanged;
+
         var control = new SharedHexControl();
         var factory = new WinFormsNativeFactory();
         _mapper = new HexControlPropertyMapper(control, factory);
-        PropertyChanged += OnPropertyChanged;
 
         AutoScaleMode = AutoScaleMode.Dpi;
         InitializeComponent();

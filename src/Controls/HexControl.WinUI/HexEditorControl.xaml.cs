@@ -4,6 +4,7 @@ using HexControl.SharedControl.Control;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.WinUI.Host;
 using HexControl.WinUI.Host.Controls;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SharpDX;
@@ -13,8 +14,10 @@ using SharpDX;
 
 namespace HexControl.WinUI;
 
-public sealed partial class HexEditorControl : UserControl
+public sealed partial class HexEditorControl : UserControl, ICursorChangeable
 {
+    public InputCursor Cursor { get => ProtectedCursor; set => ProtectedCursor = value; }
+
     private static readonly DependencyProperty DocumentProperty =
         DependencyProperty.Register(nameof(Document),
             typeof(Document),

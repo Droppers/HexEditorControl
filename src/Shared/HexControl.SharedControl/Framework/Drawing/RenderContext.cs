@@ -101,7 +101,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
 
     public virtual void Begin() { }
 
-    public virtual void End() { }
+    public virtual void End(SharedRectangle? dirtyRect) { }
 
     public virtual void Dispose()
     {

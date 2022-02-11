@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using HexControl.SharedControl.Framework.Drawing;
@@ -12,7 +13,7 @@ internal class WpfControl : HostControl
     private readonly FrameworkElement _element;
     private HostKeyModifier _modifiers = HostKeyModifier.Default;
 
-    public WpfControl(FrameworkElement element)
+    protected WpfControl(FrameworkElement element)
     {
         _element = element;
         element.Focusable = true;
@@ -41,8 +42,17 @@ internal class WpfControl : HostControl
 
     public override HostCursor? Cursor
     {
-        get => MapHostCursor(Mouse.OverrideCursor);
-        set => Mouse.OverrideCursor = MapHostCursor(value);
+        get => currentCursor;
+        set
+        {
+            if (currentCursor == value)
+            {
+                return;
+            }
+            
+            Mouse.OverrideCursor = MapCursor(value);
+            currentCursor = value;
+        }
     }
 
     private void ElementOnMouseDown(object sender, MouseButtonEventArgs e)
@@ -145,7 +155,7 @@ internal class WpfControl : HostControl
         };
     }
 
-    private static Cursor? MapHostCursor(HostCursor? cursor)
+    private static Cursor? MapCursor(HostCursor? cursor)
     {
         if (cursor is null)
         {
@@ -164,27 +174,7 @@ internal class WpfControl : HostControl
             _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
         };
     }
-
-    private static HostCursor? MapHostCursor(Cursor? cursor)
-    {
-        if (cursor is null)
-        {
-            return null;
-        }
-
-        return cursor switch
-        {
-            _ when cursor == Cursors.Arrow => HostCursor.Arrow,
-            _ when cursor == Cursors.Hand => HostCursor.Hand,
-            _ when cursor == Cursors.IBeam => HostCursor.Text,
-            _ when cursor == Cursors.SizeNS => HostCursor.SizeNs,
-            _ when cursor == Cursors.SizeNESW => HostCursor.SizeNesw,
-            _ when cursor == Cursors.SizeWE => HostCursor.SizeWe,
-            _ when cursor == Cursors.SizeNWSE => HostCursor.SizeNwse,
-            _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
-        };
-    }
-
+    
     public override void Focus()
     {
         _element.Focus();

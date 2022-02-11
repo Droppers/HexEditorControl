@@ -15,6 +15,7 @@
                 <ColumnDefinition Width="1.5*"></ColumnDefinition>
                 <ColumnDefinition Width="1*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
+            <!--<wpf:NewInterop></wpf:NewInterop>-->
             <wpf:HexEditorControl Grid.Column="0" x:Name="EditorControl" Document="{Binding Document}" />
             <wpf:PatternControl Grid.Column="1" Patterns="{Binding Patterns}" />
         </Grid>

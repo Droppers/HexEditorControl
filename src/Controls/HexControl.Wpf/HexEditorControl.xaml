@@ -4,12 +4,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:dx="clr-namespace:Microsoft.Wpf.Interop.DirectX;assembly=Microsoft.Wpf.Interop.DirectX"
-    xmlns:d2D="clr-namespace:HexControl.Wpf.D2D"
     d:DesignHeight="450"
     d:DesignWidth="800"
     Background="#181b20"
-    SnapsToDevicePixels="True" 
+    SnapsToDevicePixels="True"
     UseLayoutRounding="True"
     IsTabStop="False"
     mc:Ignorable="d">

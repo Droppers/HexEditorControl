@@ -1,9 +1,7 @@
-﻿using System.Drawing;
-using HexControl.Renderer.Direct2D;
+﻿using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.Wpf.D2D;
 using SharpDX.Direct2D1;
-using SharpDX.Mathematics.Interop;
 
 namespace HexControl.Wpf.Host;
 
@@ -23,7 +21,7 @@ internal class WpfD2DRenderContext : D2DRenderContext
     {
         base.End(dirtyRect);
 
-        if (dirtyRect is {} rect)
+        if (dirtyRect is { } rect)
         {
             dirtyRect = new SharedRectangle(rect.X * Dpi, rect.Y * Dpi, rect.Width * Dpi, rect.Height * Dpi);
         }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Windows;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.Host.Controls;
@@ -20,6 +19,8 @@ internal class WpfD2DInteropHost : WpfControl
     private readonly FrameworkElement _container;
     private readonly WpfImage _element;
     private readonly D3D11Image _image;
+
+    private readonly bool antiAliased;
     private Factory? _d2dFactory;
 
     private float _dpi = 1.0f;
@@ -29,7 +30,8 @@ internal class WpfD2DInteropHost : WpfControl
 
     private RenderTarget? _renderTarget;
 
-    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image, bool antiAliased) : base(element)
+    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image, bool antiAliased) :
+        base(element)
     {
         this.antiAliased = antiAliased;
         _container = container;
@@ -39,8 +41,6 @@ internal class WpfD2DInteropHost : WpfControl
         container.SizeChanged += OnSizeChanged;
         _image.OnRender += OnRender;
     }
-
-    private readonly bool antiAliased;
 
     public float Dpi
     {
@@ -101,10 +101,10 @@ internal class WpfD2DInteropHost : WpfControl
 
         if (_renderContext is not null)
         {
-            RaiseRender(_renderContext);
+            RaiseRender(_renderContext, false);
         }
     }
-    
+
     public void Resize()
     {
         _image.SetPixelSize((int)(_container.ActualWidth * Dpi), (int)(_container.ActualHeight * Dpi));

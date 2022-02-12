@@ -4,9 +4,8 @@ namespace HexControl.SharedControl.Framework.Drawing.Text;
 
 internal class SharedTextLayout
 {
-    private readonly List<BrushRange> _brushRanges;
-
-    public SharedTextLayout(IGlyphTypeface typeface, double size, string text) : this(typeface, size, new SharedPoint(0, 0))
+    public SharedTextLayout(IGlyphTypeface typeface, double size, string text) : this(typeface, size,
+        new SharedPoint(0, 0))
     {
         Text = text;
     }
@@ -16,7 +15,7 @@ internal class SharedTextLayout
         Typeface = typeface;
         Size = size;
         Position = position;
-        _brushRanges = new List<BrushRange>();
+        BrushRanges = new List<BrushRange>();
     }
 
     public IGlyphTypeface Typeface { get; }
@@ -25,15 +24,12 @@ internal class SharedTextLayout
 
     public ISharedBrush? Brush { get; set; }
     public string Text { get; set; } = "";
-    public List<BrushRange> BrushRanges
-    {
-        get => _brushRanges;
-        init => _brushRanges = value;
-    }
+
+    public List<BrushRange> BrushRanges { get; init; }
 
     public void AddRange(BrushRange range)
     {
-        _brushRanges.Add(range);
+        BrushRanges.Add(range);
     }
 
     internal record struct BrushRange(ISharedBrush Brush, int Start)

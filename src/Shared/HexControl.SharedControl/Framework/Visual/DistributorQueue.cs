@@ -3,7 +3,7 @@ using HexControl.SharedControl.Framework.Drawing;
 
 namespace HexControl.SharedControl.Framework.Visual;
 
-internal class RenderQueue
+internal class DistributorQueue
 {
     private readonly VisualElement _element;
     private readonly SemaphoreSlim _lock;
@@ -14,13 +14,13 @@ internal class RenderQueue
     private long _previousTicks;
     private bool _requestedRender;
 
-    public RenderQueue(VisualElement element)
+    public DistributorQueue(VisualElement element)
     {
         _element = element;
         _sw = Stopwatch.StartNew();
         _lock = new SemaphoreSlim(1, 1);
     }
-    
+
     public async Task<bool> StartIOTask()
     {
         if (_isDoingIo)
@@ -53,13 +53,17 @@ internal class RenderQueue
 
             _latestContext = context;
 
-            while (_sw.ElapsedMilliseconds - _previousTicks < 12)
+            while (false && _sw.ElapsedMilliseconds - _previousTicks < 12)
             {
                 await Task.Delay(1);
             }
 
-            _previousTicks = _sw.ElapsedMilliseconds;
-            _element.InvokeRender(_latestContext);
+            if (_latestContext.CanRender)
+            {
+                _previousTicks = _sw.ElapsedMilliseconds;
+                _element.InvokeRender(_latestContext);
+            }
+
             _lock.Release();
 
             if (_requestedRender)

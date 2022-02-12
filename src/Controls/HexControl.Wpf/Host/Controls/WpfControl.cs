@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using HexControl.SharedControl.Framework.Drawing;
@@ -49,7 +48,7 @@ internal class WpfControl : HostControl
             {
                 return;
             }
-            
+
             Mouse.OverrideCursor = MapCursor(value);
             currentCursor = value;
         }
@@ -174,7 +173,7 @@ internal class WpfControl : HostControl
             _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
         };
     }
-    
+
     public override void Focus()
     {
         _element.Focus();

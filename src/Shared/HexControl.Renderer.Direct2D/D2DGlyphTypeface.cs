@@ -8,18 +8,20 @@ namespace HexControl.Renderer.Direct2D;
 
 internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
 {
-    private readonly Factory _factory;
+    private Factory _factory;
+
+    private FontFace? _typeface;
 
     public D2DGlyphTypeface(string fontFamily)
     {
         FontFamily = fontFamily;
         _factory = new Factory();
-        Typeface = GetFontFace(fontFamily);
+        _typeface = GetFontFace(fontFamily);
     }
 
     public string FontFamily { get; }
 
-    public override FontFace Typeface { get; }
+    public override FontFace Typeface => _typeface!;
 
     private FontFace GetFontFace(string fontFamilyName)
     {
@@ -108,7 +110,10 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
 
     public override void Dispose()
     {
-        Typeface.Dispose();
+        _factory.Dispose();
+        _factory = null!;
+        _typeface?.Dispose();
+        _typeface = null!;
 
         base.Dispose();
     }

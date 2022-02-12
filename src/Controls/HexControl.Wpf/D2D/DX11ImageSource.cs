@@ -1,39 +1,13 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct3D11;
 using SharpDX.Direct3D9;
 using Resource = SharpDX.DXGI.Resource;
 
 namespace HexControl.Wpf.D2D;
-
-public static class Disposer
-{
-    public static void SafeDispose<T>(ref T? resource) where T : class
-    {
-        if (resource is IDisposable disposer)
-        {
-            try
-            {
-                disposer.Dispose();
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        resource = null;
-    }
-}
-
-internal static class NativeMethods
-{
-    [DllImport("user32.dll", SetLastError = false)]
-    public static extern IntPtr GetDesktopWindow();
-}
 
 internal class Dx11ImageSource : D3DImage, IDisposable
 {
@@ -66,7 +40,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         {
             return;
         }
-        
+
         if (rect.X > PixelWidth || rect.Y > PixelHeight)
         {
             return;
@@ -91,13 +65,13 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
     public void SetRenderTarget(Texture2D? target)
     {
+        Disposer.SafeDispose(ref _renderTarget);
+
         if (target is null)
         {
-            if (TryLock(new Duration(default)))
-            {
-                SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
-                Unlock();
-            }
+            Lock();
+            SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
+            Unlock();
 
             return;
         }
@@ -120,20 +94,17 @@ internal class Dx11ImageSource : D3DImage, IDisposable
             throw new ArgumentException("Invalid handle");
         }
 
-         _renderTarget = new Texture(_d3dDevice, target.Description.Width, target.Description.Height, 1,
+        _renderTarget = new Texture(_d3dDevice, target.Description.Width, target.Description.Height, 1,
             Usage.RenderTarget, format, Pool.Default, ref handle);
 
         using var surface = _renderTarget.GetSurfaceLevel(0);
 
-        if (TryLock(new Duration(default)))
-        {
-            SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer);
-        }
-
+        Lock();
+        SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer, true);
         Unlock();
     }
 
-    private void InitializeD3D()
+    private static void InitializeD3D()
     {
         const CreateFlags createFlags =
             CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded | CreateFlags.FpuPreserve;

@@ -1,15 +1,11 @@
-﻿using System;
-using System.Diagnostics;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
 using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
-using Microsoft.Win32;
 
 namespace HexControl.Wpf;
 
@@ -32,12 +28,12 @@ public partial class HexEditorControl : UserControl
     public HexEditorControl()
     {
         InitializeComponent();
-        
+
         var host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
         {
-            { "VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
-            { "HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
-            { "FakeTextBox", new WpfTextBox(FakeTextBox)}
+            {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
+            {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
+            {"FakeTextBox", new WpfTextBox(FakeTextBox)}
         };
 
         Control = new SharedHexControl();
@@ -48,18 +44,6 @@ public partial class HexEditorControl : UserControl
         Mapper = new HexControlPropertyMapper(Control, factory);
     }
 
-    private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
-    {
-        if (e.ScrollBar is SharedScrollBar.Horizontal)
-        {
-            GridRow.Height = e.Visible ? GridLength.Auto : new GridLength(0);
-        }
-        else
-        {
-            GridColumn.Width = e.Visible ? GridLength.Auto : new GridLength(0);
-        }
-    }
-    
     private HexControlPropertyMapper Mapper { get; }
 
     private SharedHexControl Control { get; }
@@ -86,6 +70,18 @@ public partial class HexEditorControl : UserControl
     {
         get => Mapper.GetValueNullable<HexRenderApi>(GetValue(RenderApiProperty));
         set => SetValue(RenderApiProperty, value);
+    }
+
+    private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
+    {
+        if (e.ScrollBar is SharedScrollBar.Horizontal)
+        {
+            GridRow.Height = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
+        else
+        {
+            GridColumn.Width = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
     }
 
     private static async void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

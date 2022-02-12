@@ -4,6 +4,8 @@ using HexControl.SharedControl.Framework.Visual;
 
 namespace HexControl.SharedControl.Framework.Host.Controls;
 
+internal delegate void HostRenderEvent(IRenderContext context, bool newSurface);
+
 internal interface IHostControl
 {
     double Width { get; set; }
@@ -18,14 +20,14 @@ internal interface IHostControl
     event EventHandler<HostMouseButtonEventArgs>? MouseDown;
     event EventHandler<HostMouseButtonEventArgs>? MouseUp;
     event EventHandler<HostMouseEventArgs>? MouseMove;
-    
+
     event EventHandler<HandledEventArgs>? MouseEnter;
     event EventHandler<HandledEventArgs>? MouseLeave;
 
     event EventHandler<HostKeyEventArgs>? KeyDown;
     event EventHandler<HostKeyEventArgs>? KeyUp;
 
-    event EventHandler<IRenderContext>? Render;
+    event HostRenderEvent? Render;
 
 
     TControl? GetChild<TControl>(string name) where TControl : class, IHostControl;

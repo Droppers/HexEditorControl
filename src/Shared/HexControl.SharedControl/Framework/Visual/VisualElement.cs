@@ -11,6 +11,10 @@ internal abstract class VisualElement : ObservableObject
 {
     private readonly List<VisualElement> _children;
 
+    protected readonly DistributorQueue queue;
+
+    private VisualElement? _oldMouseOwner;
+
     private Stopwatch? _sw;
 
     private VisualElementTree? _tree;
@@ -23,12 +27,13 @@ internal abstract class VisualElement : ObservableObject
         }
 
         _tree = new VisualElementTree(this);
-        _queue = new RenderQueue(this);
+        queue = new DistributorQueue(this);
     }
 
     protected VisualElement()
     {
         _children = new List<VisualElement>();
+        queue = new DistributorQueue(this);
     }
 
     public IHostControl? Host { get; private set; }
@@ -42,6 +47,18 @@ internal abstract class VisualElement : ObservableObject
 
     public VisualElement? Parent { get; private set; }
     public IReadOnlyList<VisualElement> Children => _children;
+
+    public HostCursor? Cursor
+    {
+        get => Host?.Cursor;
+        set
+        {
+            if (Host is not null)
+            {
+                Host.Cursor = value;
+            }
+        }
+    }
 
     public event EventHandler<HostMouseButtonEventArgs>? MouseDown
     {
@@ -97,8 +114,6 @@ internal abstract class VisualElement : ObservableObject
         remove => _tree?.Events.RemoveHandler(this, value);
     }
 
-    private VisualElement? _oldMouseOwner;
-
     public void AttachHost(IHostControl attachHost)
     {
         Host = attachHost;
@@ -148,13 +163,17 @@ internal abstract class VisualElement : ObservableObject
         RaiseFocusDependentEvent(nameof(KeyUp), e);
     }
 
-    protected RenderQueue _queue;
-
-    private async void HostOnRender(object? sender, IRenderContext e)
+    private async void HostOnRender(IRenderContext context, bool newSurface)
     {
-        await _queue.Render(e);
-        //InvokeRender(e);
+        if (newSurface)
+        {
+            AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
+        }
+
+        await queue.Render(context);
     }
+
+
 
     public void DetachHost(IHostControl detachHost)
     {
@@ -287,18 +306,6 @@ internal abstract class VisualElement : ObservableObject
         _tree?.AddDirtyRect(rectangle);
     }
 
-    public HostCursor? Cursor
-    {
-        get => Host?.Cursor;
-        set
-        {
-            if (Host is not null)
-            {
-                Host.Cursor = value;
-            }
-        }
-    }
-
     internal void AttachToTree(VisualElementTree tree)
     {
         _tree = tree;
@@ -379,7 +386,12 @@ internal abstract class VisualElement : ObservableObject
             DetachAllFromTree(child);
         }
     }
-    
+
+    public void Invalidate()
+    {
+        Host?.Invalidate();
+    }
+
     public void InvokeRender(IRenderContext context)
     {
         if (Parent is null)

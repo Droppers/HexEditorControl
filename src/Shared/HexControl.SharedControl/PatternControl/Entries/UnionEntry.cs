@@ -14,7 +14,8 @@ internal class UnionEntry : PatternEntry
         CanLoadMore = false;
     }
 
-    public override ColorRange[] FormattedType => new[] {
+    public override ColorRange[] FormattedType => new[]
+    {
         Keyword("union"),
         Space(),
         Regular(_pattern.TypeName ?? "?")

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Timers;
 using System.Windows;
 using System.Windows.Media;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.Direct3D;
@@ -14,31 +16,11 @@ using PixelFormat = SharpDX.Direct2D1.PixelFormat;
 
 namespace HexControl.Wpf.D2D;
 
-internal class RenderEventArgs : EventArgs
-{
-    public RenderEventArgs(Factory factory, RenderTarget renderTarget)
-    {
-        Factory = factory;
-        RenderTarget = renderTarget;
-    }
-
-    public Factory Factory { get; }
-    public RenderTarget RenderTarget { get; }
-}
+internal delegate void RenderEvent(Factory factory, RenderTarget renderTarget, bool newSurface);
 
 internal class D2DControl : Image, IRenderStateProvider
 {
     private readonly FrameworkElement _parent;
-
-    public float Dpi
-    {
-        get => _dpi;
-        set
-        {
-            _dpi = value;
-            CreateAndBindTargets();
-        }
-    }
 
     private bool _canRender;
 
@@ -46,8 +28,9 @@ internal class D2DControl : Image, IRenderStateProvider
     private RenderTarget? _d2dRenderTarget;
     private Dx11ImageSource? _d3dSurface;
     private Device? _device;
-    private Texture2D? _renderTarget;
     private float _dpi = 1;
+    private Texture2D? _renderTarget;
+    private readonly Timer _resizeTimer;
 
     public D2DControl(FrameworkElement parent)
     {
@@ -62,6 +45,23 @@ internal class D2DControl : Image, IRenderStateProvider
         HorizontalAlignment = HorizontalAlignment.Left;
         UseLayoutRounding = true;
         SnapsToDevicePixels = true;
+
+        _resizeTimer = new Timer
+        {
+            Interval = 500,
+            Enabled = true
+        };
+        _resizeTimer.Elapsed += OnResizeDone;
+    }
+
+    public float Dpi
+    {
+        get => _dpi;
+        set
+        {
+            _dpi = value;
+            CreateAndBindTargets();
+        }
     }
 
     public bool CanRender
@@ -80,7 +80,14 @@ internal class D2DControl : Image, IRenderStateProvider
     }
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
-    public event EventHandler<RenderEventArgs>? Render;
+
+    private void OnResizeDone(object sender, ElapsedEventArgs e)
+    {
+        _resizeTimer.Stop();
+        GC.Collect();
+    }
+
+    public event RenderEvent? Render;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -89,6 +96,8 @@ internal class D2DControl : Image, IRenderStateProvider
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        _resizeTimer.Stop();
+        _resizeTimer.Start();
         CreateAndBindTargets();
     }
 
@@ -96,10 +105,11 @@ internal class D2DControl : Image, IRenderStateProvider
     {
         EndD3D();
     }
-    
+
     private void OnIsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        CanRender = _d3dSurface?.IsFrontBufferAvailable ?? false;
+        //CanRender = _d3dSurface?.IsFrontBufferAvailable ?? false;
+        CreateAndBindTargets();
     }
 
     private void StartD3D()
@@ -139,15 +149,18 @@ internal class D2DControl : Image, IRenderStateProvider
         CanRender = false;
         if (_d3dSurface is null || _device is null)
         {
-            CanRender = true;
             return;
         }
 
         _d3dSurface.SetRenderTarget(null);
 
-        Disposer.SafeDispose(ref _d2dRenderTarget);
+        // Not clearing state and flushing will result in a memory leak
+        _device.ImmediateContext.ClearState();
+        _device.ImmediateContext.Flush();
+
         Disposer.SafeDispose(ref _d2dFactory);
         Disposer.SafeDispose(ref _renderTarget);
+        Disposer.SafeDispose(ref _d2dRenderTarget);
 
         var width = (int)(_parent.ActualWidth * _dpi);
         var height = (int)(_parent.ActualHeight * _dpi);
@@ -168,27 +181,27 @@ internal class D2DControl : Image, IRenderStateProvider
 
         _renderTarget = new Texture2D(_device, renderDesc);
 
-        var surface = _renderTarget.QueryInterface<Surface>();
+        using var surface = _renderTarget.QueryInterface<Surface>();
 
         _d2dFactory = new Factory();
         var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
         _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
-
         _d3dSurface.SetRenderTarget(_renderTarget);
-
         _device.ImmediateContext.Rasterizer.SetViewport(0, 0, width, height);
 
         CanRender = true;
+
+        OnRender(true);
     }
 
-    private void OnRender()
+    private void OnRender(bool newSurface = false)
     {
         if (_d2dFactory is null || _d2dRenderTarget is null)
         {
             return;
         }
 
-        Render?.Invoke(this, new RenderEventArgs(_d2dFactory, _d2dRenderTarget));
+        Render?.Invoke(_d2dFactory, _d2dRenderTarget, newSurface);
     }
 
     public void Invalidate()

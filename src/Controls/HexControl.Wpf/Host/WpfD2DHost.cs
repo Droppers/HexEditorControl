@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using HexControl.Core.Helpers;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host.Controls;
@@ -13,7 +14,6 @@ internal class WpfD2DHost : WpfControl
     private readonly D2DControl _d2dControl;
     private readonly Grid _hostContainer;
     private D2DRenderFactory? _factory;
-    private RenderTarget? _previousTarget;
     private WpfD2DRenderContext? _renderContext;
 
     public WpfD2DHost(Grid hostContainer, D2DControl d2dControl) : base(hostContainer)
@@ -85,21 +85,19 @@ internal class WpfD2DHost : WpfControl
         }
     }
 
-    private void OnRender(object? sender, RenderEventArgs e)
+    private void OnRender(Factory factory, RenderTarget renderTarget, bool newSurface)
     {
-        if (!ReferenceEquals(e.RenderTarget, _previousTarget) || _factory is null || _renderContext is null)
+        if (newSurface || _factory is null || _renderContext is null)
         {
-            _renderContext?.Dispose();
+            Disposer.SafeDispose(ref _renderContext);
 
-            _factory = new WpfD2DFactory(e.RenderTarget);
-            _renderContext = new WpfD2DRenderContext(_factory, e.Factory, e.RenderTarget, _d2dControl);
+            _factory = new WpfD2DFactory(renderTarget);
+            _renderContext = new WpfD2DRenderContext(_factory, factory, renderTarget, _d2dControl);
             _renderContext.AttachStateProvider(_d2dControl);
         }
 
         _renderContext.Dpi = Dpi;
-
-        RaiseRender(_renderContext);
-        _previousTarget = e.RenderTarget;
+        RaiseRender(_renderContext, newSurface);
     }
 
     public override void Invalidate()

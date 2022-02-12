@@ -1,21 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using HexControl.PatternLanguage.Patterns;
+﻿using HexControl.PatternLanguage.Patterns;
 
-namespace HexControl.SharedControl.PatternControl.Entries
+namespace HexControl.SharedControl.PatternControl.Entries;
+
+internal class ShowMoreEntry : PatternEntry
 {
-    internal class ShowMoreEntry : PatternEntry
+    public ShowMoreEntry(SharedPatternControl tree, PatternData pattern, PatternEntry entry) : base(tree, pattern)
     {
-        public PatternEntry Entry { get; }
-
-        public ShowMoreEntry(SharedPatternControl tree, PatternData pattern, PatternEntry entry) : base(tree, pattern)
-        {
-            Entry = entry;
-        }
-
-        public override string FormatName() => "Show more items...";
+        Entry = entry;
     }
+
+    public PatternEntry Entry { get; }
+
+    public override string FormatName() => "Show more items...";
 }

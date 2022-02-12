@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Events;
@@ -24,14 +23,14 @@ internal enum SharedScrollBar
 
 internal class ScrollBarVisibilityChangedEventArgs : EventArgs
 {
-    public SharedScrollBar ScrollBar { get; }
-    public bool Visible { get; }
-
     public ScrollBarVisibilityChangedEventArgs(SharedScrollBar scrollBar, bool visible)
     {
         ScrollBar = scrollBar;
         Visible = visible;
     }
+
+    public SharedScrollBar ScrollBar { get; }
+    public bool Visible { get; }
 }
 
 public abstract class HexRenderApi
@@ -77,7 +76,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     public const string FakeTextBoxName = "FakeTextBox";
     private readonly EditorColumn _editorColumn;
     private readonly OffsetColumn _offsetColumn;
-    
+
     private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
     private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
@@ -119,8 +118,6 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn = new EditorColumn(this);
         AddChild(_editorColumn);
     }
-
-    public event EventHandler<ScrollBarVisibilityChangedEventArgs>? ScrollBarVisibilityChanged;
 
     public ISharedBrush Background
     {
@@ -233,6 +230,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     public int CharacterWidth { get; internal set; } = 8;
     public int CharacterHeight { get; internal set; } = 8;
 
+    public event EventHandler<ScrollBarVisibilityChangedEventArgs>? ScrollBarVisibilityChanged;
+
     private HexRenderApi.Details CreateApiDetails()
     {
         HexRenderApi.OffsetDetails? offset = Configuration.OffsetsVisible ? _offsetColumn.CreateApiDetails() : null;
@@ -278,7 +277,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             HorizontalScrollBar.Scroll += HorizontalScrollBar_OnScroll;
         }
-        
+
         UpdateScrollBars();
     }
 
@@ -315,8 +314,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private void UpdateDimensions()
     {
-        Width = Math.Max(0, (Host?.Width ?? 0));
-        Height = Math.Max(0,(Host?.Height ?? 0));
+        Width = Math.Max(0, Host?.Width ?? 0);
+        Height = Math.Max(0, Host?.Height ?? 0);
 
         UpdateChildDimensions();
     }
@@ -337,7 +336,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
         double newViewport;
         double newMaximum;
-        var visible = false;
+        bool visible;
 
         if (scrollBar is SharedScrollBar.Vertical)
         {
@@ -345,25 +344,19 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
             newViewport = Height / RowHeight;
             newMaximum = Math.Min(1000, documentLength / Configuration.BytesPerRow);
-            visible = HeaderHeight + (documentLength / Configuration.BytesPerRow) * RowHeight > _editorColumn.Height;
+            visible = HeaderHeight + documentLength / Configuration.BytesPerRow * RowHeight > _editorColumn.Height;
         }
         else
         {
             var visibleWidth = (int)(_editorColumn.Width / CharacterWidth) - 1;
             newViewport = Math.Max(1, visibleWidth);
             newMaximum = _editorColumn.TotalWidth - visibleWidth;
-            visible = (_editorColumn.TotalWidth * CharacterWidth) > _editorColumn.Width;
+            visible = _editorColumn.TotalWidth * CharacterWidth > _editorColumn.Width;
         }
 
-        //if (Math.Abs(newViewport - hostScrollBar.Viewport) > double.Epsilon ||
-        //    Math.Abs(newMaximum - hostScrollBar.Maximum) > double.Epsilon) // ||
-        //    //Math.Abs(newValue - hostScrollBar.Value) > double.Epsilon)
-        //{
         hostScrollBar.Maximum = newMaximum;
         hostScrollBar.Viewport = newViewport;
         ScrollBarVisibilityChanged?.Invoke(this, new ScrollBarVisibilityChangedEventArgs(scrollBar, visible));
-
-        //}
     }
 
     private IHostScrollBar? GetScrollBar(SharedScrollBar scrollBar)
@@ -404,14 +397,14 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             _offsetColumn.Configuration = newDocument.Configuration;
             _editorColumn.Configuration = newDocument.Configuration;
             _editorColumn.Document = newDocument;
-            
+
             ApplyConfiguration();
             await InitDocument();
         }
         else
         {
             Document = null;
-            Host?.Invalidate();
+            Invalidate();
         }
     }
 
@@ -434,13 +427,12 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
                                   Configuration.BytesPerRow;
             }
 
-
             // TODO: not always necessary to invalidate when cursor has changed, for example when the selection has changed it will already have been invalidated before.
-            Host?.Invalidate();
+            Invalidate();
         }
         else
         {
-            Host?.Invalidate();
+            Invalidate();
         }
     }
 
@@ -469,6 +461,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             return;
         }
+
+        Typeface?.Dispose();
 
         _requireTypefaceUpdate = false;
 
@@ -548,7 +542,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
         if (e.Property is not nameof(DocumentConfiguration.BytesPerRow))
         {
-            Host?.Invalidate();
+            Invalidate();
         }
     }
 
@@ -575,45 +569,20 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             // TODO: should be implemented in OnCursorChanged instead.
         }
 
-        Host?.Invalidate();
+        Invalidate();
     }
-
-    public Stopwatch? _sw;
-    public long _lastRefresh;
-    private bool _isRefreshing;
 
     private async Task RefreshDocument()
     {
-        if (_isRefreshing)
-        {
-            return;
-        }
-        //if (_sw is null)
-        //{
-        //    _sw = new Stopwatch();
-        //    _sw.Start();
-        //}
-
-        //var now = _sw.ElapsedMilliseconds;
-        //var diff = (now - _lastRefresh);
-        //if (diff < 16)
-        //{
-        //    Debug.WriteLine("We are reading too much!");
-        //    return;
-        //}
-
-        //_lastRefresh = now;
         if (Document is null || BytesToRead <= 0)
         {
             _editorColumn.Bytes = Array.Empty<byte>();
-            _isRefreshing = false;
             return;
         }
 
-        var canDoIO = await _queue.StartIOTask();
+        var canDoIO = await queue.StartIOTask();
         if (!canDoIO)
         {
-            Debug.WriteLine("Already doing IO!");
             return;
         }
 
@@ -635,13 +604,14 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn.Bytes = displayBuffer;
         _editorColumn.Offset = Document.Offset;
 
-        _isRefreshing = false;
-        _queue.StopIOTask();
+        queue.StopIOTask();
 
         var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
-        var width = (_editorColumn.Left + editorWidth) - _offsetColumn.Left;
-        AddDirtyRect(new SharedRectangle(_offsetColumn.Left, _editorColumn.Top + HeaderHeight, width, _editorColumn.Height), CharacterWidth);
-        Host?.Invalidate();
+        var width = _editorColumn.Left + editorWidth - _offsetColumn.Left;
+        AddDirtyRect(
+            new SharedRectangle(_offsetColumn.Left, _editorColumn.Top + HeaderHeight, width, _editorColumn.Height),
+            CharacterWidth);
+        Invalidate();
     }
 
     private static byte[] CopyIntoBufferWithLength(byte[] sourceBuffer, int targetLength)
@@ -690,8 +660,10 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         _editorColumn.HorizontalOffset = (int)scrollValue;
         Document.HorizontalOffset = (int)scrollValue;
 
-        AddDirtyRect(new SharedRectangle(_editorColumn.Left, _editorColumn.Top, _editorColumn.Width, _editorColumn.Height), CharacterWidth);
-        Host?.Invalidate();
+        AddDirtyRect(
+            new SharedRectangle(_editorColumn.Left, _editorColumn.Top, _editorColumn.Width, _editorColumn.Height),
+            CharacterWidth);
+        Invalidate();
     }
 
     protected override void Render(IRenderContext context)
@@ -711,7 +683,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             context.Clear(Background);
         }
-        
+
         // Invoke the user-specified render API, this allows the user to manually draw things like backgrounds, separation lines, etc.
         if (_renderApi is not null)
         {

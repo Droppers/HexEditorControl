@@ -16,8 +16,6 @@ namespace HexControl.WinUI;
 
 public sealed partial class HexEditorControl : UserControl, ICursorChangeable
 {
-    public InputCursor Cursor { get => ProtectedCursor; set => ProtectedCursor = value; }
-
     private static readonly DependencyProperty DocumentProperty =
         DependencyProperty.Register(nameof(Document),
             typeof(Document),
@@ -52,6 +50,12 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
     {
         get => _mapper.GetValue<Document>(GetValue(DocumentProperty));
         set => SetValue(DocumentProperty, value);
+    }
+
+    public InputCursor Cursor
+    {
+        get => ProtectedCursor;
+        set => ProtectedCursor = value;
     }
 
     private static async void PropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

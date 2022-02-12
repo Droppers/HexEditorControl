@@ -35,9 +35,17 @@ internal class WinFormsControl : HostControl
 
             _control.Cursor = MapCursor(value);
             currentCursor = value;
-
         }
     }
+
+    public override bool Visible
+    {
+        get => _control.Visible;
+        set => _control.Visible = value;
+    }
+
+    public override double Width => _control.Width;
+    public override double Height => _control.Height;
 
     private static Cursor MapCursor(HostCursor? cursor)
     {
@@ -59,12 +67,6 @@ internal class WinFormsControl : HostControl
         };
     }
 
-    public override bool Visible
-    {
-        get => _control.Visible;
-        set => _control.Visible = value;
-    }
-
     private void ControlOnMouseLeave(object? sender, EventArgs e)
     {
         RaiseMouseLeave();
@@ -79,9 +81,6 @@ internal class WinFormsControl : HostControl
     {
         RaiseMouseWheel(MapPoint(e.Location), e.Delta);
     }
-
-    public override double Width => _control.Width;
-    public override double Height => _control.Height;
 
     private void ControlOnSizeChanged(object? sender, EventArgs e)
     {

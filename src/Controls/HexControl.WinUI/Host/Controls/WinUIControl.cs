@@ -1,5 +1,4 @@
 ﻿using System;
-using Windows.UI.Core;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;
 using HexControl.SharedControl.Framework.Host.Controls;
@@ -30,11 +29,6 @@ internal class WinUIControl : HostControl
         _control.SizeChanged += OnSizeChanged;
     }
 
-    private static SharedPoint MapPoint(PointerPoint point)
-    {
-        return new SharedPoint(point.Position.X, point.Position.Y);
-    }
-
     public override double Width => _control.ActualWidth;
     public override double Height => _control.ActualHeight;
 
@@ -55,7 +49,13 @@ internal class WinUIControl : HostControl
         }
     }
 
-    public override bool Visible { get => _control.Visibility is Visibility.Visible; set => _control.Visibility = value ? Visibility.Visible : Visibility.Collapsed; }
+    public override bool Visible
+    {
+        get => _control.Visibility is Visibility.Visible;
+        set => _control.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static SharedPoint MapPoint(PointerPoint point) => new SharedPoint(point.Position.X, point.Position.Y);
 
 
     private static InputSystemCursorShape MapCursor(HostCursor cursor)
@@ -72,6 +72,7 @@ internal class WinUIControl : HostControl
             _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
         };
     }
+
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _control.CapturePointer(e.Pointer);

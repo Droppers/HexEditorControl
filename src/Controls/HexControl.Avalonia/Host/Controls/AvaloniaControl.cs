@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -35,16 +34,6 @@ internal class AvaloniaControl : HostControl
         _control.KeyUp += ControlOnKeyUp;
     }
 
-    private void OnPointerLeave(object? sender, PointerEventArgs e)
-    {
-        RaiseMouseLeave();
-    }
-
-    private void OnPointerEnter(object? sender, PointerEventArgs e)
-    {
-        RaiseMouseEnter();
-    }
-
     public override double Width => _control.Bounds.Width;
     public override double Height => _control.Bounds.Height;
 
@@ -65,8 +54,22 @@ internal class AvaloniaControl : HostControl
         }
     }
 
-    public override bool Visible { get => _control.IsVisible; set => _control.IsVisible = value; }
-    
+    public override bool Visible
+    {
+        get => _control.IsVisible;
+        set => _control.IsVisible = value;
+    }
+
+    private void OnPointerLeave(object? sender, PointerEventArgs e)
+    {
+        RaiseMouseLeave();
+    }
+
+    private void OnPointerEnter(object? sender, PointerEventArgs e)
+    {
+        RaiseMouseEnter();
+    }
+
     private static StandardCursorType MapCursor(HostCursor cursor)
     {
         return cursor switch
@@ -81,7 +84,7 @@ internal class AvaloniaControl : HostControl
             _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
         };
     }
-    
+
     private void ControlOnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         var position = e.GetCurrentPoint(_control).Position;

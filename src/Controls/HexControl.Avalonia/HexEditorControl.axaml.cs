@@ -23,12 +23,12 @@ public class HexEditorControl : UserControl
 
     private readonly SharedHexControl _control;
     private readonly HexControlPropertyMapper _mapper;
-    private AvaloniaControl? _host;
 
     private TextBox? _fakeTextBox;
-    private ScrollBar? _horizontalScrollBar;
-    private ScrollBar? _verticalScrollBar;
     private Grid? _grid;
+    private ScrollBar? _horizontalScrollBar;
+    private AvaloniaControl? _host;
+    private ScrollBar? _verticalScrollBar;
 
     static HexEditorControl()
     {
@@ -48,6 +48,24 @@ public class HexEditorControl : UserControl
         InitializeComponent();
     }
 
+    public Document? Document
+    {
+        get => _mapper.GetValueNullable<Document?>(GetValue(DocumentProperty));
+        set => SetValue(DocumentProperty, value);
+    }
+
+    public IBrush OddForeground
+    {
+        get => _mapper.GetValue<IBrush>(GetValue(OddForegroundProperty));
+        set => SetValue(OddForegroundProperty, value);
+    }
+
+    public new IBrush Foreground
+    {
+        get => _mapper.GetValue<IBrush>(GetValue(ForegroundProperty));
+        set => SetValue(ForegroundProperty, value);
+    }
+
     private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
     {
         if (_grid is null)
@@ -65,24 +83,6 @@ public class HexEditorControl : UserControl
             var column = _grid.ColumnDefinitions[1];
             column.Width = e.Visible ? GridLength.Auto : new GridLength(0);
         }
-    }
-
-    public Document? Document
-    {
-        get => _mapper.GetValueNullable<Document?>(GetValue(DocumentProperty));
-        set => SetValue(DocumentProperty, value);
-    }
-
-    public IBrush OddForeground
-    {
-        get => _mapper.GetValue<IBrush>(GetValue(OddForegroundProperty));
-        set => SetValue(OddForegroundProperty, value);
-    }
-
-    public new IBrush Foreground
-    {
-        get => _mapper.GetValue<IBrush>(GetValue(ForegroundProperty));
-        set => SetValue(ForegroundProperty, value);
     }
 
     private void InitializeComponent()

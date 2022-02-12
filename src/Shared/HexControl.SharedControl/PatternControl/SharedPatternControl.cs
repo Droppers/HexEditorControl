@@ -649,7 +649,6 @@ internal class SharedPatternControl : VisualElement
     }
 
 
-
     protected override void Render(IRenderContext context)
     {
         _typeface ??= context.Factory.CreateGlyphTypeface("Segoe UI");

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -12,22 +11,7 @@ namespace HexControl.Avalonia.Host;
 
 internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 {
-    private class ClearDrawingOperation : ICustomDrawOperation
-    {
-        public void Dispose()
-        {
-        }
-
-        public bool HitTest(Point p) => true;
-
-        public void Render(IDrawingContextImpl context)
-        {
-            context.Clear(Colors.Transparent);
-        }
-
-        public Rect Bounds { get; } = new Rect(0, 0, int.MaxValue, int.MaxValue);
-        public bool Equals(ICustomDrawOperation? other) => other is ClearDrawingOperation;
-    }
+    private readonly ClearDrawingOperation _clearDrawingOperation;
 
     private readonly Stack<State> _states;
 
@@ -44,8 +28,6 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
     public override bool RequiresClear => true;
 
     public DrawingContext Context { get; set; }
-
-    private readonly ClearDrawingOperation _clearDrawingOperation;
 
     protected override void Clear(IBrush? brush)
     {
@@ -170,6 +152,21 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
             }
             catch { }
         }
+    }
+
+    private class ClearDrawingOperation : ICustomDrawOperation
+    {
+        public void Dispose() { }
+
+        public bool HitTest(Point p) => true;
+
+        public void Render(IDrawingContextImpl context)
+        {
+            context.Clear(Colors.Transparent);
+        }
+
+        public Rect Bounds { get; } = new(0, 0, int.MaxValue, int.MaxValue);
+        public bool Equals(ICustomDrawOperation? other) => other is ClearDrawingOperation;
     }
 
     private struct State

@@ -33,15 +33,15 @@ internal abstract class PatternEntry
 
     public List<PatternEntry> Entries { get; set; } = new();
 
-    protected ColorRange Keyword(string text) => new ColorRange(ColorType.Keyword, text);
+    protected ColorRange Keyword(string text) => new(ColorType.Keyword, text);
 
-    protected ColorRange Integer(string text) => new ColorRange(ColorType.Integer, text);
+    protected ColorRange Integer(string text) => new(ColorType.Integer, text);
 
-    protected ColorRange Type(string text) => new ColorRange(ColorType.Builtin, text);
+    protected ColorRange Type(string text) => new(ColorType.Builtin, text);
 
-    protected ColorRange Space() => new ColorRange(ColorType.Regular, " ");
+    protected ColorRange Space() => new(ColorType.Regular, " ");
 
-    protected ColorRange Regular(string text) => new ColorRange(ColorType.Regular, text);
+    protected ColorRange Regular(string text) => new(ColorType.Regular, text);
 
     public virtual void LoadMore() { }
 

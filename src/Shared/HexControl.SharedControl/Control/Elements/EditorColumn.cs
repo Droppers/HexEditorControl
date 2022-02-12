@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
@@ -32,27 +31,27 @@ internal class EditorColumn : VisualElement
     private ColumnSide _activeColumn = ColumnSide.Left;
 
     private IDocumentMarker? _activeMarker;
+    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
     private bool _cursorTick;
-    private bool _cursorUpdated;
-    private long _previousCursorOffset;
 
     private Timer? _cursorTimer;
+    private bool _cursorUpdated;
+
+    private Document? _document;
     private int _horizontalCharacterOffset;
 
     private int _horizontalOffset;
     private IDocumentMarker? _inactiveMarker;
 
     private bool _keyboardSelectMode;
+    private CharacterSet _leftCharacterSet = null!;
     private ISharedBrush?[] _markerForegroundLookup;
 
     private SharedPoint? _mouseDownPosition;
     private bool _mouseSelectMode;
-    private long? _startSelectionOffset;
-
-    private Document? _document;
-    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
-    private CharacterSet _leftCharacterSet = null!;
+    private long _previousCursorOffset;
     private CharacterSet? _rightCharacterSet;
+    private long? _startSelectionOffset;
 
     public EditorColumn(
         SharedHexControl parent)
@@ -142,7 +141,7 @@ internal class EditorColumn : VisualElement
     }
 
     public ITextBuilder? TextBuilder { get; set; }
-    
+
     private int RowHeight => _parent.RowHeight;
     private int CharacterWidth => _parent.CharacterWidth;
 
@@ -315,7 +314,7 @@ internal class EditorColumn : VisualElement
 
         // Different foreground for modified bytes
         UpdateModificationBrushOverrides();
-        
+
         // Draw the markers that should be drawn behind the text
         UpdateSelectionMarkers();
         DrawMarkers(context, marker => marker.BehindText);
@@ -341,7 +340,7 @@ internal class EditorColumn : VisualElement
 
         // Draw the markers that should be drawn in front of the text
         DrawMarkers(context, marker => !marker.BehindText);
-        
+
         // Draw the cursors
         DrawCursors(context, Document);
     }
@@ -554,11 +553,9 @@ internal class EditorColumn : VisualElement
             }
         }
     }
-    
-    private bool IsMarkerVisible(long offset, long length)
-    {
-        return offset + length > Offset && offset < Offset + Bytes.Length;
-    }
+
+    private bool IsMarkerVisible(long offset, long length) =>
+        offset + length > Offset && offset < Offset + Bytes.Length;
 
     private bool IsMarkerVisible(IDocumentMarker marker) => IsMarkerVisible(marker.Offset, marker.Length);
 
@@ -612,7 +609,7 @@ internal class EditorColumn : VisualElement
         {
             return;
         }
-        
+
         if (_horizontalCharacterOffset < Configuration.BytesPerRow)
         {
             var leftOffset = GetVisibleColumnWidth(ColumnSide.Left) + SPACING_BETWEEN_COLUMNS * CharacterWidth;
@@ -697,7 +694,8 @@ internal class EditorColumn : VisualElement
             }
         }
 
-        var drawCursor = _previousCursorOffset != cursor.Offset && (cursor.Column == column || document.Selection is null) || 
+        var drawCursor = _previousCursorOffset != cursor.Offset &&
+                         (cursor.Column == column || document.Selection is null) ||
                          (cursor.Column != column || _cursorTick) &&
                          (cursor.Column == column || document.Selection is null);
 
@@ -706,7 +704,7 @@ internal class EditorColumn : VisualElement
         {
             return;
         }
-        
+
         if (column == document.Cursor.Column)
         {
             var topOffset = 0;

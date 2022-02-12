@@ -6,7 +6,6 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using HexControl.Avalonia.Host;
 using HexControl.Avalonia.Host.Controls;
-using HexControl.Core;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.SharedControl.Control;
 using HexControl.SharedControl.PatternControl;
@@ -15,14 +14,14 @@ namespace HexControl.Avalonia;
 
 public class PatternControl : UserControl
 {
-    private readonly SharedPatternControl _control;
-    private readonly PatternControlPropertyMapper _mapper;
-
     public static readonly StyledProperty<List<PatternData>?> PatternsProperty =
         AvaloniaProperty.Register<PatternControl, List<PatternData>?>(nameof(Patterns));
 
+    private readonly SharedPatternControl _control;
+    private readonly PatternControlPropertyMapper _mapper;
+
     private AvaloniaControl? _host;
-    
+
     static PatternControl()
     {
         PatternsProperty.Changed.AddClassHandler<PatternControl>(OnPropertyChanged);
@@ -56,7 +55,7 @@ public class PatternControl : UserControl
 
         _host = new AvaloniaControl(this)
         {
-            {SharedPatternControl.VerticalScrollBarName, new AvaloniaScrollBar(verticalScrollBar)},
+            {SharedPatternControl.VerticalScrollBarName, new AvaloniaScrollBar(verticalScrollBar)}
         };
         _control.AttachHost(_host);
     }

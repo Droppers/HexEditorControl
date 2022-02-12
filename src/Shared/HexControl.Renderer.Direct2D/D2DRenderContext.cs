@@ -37,9 +37,10 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _pushedTypes = new Stack<PushedType>();
 
         _strokeStyles = new ObjectCache<PenStyle, StrokeStyle>(Convert);
-        _textFormats = new ObjectCache<(string fontFamily, float fontSize), TextFormat>(item => new TextFormat(_dwFactory,
-            item.fontFamily, FontWeight.Regular, FontStyle.Normal, FontStretch.Normal,
-            item.fontSize));
+        _textFormats = new ObjectCache<(string fontFamily, float fontSize), TextFormat>(item =>
+            new TextFormat(_dwFactory,
+                item.fontFamily, FontWeight.Regular, FontStyle.Normal, FontStretch.Normal,
+                item.fontSize));
     }
 
     public float Dpi { get; set; } = 1.0f;

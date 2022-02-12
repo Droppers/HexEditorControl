@@ -177,7 +177,6 @@ internal abstract class VisualElement : ObservableObject
     }
 
 
-
     public void DetachHost(IHostControl detachHost)
     {
         detachHost.MouseDown -= HostOnMouseDown;

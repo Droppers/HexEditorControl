@@ -22,6 +22,7 @@ internal delegate void RenderEvent(Factory factory, RenderTarget renderTarget, b
 internal class D2DControl : Image, IRenderStateProvider
 {
     private readonly FrameworkElement _parent;
+    private readonly Timer _resizeTimer;
 
     private bool _canRender;
 
@@ -31,7 +32,6 @@ internal class D2DControl : Image, IRenderStateProvider
     private Device? _device;
     private float _dpi = 1;
     private Texture2D? _renderTarget;
-    private readonly Timer _resizeTimer;
 
     public D2DControl(FrameworkElement parent)
     {
@@ -145,7 +145,8 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _device);
     }
 
-    public static void CopyToTexture(DeviceContext1 context, Texture2D source, Texture2D destination, int subResource = 0)
+    public static void CopyToTexture(DeviceContext1 context, Texture2D source, Texture2D destination,
+        int subResource = 0)
     {
         if (source.Description.SampleDescription.Count > 1 || source.Description.SampleDescription.Quality > 0)
         {
@@ -171,7 +172,7 @@ internal class D2DControl : Image, IRenderStateProvider
 
         var width = (int)(_parent.ActualWidth * _dpi);
         var height = (int)(_parent.ActualHeight * _dpi);
-        
+
         // Not clearing state and flushing will result in a memory leak
         _device.ImmediateContext.ClearState();
         _device.ImmediateContext.Flush();

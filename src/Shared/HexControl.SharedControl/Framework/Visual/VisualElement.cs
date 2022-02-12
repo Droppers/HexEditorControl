@@ -167,7 +167,10 @@ internal abstract class VisualElement : ObservableObject
     {
         if (newSurface)
         {
+            // Will flicker if we don't immediately render after a new surface is available
             AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
+            InvokeRender(context);
+            return;
         }
 
         await queue.Render(context);

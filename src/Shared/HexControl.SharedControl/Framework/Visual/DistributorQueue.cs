@@ -53,7 +53,7 @@ internal class DistributorQueue
 
             _latestContext = context;
 
-            while (false && _sw.ElapsedMilliseconds - _previousTicks < 12)
+            while (_sw.ElapsedMilliseconds - _previousTicks < 12)
             {
                 await Task.Delay(1);
             }

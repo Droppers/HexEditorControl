@@ -10,6 +10,7 @@ using SharpDX.Direct3D11;
 using SharpDX.DXGI;
 using AlphaMode = SharpDX.Direct2D1.AlphaMode;
 using Device = SharpDX.Direct3D11.Device;
+using DeviceContext1 = SharpDX.Direct3D11.DeviceContext1;
 using Factory = SharpDX.Direct2D1.Factory;
 using Image = System.Windows.Controls.Image;
 using PixelFormat = SharpDX.Direct2D1.PixelFormat;
@@ -144,6 +145,20 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _device);
     }
 
+    public static void CopyToTexture(DeviceContext1 context, Texture2D source, Texture2D destination, int subResource = 0)
+    {
+        if (source.Description.SampleDescription.Count > 1 || source.Description.SampleDescription.Quality > 0)
+        {
+            context.ResolveSubresource(source, subResource, destination, 0, destination.Description.Format);
+        }
+        else
+        {
+            // Not multisampled, so just copy to the destination
+            context.CopySubresourceRegion(source, subResource, null, destination, 0);
+            //context.CopyResource(source, destination);
+        }
+    }
+
     public void CreateAndBindTargets()
     {
         CanRender = false;
@@ -154,6 +169,9 @@ internal class D2DControl : Image, IRenderStateProvider
 
         _d3dSurface.SetRenderTarget(null);
 
+        var width = (int)(_parent.ActualWidth * _dpi);
+        var height = (int)(_parent.ActualHeight * _dpi);
+        
         // Not clearing state and flushing will result in a memory leak
         _device.ImmediateContext.ClearState();
         _device.ImmediateContext.Flush();
@@ -161,9 +179,6 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _d2dFactory);
         Disposer.SafeDispose(ref _renderTarget);
         Disposer.SafeDispose(ref _d2dRenderTarget);
-
-        var width = (int)(_parent.ActualWidth * _dpi);
-        var height = (int)(_parent.ActualHeight * _dpi);
 
         var renderDesc = new Texture2DDescription
         {
@@ -178,7 +193,6 @@ internal class D2DControl : Image, IRenderStateProvider
             CpuAccessFlags = CpuAccessFlags.None,
             ArraySize = 1
         };
-
         _renderTarget = new Texture2D(_device, renderDesc);
 
         using var surface = _renderTarget.QueryInterface<Surface>();

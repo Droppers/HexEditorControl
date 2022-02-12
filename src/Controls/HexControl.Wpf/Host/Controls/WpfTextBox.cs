@@ -14,7 +14,7 @@ internal class WpfTextBox : WpfControl, IHostTextBox
         _textBox.TextChanged += TextBoxOnTextChanged;
     }
 
-    public event EventHandler<ProxyTextChangedEventArgs>? TextChanged;
+    public event EventHandler<HostTextChangedEventArgs>? TextChanged;
 
     public string Text
     {
@@ -29,7 +29,7 @@ internal class WpfTextBox : WpfControl, IHostTextBox
 
     private void TextBoxOnTextChanged(object sender, TextChangedEventArgs e)
     {
-        TextChanged?.Invoke(this, new ProxyTextChangedEventArgs(_textBox.Text));
+        TextChanged?.Invoke(this, new HostTextChangedEventArgs(_textBox.Text));
     }
 
     public override void Dispose()

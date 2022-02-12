@@ -16,6 +16,34 @@ internal class SharedPatternControl : VisualElement
 {
     public const string VerticalScrollBarName = "VerticalScrollBar";
 
+    private const int ROW_HEIGHT = 26;
+
+    private readonly ColumnDefinition[] _columns =
+    {
+        new("Name", 0.4f),
+        new("Offset", 0.125f),
+        new("Size", 0.125f),
+        new("Type", 0.175f),
+        new("Value", 0.175f)
+    };
+
+    private int _calculatedHeight;
+    private bool _dividerMouseOver;
+
+    private int _draggingColumnIndex = -1;
+
+    private List<PatternEntry> _entries = new();
+
+    private int _fontSize = 12;
+
+    private SharedPoint? _mouseDown;
+    private SharedPoint? _mousePosition;
+
+    private List<PatternData>? _patterns;
+    private int _scrollOffset;
+
+    private IGlyphTypeface? _typeface;
+
     public SharedPatternControl() : base(true)
     {
         SizeChanged += OnSizeChanged;
@@ -27,34 +55,11 @@ internal class SharedPatternControl : VisualElement
         MouseLeave += OnMouseLeave;
     }
 
-    private const int RowHeight = 26;
-
-    private readonly ColumnDefinition[] _columns =
+    public int FontSize
     {
-        new("Name", 0.4f),
-        new("Offset", 0.125f),
-        new("Size", 0.125f),
-        new("Type", 0.175f),
-        new("Value", 0.175f)
-    };
-
-    private int _draggingColumnIndex = -1;
-
-    private List<PatternEntry> _entries = new();
-
-    private SharedPoint? _mouseDown;
-    private SharedPoint? _mousePosition;
-    private bool _dividerMouseOver;
-
-    private List<PatternData>? _patterns;
-    private int _scrollOffset;
-
-    private int _calculatedHeight;
-
-    private IGlyphTypeface? _typeface;
-
-    private int _fontSize = 12;
-    public int FontSize { get => Get(ref _fontSize); set => Set(ref _fontSize, value); }
+        get => Get(ref _fontSize);
+        set => Set(ref _fontSize, value);
+    }
 
     public override double Width => Host?.Width ?? 0;
     public override double Height => Host?.Height ?? 0;
@@ -65,6 +70,7 @@ internal class SharedPatternControl : VisualElement
         set
         {
             _entries.Clear();
+            _patterns = value;
 
             if (value is null)
             {
@@ -78,13 +84,14 @@ internal class SharedPatternControl : VisualElement
 
     private static float AntiAliasOffset => 0.5F;
 
+    private IHostScrollBar? VerticalScrollBar => Host?.GetChild<IHostScrollBar>(VerticalScrollBarName);
+
     protected override void OnHostAttached(IHostControl attachHost)
     {
         InitializeScrollBar();
         RecalculateHeight();
+        Invalidate();
     }
-
-    private IHostScrollBar? VerticalScrollBar => Host?.GetChild<IHostScrollBar>(VerticalScrollBarName);
 
     private void InitializeScrollBar()
     {
@@ -100,14 +107,14 @@ internal class SharedPatternControl : VisualElement
     private void ScrollBarOnScroll(object? sender, HostScrollEventArgs e)
     {
         _scrollOffset = -(int)e.NewValue;
-        Host?.Invalidate();
+        Invalidate();
     }
 
     private void OnMouseLeave(object? sender, HandledEventArgs e)
     {
         Cursor = null;
         _mousePosition = null;
-        Host?.Invalidate();
+        Invalidate();
     }
 
     private void OnMouseUp(object? sender, HostMouseButtonEventArgs e)
@@ -138,13 +145,13 @@ internal class SharedPatternControl : VisualElement
             var lazyEntry = showMore.Entry;
             lazyEntry.LoadMore();
             RecalculateHeight();
-            Host?.Invalidate();
+            Invalidate();
         }
         else if (entry.CanExpand)
         {
             entry.Expanded = !entry.Expanded;
             RecalculateHeight();
-            Host?.Invalidate();
+            Invalidate();
         }
     }
 
@@ -207,37 +214,36 @@ internal class SharedPatternControl : VisualElement
 
             if (!_dividerMouseOver)
             {
-
                 Cursor = null;
             }
         }
 
-        Host?.Invalidate();
+        Invalidate();
     }
 
     private bool IsMouseOver(int row)
     {
-        var lower = _scrollOffset + row * RowHeight + RowHeight; // add header height
-        var upper = _scrollOffset + row * RowHeight + RowHeight * 2;
+        var lower = _scrollOffset + row * ROW_HEIGHT + ROW_HEIGHT; // add header height
+        var upper = _scrollOffset + row * ROW_HEIGHT + ROW_HEIGHT * 2;
         return !_dividerMouseOver && _mousePosition is var (_, y) && y >= lower && y < upper;
     }
 
     private bool BeginRow(IRenderContext context, RowContext rowContext)
     {
-        if (_scrollOffset + rowContext.Row * RowHeight + RowHeight < 0 ||
-            _scrollOffset + rowContext.Row * RowHeight > Height)
+        if (_scrollOffset + rowContext.Row * ROW_HEIGHT + ROW_HEIGHT < 0 ||
+            _scrollOffset + rowContext.Row * ROW_HEIGHT > Height)
         {
             rowContext.IsVisible = false;
             return false;
         }
 
-        context.PushTranslate(0, _scrollOffset + rowContext.Row * RowHeight);
+        context.PushTranslate(0, _scrollOffset + rowContext.Row * ROW_HEIGHT);
 
         var mouseOver = IsMouseOver(rowContext.Row);
         if (rowContext.OddRow || mouseOver)
         {
             context.DrawRectangle(new ColorBrush(mouseOver ? Color.DodgerBlue : Color.FromArgb(30, 34, 43)), null,
-                new SharedRectangle(0, 0, Width, RowHeight));
+                new SharedRectangle(0, 0, Width, ROW_HEIGHT));
         }
 
         rowContext.IsVisible = true;
@@ -288,7 +294,7 @@ internal class SharedPatternControl : VisualElement
 
     private void DrawTextMiddle(IRenderContext context, ISharedBrush brush, SharedTextLayout layout)
     {
-        layout.Position = new SharedPoint(layout.Position.X, (int)(RowHeight / 2f - layout.Typeface.GetHeight(12)));
+        layout.Position = new SharedPoint(layout.Position.X, (int)(ROW_HEIGHT / 2f - layout.Typeface.GetHeight(12)));
         context.DrawTextLayout(brush, layout);
     }
 
@@ -297,7 +303,7 @@ internal class SharedPatternControl : VisualElement
         var column = _columns[rowContext.Column];
 
         context.PushTranslate((int)rowContext.ColumnLeft + 5, 0);
-        context.PushClip(0, 0, GetColumnWidth(column) - 10, RowHeight);
+        context.PushClip(0, 0, GetColumnWidth(column) - 10, ROW_HEIGHT);
 
         return column;
     }
@@ -318,7 +324,7 @@ internal class SharedPatternControl : VisualElement
             return;
         }
 
-        _scrollOffset += RowHeight * 2 * (e.Delta > 0 ? 1 : -1);
+        _scrollOffset += ROW_HEIGHT * 2 * (e.Delta > 0 ? 1 : -1);
         _scrollOffset = Math.Min(0, Math.Max((int)Height - _calculatedHeight, _scrollOffset));
 
         if (VerticalScrollBar is { } scrollBar)
@@ -326,13 +332,11 @@ internal class SharedPatternControl : VisualElement
             scrollBar.Value = Math.Abs(_scrollOffset);
         }
 
-        Host?.Invalidate();
+        Invalidate();
     }
 
-    public List<PatternEntry> CreateEntries(IReadOnlyList<PatternData> patterns, int startDepth = -1)
-    {
-        return CreateEntries(patterns, ref startDepth);
-    }
+    public List<PatternEntry> CreateEntries(IReadOnlyList<PatternData> patterns, int startDepth = -1) =>
+        CreateEntries(patterns, ref startDepth);
 
     private List<PatternEntry> CreateEntries(IReadOnlyList<PatternData> patterns, ref int currentDepth)
     {
@@ -394,6 +398,7 @@ internal class SharedPatternControl : VisualElement
             {
                 return entry;
             }
+
             context.Row++;
 
             var matchedEntry = entry.Expanded ? FindMouseOverEntry(entry.Entries, context) : null;
@@ -417,7 +422,7 @@ internal class SharedPatternControl : VisualElement
             return;
         }
 
-        if (_calculatedHeight < Height)
+        if (_calculatedHeight < Height - ROW_HEIGHT)
         {
             scrollBar.Visible = false;
         }
@@ -430,19 +435,18 @@ internal class SharedPatternControl : VisualElement
         }
     }
 
-    private void RecalculateHeight(IReadOnlyList<PatternEntry>? entries)
-    {   
+    private void RecalculateHeight(IReadOnlyList<PatternEntry> entries)
+    {
         for (var i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
-            _calculatedHeight += RowHeight;
+            _calculatedHeight += ROW_HEIGHT;
 
             if (entry.Expanded)
             {
                 RecalculateHeight(entry.Entries);
             }
         }
-
     }
 
     private void RenderHeader(IRenderContext context)
@@ -455,7 +459,7 @@ internal class SharedPatternControl : VisualElement
         {
             var column = _columns[i];
 
-            context.PushClip((int)left, 0, (int)GetColumnWidth(column) - 5, RowHeight);
+            context.PushClip((int)left, 0, (int)GetColumnWidth(column) - 5, ROW_HEIGHT);
 
             DrawTextMiddle(context, red, new SharedPoint((int)left + 5, 0), column.Name);
 
@@ -465,14 +469,8 @@ internal class SharedPatternControl : VisualElement
         }
 
 
-        context.DrawLine(pen, new SharedPoint(0, RowHeight - AntiAliasOffset),
-            new SharedPoint(Width, RowHeight - AntiAliasOffset));
-    }
-
-    private enum ArrowDirection
-    {
-        Right,
-        Down
+        context.DrawLine(pen, new SharedPoint(0, ROW_HEIGHT - AntiAliasOffset),
+            new SharedPoint(Width, ROW_HEIGHT - AntiAliasOffset));
     }
 
     private void DrawArrow(IRenderContext context, ISharedBrush brush, SharedRectangle rectangle,
@@ -506,7 +504,6 @@ internal class SharedPatternControl : VisualElement
     private void RenderEntry(IRenderContext context, RowContext rowContext, PatternEntry entry)
     {
         var red = new ColorBrush(Color.White);
-        var pen = new SharedPen(red, 1);
 
         var visible = BeginRow(context, rowContext);
         if (!visible)
@@ -522,7 +519,7 @@ internal class SharedPatternControl : VisualElement
         var leftOffset = entry.Depth * 10;
         if (entry.CanExpand)
         {
-            DrawArrow(context, red, new SharedRectangle(leftOffset, RowHeight / 2 - 8 / 2, 8, 8),
+            DrawArrow(context, red, new SharedRectangle(leftOffset, ROW_HEIGHT / 2 - 8 / 2, 8, 8),
                 entry.Expanded ? ArrowDirection.Down : ArrowDirection.Right);
         }
 
@@ -533,7 +530,7 @@ internal class SharedPatternControl : VisualElement
         {
             var color = entry.Pattern.Color;
             context.DrawRectangle(new ColorBrush(Color.FromArgb(color.R, color.G, color.B)), null,
-                new SharedRectangle(columnWidth - 20, RowHeight / 2 - 10 / 2, 10, 10));
+                new SharedRectangle(columnWidth - 20, ROW_HEIGHT / 2 - 10 / 2, 10, 10));
         }
 
         EndColumn(context, rowContext);
@@ -618,8 +615,8 @@ internal class SharedPatternControl : VisualElement
     {
         var rowContext = new RowContext();
 
-        context.PushTranslate(0, RowHeight);
-        context.PushClip(0, 0, Width, Height - RowHeight);
+        context.PushTranslate(0, ROW_HEIGHT);
+        context.PushClip(0, 0, Width, Height - ROW_HEIGHT);
 
         foreach (var entry in _entries)
         {
@@ -651,16 +648,31 @@ internal class SharedPatternControl : VisualElement
         }
     }
 
+
     protected override void Render(IRenderContext context)
     {
         _typeface ??= context.Factory.CreateGlyphTypeface("Segoe UI");
-        
+
         context.DrawRectangle(new ColorBrush(Color.FromArgb(24, 27, 32)), null,
             new SharedRectangle(0, 0, Width, Height));
+
+        AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
 
         RenderHeader(context);
         RenderEntries(context);
         RenderDividers(context);
+    }
+
+    private void OnSizeChanged(object? sender, HostSizeChangedEventArgs e)
+    {
+        RecalculateHeight();
+        Invalidate();
+    }
+
+    private enum ArrowDirection
+    {
+        Right,
+        Down
     }
 
     private record struct ColumnDefinition(string Name, float Width)
@@ -685,11 +697,5 @@ internal class SharedPatternControl : VisualElement
             OddRow = !OddRow;
             Row++;
         }
-    }
-
-    private void OnSizeChanged(object? sender, HostSizeChangedEventArgs e)
-    {
-        RecalculateHeight();
-        Host?.Invalidate();
     }
 }

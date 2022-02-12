@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
 using SharpDX.Direct2D1;
@@ -11,23 +12,18 @@ namespace HexControl.Renderer.Direct2D;
 
 internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 {
-    private enum PushedType
-    {
-        Transform,
-        Clip
-    }
-
     private readonly RenderTarget _context;
-    private readonly D2DFactory _d2dFactory;
 
     private readonly float[] _dashes = {2, 2};
     private readonly float[] _dots = {1.5f, 1.5f};
-    private readonly DWFactory _dwFactory;
-
-    private readonly Stack<RawMatrix3x2> _transforms;
     private readonly Stack<PushedType> _pushedTypes;
 
-    private TextFormat? _format;
+    private readonly ObjectCache<PenStyle, StrokeStyle> _strokeStyles;
+    private readonly ObjectCache<(string fontFamily, float fontSize), TextFormat> _textFormats;
+
+    private readonly Stack<RawMatrix3x2> _transforms;
+    private D2DFactory _d2dFactory;
+    private DWFactory _dwFactory;
 
     public D2DRenderContext(D2DRenderFactory factory, D2DFactory d2dFactory, RenderTarget context) :
         base(factory)
@@ -39,6 +35,12 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
         _transforms = new Stack<RawMatrix3x2>();
         _pushedTypes = new Stack<PushedType>();
+
+        _strokeStyles = new ObjectCache<PenStyle, StrokeStyle>(Convert);
+        _textFormats = new ObjectCache<(string fontFamily, float fontSize), TextFormat>(item =>
+            new TextFormat(_dwFactory,
+                item.fontFamily, FontWeight.Regular, FontStyle.Normal, FontStretch.Normal,
+                item.fontSize));
     }
 
     public float Dpi { get; set; } = 1.0f;
@@ -56,7 +58,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _context.BeginDraw();
     }
 
-    public override void End()
+    public override void End(SharedRectangle? dirtyRect)
     {
         if (!CanRender)
         {
@@ -86,7 +88,8 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     public override void PushClip(double x, double y, double width, double height)
     {
-        _context.PushAxisAlignedClip(new RawRectangleF((float)x, (float)y, (float)(x + width), (float)(y + height)), AntialiasMode.Aliased);
+        _context.PushAxisAlignedClip(new RawRectangleF((float)x, (float)y, (float)(x + width), (float)(y + height)),
+            AntialiasMode.Aliased);
         _pushedTypes.Push(PushedType.Clip);
     }
 
@@ -113,7 +116,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     {
         if (brush is not null)
         {
-            _context.Clear(new RawColor4(0, 0, 0, 0));
+            _context.Clear(new RawColor4(1, 1, 1, 0));
         }
     }
 
@@ -127,7 +130,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
         if (pen is not null)
         {
-            var strokeStyle = Convert(pen.Style);
+            var strokeStyle = _strokeStyles[pen.Style];
             _context.DrawRectangle(rect, pen.Brush, Convert(pen.Thickness), strokeStyle);
         }
     }
@@ -231,20 +234,19 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     protected override void DrawTextLayout(SolidColorBrush? brush, SharedTextLayout sharedLayout)
     {
         var fontFamily = ((D2DGlyphTypeface)sharedLayout.Typeface).FontFamily;
-        _format ??= new TextFormat(_dwFactory, fontFamily, FontWeight.Normal, FontStyle.Normal,
-            FontStretch.Normal, Convert(sharedLayout.Size));
+        var format = _textFormats[(fontFamily, Convert(sharedLayout.Size))];
 
         // Simple mode
         if (sharedLayout.BrushRanges.Count == 0)
         {
-            _context.DrawText(sharedLayout.Text, _format,
+            _context.DrawText(sharedLayout.Text, format,
                 new RawRectangleF((int)(sharedLayout.Position.X * Dpi), (int)(sharedLayout.Position.Y * Dpi),
                     int.MaxValue,
                     int.MaxValue), brush, DrawTextOptions.None, MeasuringMode.GdiClassic);
             return;
         }
 
-        using var layout = new TextLayout(_dwFactory, sharedLayout.Text, _format, int.MaxValue, int.MaxValue, 1.0f,
+        using var layout = new TextLayout(_dwFactory, sharedLayout.Text, format, int.MaxValue, int.MaxValue, 1.0f,
             true);
         for (var i = 0; i < sharedLayout.BrushRanges.Count; i++)
         {
@@ -270,7 +272,17 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
     {
         base.Dispose();
 
-        _d2dFactory.Dispose();
+        _strokeStyles.Dispose();
+        _textFormats.Dispose();
+
+        _d2dFactory = null!;
         _dwFactory.Dispose();
+        _dwFactory = null!;
+    }
+
+    private enum PushedType
+    {
+        Transform,
+        Clip
     }
 }

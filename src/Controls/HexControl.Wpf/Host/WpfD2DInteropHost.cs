@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Windows;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.Host.Controls;
@@ -20,6 +19,8 @@ internal class WpfD2DInteropHost : WpfControl
     private readonly FrameworkElement _container;
     private readonly WpfImage _element;
     private readonly D3D11Image _image;
+
+    private readonly bool antiAliased;
     private Factory? _d2dFactory;
 
     private float _dpi = 1.0f;
@@ -29,7 +30,8 @@ internal class WpfD2DInteropHost : WpfControl
 
     private RenderTarget? _renderTarget;
 
-    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image, bool antiAliased) : base(element)
+    public WpfD2DInteropHost(FrameworkElement container, WpfImage element, D3D11Image image, bool antiAliased) :
+        base(element)
     {
         this.antiAliased = antiAliased;
         _container = container;
@@ -39,8 +41,6 @@ internal class WpfD2DInteropHost : WpfControl
         container.SizeChanged += OnSizeChanged;
         _image.OnRender += OnRender;
     }
-
-    private readonly bool antiAliased;
 
     public float Dpi
     {
@@ -85,22 +85,26 @@ internal class WpfD2DInteropHost : WpfControl
             };
 
             _d2dFactory = new Factory();
-            _renderTarget = new RenderTarget(_d2dFactory, surface, properties);
-            _renderTarget.AntialiasMode =  antiAliased ? AntialiasMode.PerPrimitive : AntialiasMode.Aliased;
-            _renderTarget.TextAntialiasMode = TextAntialiasMode.Cleartype;
+            _renderTarget = new RenderTarget(_d2dFactory, surface, properties)
+            {
+                AntialiasMode = antiAliased ? AntialiasMode.PerPrimitive : AntialiasMode.Aliased,
+                TextAntialiasMode = TextAntialiasMode.Cleartype
+            };
 
             _factory = new WpfD2DFactory(_renderTarget);
-            _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget);
-            _renderContext.CanRender = true;
-            _renderContext.Dpi = _dpi;
+            _renderContext = new D2DRenderContext(_factory, _d2dFactory, _renderTarget)
+            {
+                CanRender = true,
+                Dpi = _dpi
+            };
         }
 
         if (_renderContext is not null)
         {
-            RaiseRender(_renderContext);
+            RaiseRender(_renderContext, false);
         }
     }
-    
+
     public void Resize()
     {
         _image.SetPixelSize((int)(_container.ActualWidth * Dpi), (int)(_container.ActualHeight * Dpi));

@@ -1,19 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace HexControl.SharedControl.Framework.Host;
 
-namespace HexControl.SharedControl.Framework.Host
+internal enum HostCursor
 {
-    internal enum HostCursor
-    {
-        Arrow,
-        Hand,
-        Text,
-        SizeWe,
-        SizeNs,
-        SizeNesw,
-        SizeNwse
-    }
+    Arrow,
+    Hand,
+    Text,
+    SizeWe,
+    SizeNs,
+    SizeNesw,
+    SizeNwse
 }

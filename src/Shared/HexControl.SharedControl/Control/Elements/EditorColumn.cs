@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
@@ -24,6 +23,7 @@ internal class EditorColumn : VisualElement
     private readonly ObjectCache<Color, ISharedBrush> _colorToBrushCache;
 
     private readonly SharedHexControl _parent;
+    private readonly Dictionary<IDocumentMarker, MarkerRange> _previousMarkers;
     private readonly byte[] _readBuffer;
 
     private readonly SynchronizationContext? _syncContext;
@@ -31,19 +31,26 @@ internal class EditorColumn : VisualElement
     private ColumnSide _activeColumn = ColumnSide.Left;
 
     private IDocumentMarker? _activeMarker;
+    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
     private bool _cursorTick;
 
     private Timer? _cursorTimer;
+    private bool _cursorUpdated;
+
+    private Document? _document;
     private int _horizontalCharacterOffset;
 
     private int _horizontalOffset;
     private IDocumentMarker? _inactiveMarker;
 
     private bool _keyboardSelectMode;
+    private CharacterSet _leftCharacterSet = null!;
     private ISharedBrush?[] _markerForegroundLookup;
 
     private SharedPoint? _mouseDownPosition;
     private bool _mouseSelectMode;
+    private long _previousCursorOffset;
+    private CharacterSet? _rightCharacterSet;
     private long? _startSelectionOffset;
 
     public EditorColumn(
@@ -55,9 +62,12 @@ internal class EditorColumn : VisualElement
         _markerForegroundLookup = Array.Empty<ISharedBrush?>();
         _characterBuffer = new char[8];
         _readBuffer = new byte[8];
+        _previousMarkers = new Dictionary<IDocumentMarker, MarkerRange>(50);
 
         Bytes = Array.Empty<byte>();
         Modifications = new List<ModifiedRange>(25);
+
+        Configuration = new DocumentConfiguration();
 
         _syncContext = SynchronizationContext.Current;
     }
@@ -73,13 +83,48 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    public Document? Document { get; set; }
-    public DocumentConfiguration Configuration { get; set; } = new();
+    public Document? Document
+    {
+        get => _document;
+        set
+        {
+            _document = value;
+            OnDocumentChanged();
+        }
+    }
 
-    public int TotalWidth => GetColumnCharacterCount(ColumnSide.Left) +
-                             (Configuration.ColumnsVisible is VisibleColumns.HexText
-                                 ? GetColumnCharacterCount(ColumnSide.Right) + SPACING_BETWEEN_COLUMNS
-                                 : 0);
+    public DocumentConfiguration Configuration
+    {
+        get => _configuration;
+        set
+        {
+            if (_configuration is not null)
+            {
+                _configuration.ConfigurationChanged -= OnConfigurationChanged;
+            }
+
+            _configuration = value;
+            _configuration.ConfigurationChanged += OnConfigurationChanged;
+
+            OnConfigurationChanged();
+        }
+    }
+
+    public int TotalWidth
+    {
+        get
+        {
+            if (_configuration is null)
+            {
+                return 0;
+            }
+
+            return GetColumnCharacterCount(ColumnSide.Left) +
+                   (Configuration.ColumnsVisible is VisibleColumns.HexText
+                       ? GetColumnCharacterCount(ColumnSide.Right) + SPACING_BETWEEN_COLUMNS
+                       : 0);
+        }
+    }
 
     public long Offset { get; set; }
     public byte[] Bytes { get; set; }
@@ -96,15 +141,6 @@ internal class EditorColumn : VisualElement
     }
 
     public ITextBuilder? TextBuilder { get; set; }
-
-    private CharacterSet HexCharacterSet =>
-        Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
-            ? Configuration.LeftCharacterSet
-            : Configuration.RightCharacterSet;
-
-    private CharacterSet? TextCharacterSet => Configuration.ColumnsVisible is VisibleColumns.HexText
-        ? Configuration.RightCharacterSet
-        : null;
 
     private int RowHeight => _parent.RowHeight;
     private int CharacterWidth => _parent.CharacterWidth;
@@ -157,14 +193,15 @@ internal class EditorColumn : VisualElement
         _cursorTimer.Elapsed += (_, _) =>
         {
             _cursorTick = !_cursorTick;
+            _cursorUpdated = true;
 
             if (_syncContext is not null)
             {
-                _syncContext.Post(_ => Host?.Invalidate(), null);
+                _syncContext.Post(_ => Invalidate(), null);
             }
             else
             {
-                Host?.Invalidate();
+                Invalidate();
             }
         };
     }
@@ -196,6 +233,36 @@ internal class EditorColumn : VisualElement
         MouseMove -= OnMouseMove;
         MouseUp -= OnMouseUp;
         MouseLeave -= OnMouseLeave;
+    }
+
+    private void OnDocumentChanged()
+    {
+        UpdateCharacterSets();
+    }
+
+    private void OnConfigurationChanged()
+    {
+        UpdateCharacterSets();
+    }
+
+    private void OnConfigurationChanged(object? sender, ConfigurationChangedEventArgs e)
+    {
+        if (e.Property is nameof(DocumentConfiguration.ColumnsVisible) or nameof(DocumentConfiguration.LeftCharacterSet)
+            or nameof(DocumentConfiguration.RightCharacterSet))
+        {
+            UpdateCharacterSets();
+        }
+    }
+
+    private void UpdateCharacterSets()
+    {
+        _leftCharacterSet = Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+            ? Configuration.LeftCharacterSet
+            : Configuration.RightCharacterSet;
+
+        _rightCharacterSet = Configuration.ColumnsVisible is VisibleColumns.HexText
+            ? Configuration.RightCharacterSet
+            : null;
     }
 
     private int GetVisibleColumnWidth(ColumnSide column)
@@ -252,11 +319,12 @@ internal class EditorColumn : VisualElement
         UpdateSelectionMarkers();
         DrawMarkers(context, marker => marker.BehindText);
 
+
         if (TextBuilder is not null)
         {
             TextBuilder.Clear();
             if (Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText &&
-                HexCharacterSet.Groupable)
+                _leftCharacterSet.Groupable)
             {
                 WriteHexOffsetHeader(TextBuilder);
             }
@@ -275,6 +343,33 @@ internal class EditorColumn : VisualElement
 
         // Draw the cursors
         DrawCursors(context, Document);
+    }
+
+    private bool ShouldAddMarkerDirtyRect()
+    {
+        var count = GetMarkerCount();
+        if (count != _previousMarkers.Count)
+        {
+            return true;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            var marker = GetMarkerAt(i);
+            if (_previousMarkers.TryGetValue(marker, out var previousRange))
+            {
+                if (previousRange.Offset != marker.Offset || previousRange.Length != marker.Length)
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void UpdateSelectionMarkers()
@@ -365,7 +460,7 @@ internal class EditorColumn : VisualElement
         return Document.Markers.Count + 2;
     }
 
-    private IDocumentMarker GetMarker(int index)
+    private IDocumentMarker GetMarkerAt(int index)
     {
         var count = Document?.Markers.Count ?? 0;
         if (index < count)
@@ -443,10 +538,9 @@ internal class EditorColumn : VisualElement
 
             if (startOffset != -1 && (color is null || !color.Value.Equals(startColor)))
             {
-                var c = startColor;
                 fakeMarker.Offset = startOffset;
                 fakeMarker.Length = i - startOffset;
-                fakeMarker.Background = Color.FromArgb(c.A, c.R, c.G, c.B);
+                fakeMarker.Background = Color.FromArgb(startColor.A, startColor.R, startColor.G, startColor.B);
                 DrawLeftMarker(context, fakeMarker);
                 DrawRightMarker(context, fakeMarker);
                 startOffset = -1;
@@ -460,15 +554,29 @@ internal class EditorColumn : VisualElement
         }
     }
 
+    private bool IsMarkerVisible(long offset, long length) =>
+        offset + length > Offset && offset < Offset + Bytes.Length;
+
+    private bool IsMarkerVisible(IDocumentMarker marker) => IsMarkerVisible(marker.Offset, marker.Length);
+
     private void DrawMarkers(IRenderContext context, Func<IDocumentMarker, bool> condition)
     {
+        if (ShouldAddMarkerDirtyRect())
+        {
+            AddDirtyRect(new SharedRectangle(0, 0, TotalWidth * CharacterWidth, Height), CharacterWidth);
+        }
+
+        _previousMarkers.Clear();
+
         for (var i = 0; i < GetMarkerCount(); i++)
         {
-            var marker = GetMarker(i);
-            if (marker.Offset + marker.Length <= Offset || marker.Offset >= Offset + Bytes.Length)
+            var marker = GetMarkerAt(i);
+            if (!IsMarkerVisible(marker))
             {
                 continue;
             }
+
+            _previousMarkers[marker] = new MarkerRange(marker.Offset, marker.Length);
 
             if (!condition(marker))
             {
@@ -479,16 +587,20 @@ internal class EditorColumn : VisualElement
 
             DrawLeftMarker(context, marker);
             DrawRightMarker(context, marker);
+
+            _previousMarkers[marker] = new MarkerRange(marker.Offset, marker.Length);
         }
     }
 
     private void DrawLeftMarker(IRenderContext context, IDocumentMarker marker)
     {
-        if (_horizontalCharacterOffset < Configuration.BytesPerRow &&
-            marker.Column is ColumnSide.Left or ColumnSide.Both)
+        if (_horizontalCharacterOffset >= Configuration.BytesPerRow ||
+            marker.Column is not (ColumnSide.Left or ColumnSide.Both))
         {
-            DrawMarkerArea(context, ColumnSide.Left, marker);
+            return;
         }
+
+        DrawMarkerArea(context, ColumnSide.Left, marker);
     }
 
     private void DrawRightMarker(IRenderContext context, IDocumentMarker marker)
@@ -500,8 +612,8 @@ internal class EditorColumn : VisualElement
 
         if (_horizontalCharacterOffset < Configuration.BytesPerRow)
         {
-            context.PushTranslate(GetVisibleColumnWidth(ColumnSide.Left) + SPACING_BETWEEN_COLUMNS * CharacterWidth,
-                0);
+            var leftOffset = GetVisibleColumnWidth(ColumnSide.Left) + SPACING_BETWEEN_COLUMNS * CharacterWidth;
+            context.PushTranslate(leftOffset, 0);
         }
 
         if (Configuration.ColumnsVisible is VisibleColumns.HexText)
@@ -525,8 +637,8 @@ internal class EditorColumn : VisualElement
 
         return column switch
         {
-            ColumnSide.Left => HexCharacterSet,
-            ColumnSide.Right => TextCharacterSet!,
+            ColumnSide.Left => _leftCharacterSet!,
+            ColumnSide.Right => _rightCharacterSet!,
             ColumnSide.Both => throw new ArgumentException(
                 "Only a character set for either left or right columns can be determined.", nameof(column)),
             _ => throw new NotSupportedException("This column type is not supported.")
@@ -562,35 +674,48 @@ internal class EditorColumn : VisualElement
         {
             DrawCursor(context, document, ColumnSide.Right);
         }
+
+        _cursorUpdated = false;
+        _previousCursorOffset = document.Cursor.Offset;
     }
 
     private void DrawCursor(IRenderContext context, Document document, ColumnSide column)
     {
-        if (document.Cursor.Column == column && !_cursorTick ||
-            document.Cursor.Column != column && document.Selection is not null)
+        var cursor = document.Cursor;
+        var characterSet = GetCharacterSetForColumn(column);
+
+        if (_previousCursorOffset != cursor.Offset)
         {
-            return;
+            var previousPosition = CalculateCursorPosition(_previousCursorOffset, 0, characterSet, column);
+            if (previousPosition.X >= 0 && previousPosition.Y <= Height)
+            {
+                AddDirtyRect(new SharedRectangle(previousPosition.X, previousPosition.Y,
+                    characterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
+            }
         }
 
-        var characterSet = GetCharacterSetForColumn(column);
-        var position = CalculateCursorPosition(document, characterSet, column);
+        var drawCursor = _previousCursorOffset != cursor.Offset &&
+                         (cursor.Column == column || document.Selection is null) ||
+                         (cursor.Column != column || _cursorTick) &&
+                         (cursor.Column == column || document.Selection is null);
 
+        var position = CalculateCursorPosition(cursor.Offset, cursor.Nibble, characterSet, column);
         if (position.X < 0 || position.Y > Height)
         {
             return;
         }
-        
+
         if (column == document.Cursor.Column)
         {
             var topOffset = 0;
-            var leftOffset = characterSet.Groupable && IsEndOfGroup(document.Cursor.Offset) &&
-                             document.Selection?.End == document.Cursor.Offset
+            var leftOffset = characterSet.Groupable && IsEndOfGroup(cursor.Offset) &&
+                             document.Selection?.End == cursor.Offset
                 ? _parent.CharacterWidth
                 : 1;
 
             // Move the cursor up to the end of last row for visual reasons
-            var moveCursorUp = document.Selection?.End == document.Cursor.Offset &&
-                               document.Cursor.Offset % Configuration.BytesPerRow is 0;
+            var moveCursorUp = document.Selection?.End == cursor.Offset &&
+                               cursor.Offset % Configuration.BytesPerRow is 0;
             if (moveCursorUp)
             {
                 topOffset = _parent.RowHeight;
@@ -601,7 +726,11 @@ internal class EditorColumn : VisualElement
 
             var rect = new SharedRectangle(position.X - leftOffset, position.Y - topOffset, 2,
                 _parent.RowHeight);
-            context.DrawRectangle(_parent.CursorBackground, null, rect);
+
+            if (drawCursor)
+            {
+                context.DrawRectangle(_parent.CursorBackground, null, rect);
+            }
         }
         else
         {
@@ -610,17 +739,28 @@ internal class EditorColumn : VisualElement
             var rect = new SharedRectangle(position.X + aliasOffset, position.Y + aliasOffset,
                 _parent.CharacterWidth * characterSet.Width,
                 _parent.RowHeight - aliasOffset * 2);
-            context.DrawRectangle(null, pen, rect);
+
+            if (drawCursor)
+            {
+                context.DrawRectangle(null, pen, rect);
+            }
+        }
+
+        if (_cursorUpdated || _previousCursorOffset != cursor.Offset)
+        {
+            position = CalculateCursorPosition(cursor.Offset, 0, characterSet, column);
+            AddDirtyRect(new SharedRectangle(position.X, position.Y,
+                characterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
         }
     }
 
-    private SharedPoint CalculateCursorPosition(Document document, CharacterSet characterSet, ColumnSide column)
+    private SharedPoint CalculateCursorPosition(long offset, long nibble, CharacterSet characterSet, ColumnSide column)
     {
-        var relativeOffset = document.Cursor.Offset - Offset;
+        var relativeOffset = offset - Offset;
         var row = relativeOffset / Configuration.BytesPerRow;
 
         var x = GetLeftRelativeToColumn((int)(relativeOffset % Configuration.BytesPerRow), column) +
-                Math.Min(characterSet.Width - 1, document.Cursor.Nibble) * _parent.CharacterWidth;
+                Math.Min(characterSet.Width - 1, nibble) * _parent.CharacterWidth;
         var y = row * RowHeight + _parent.HeaderHeight;
         if (column is ColumnSide.Right && _horizontalCharacterOffset < Configuration.BytesPerRow)
         {
@@ -637,7 +777,7 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        var position = CalculateMarkerPosition(marker, column);
+        var position = CalculateMarkerPosition(marker.Offset, marker.Length, column);
 
         var brush = marker.Background is { } background ? _colorToBrushCache[background] : null;
         var pen = marker.Border is { } border ? new SharedPen(_colorToBrushCache[border]!, 1) : null;
@@ -658,10 +798,10 @@ internal class EditorColumn : VisualElement
         return column % Configuration.GroupSize == 0;
     }
 
-    private MarkerPosition CalculateMarkerPosition(IDocumentMarker marker, ColumnSide column)
+    private MarkerPosition CalculateMarkerPosition(long markerOffset, long markerLength, ColumnSide column)
     {
-        var startOffset = Math.Max(0, marker.Offset - Offset);
-        var length = Math.Min(Bytes.Length, marker.Length - (marker.Offset < Offset ? Offset - marker.Offset : 0) - 1);
+        var startOffset = Math.Max(0, markerOffset - Offset);
+        var length = Math.Min(Bytes.Length, markerLength - (markerOffset < Offset ? Offset - markerOffset : 0) - 1);
         var endOffset = startOffset + length;
         var startRow = startOffset / Configuration.BytesPerRow;
         var endRow = endOffset / Configuration.BytesPerRow;
@@ -787,13 +927,13 @@ internal class EditorColumn : VisualElement
         }
 
         var leftCharacterCount = GetColumnCharacterCount(ColumnSide.Left);
-        if (Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (_rightCharacterSet is null)
         {
-            return GetVisibleCharacterCount(HorizontalOffset, HexCharacterSet);
+            return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet);
         }
 
-        return GetVisibleCharacterCount(HorizontalOffset, HexCharacterSet) + Math.Max(0,
-            GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, TextCharacterSet!));
+        return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) + Math.Max(0,
+            GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, _rightCharacterSet));
     }
 
     private void WriteHexOffsetHeader(ITextBuilder builder)
@@ -804,9 +944,9 @@ internal class EditorColumn : VisualElement
         var invisibleGroups = (double)_horizontalCharacterOffset / groupSize;
 
         var visibleCharacters =
-            (int)((1 - (invisibleGroups - (int)invisibleGroups)) * (HexCharacterSet.Width * groupSize));
+            (int)((1 - (invisibleGroups - (int)invisibleGroups)) * (_leftCharacterSet.Width * groupSize));
         var firstPartiallyVisible = visibleCharacters > 0;
-        var incrementX = (HexCharacterSet.Width * groupSize + 1) * CharacterWidth;
+        var incrementX = (_leftCharacterSet.Width * groupSize + 1) * CharacterWidth;
         var totalX = !firstPartiallyVisible ? 0 : (visibleCharacters + 1) * CharacterWidth;
 
         var startGroup = (int)invisibleGroups;
@@ -864,8 +1004,6 @@ internal class EditorColumn : VisualElement
         var textMiddleOffset = (int)Math.Round(RowHeight / 2d - _parent.CharacterHeight / 2d);
 
         var typeface = builder.Typeface;
-        var hexCharacterSet = HexCharacterSet;
-        var textCharacterSet = TextCharacterSet;
         var bytesPerRow = Configuration.BytesPerRow;
         var maxBytesWritten = Configuration.ColumnsVisible is not VisibleColumns.HexText
             ? bytesPerRow
@@ -884,9 +1022,9 @@ internal class EditorColumn : VisualElement
             while (visualCol < horizontalSpace && ++bytesWritten + _horizontalCharacterOffset <= maxBytesWritten)
             {
                 var column = visualCol < leftWidth - HorizontalOffset ? ColumnSide.Left : ColumnSide.Right;
-                var characterSet = column is ColumnSide.Left || hexCharacterSet is null
-                    ? hexCharacterSet
-                    : textCharacterSet;
+                var characterSet = column is ColumnSide.Left
+                    ? _leftCharacterSet
+                    : _rightCharacterSet;
 
                 var columnIndex = (byteColumn + horizontalCharacterOffset) % bytesPerRow;
                 var byteIndex = row * bytesPerRow + columnIndex;
@@ -1256,7 +1394,7 @@ internal class EditorColumn : VisualElement
         _keyboardSelectMode = false;
     }
 
-    private async void TextBoxOnTextChanged(object? sender, ProxyTextChangedEventArgs e)
+    private async void TextBoxOnTextChanged(object? sender, HostTextChangedEventArgs e)
     {
         if (e.NewText.Length > 0)
         {
@@ -1372,7 +1510,7 @@ internal class EditorColumn : VisualElement
 
         offset = Math.Max(0, Math.Min(document.Length, offset));
         nibble = Math.Max(0, nibble);
-        
+
         if (document.Selection is null)
         {
             SetCursorOffset(offset, nibble, true);
@@ -1388,6 +1526,8 @@ internal class EditorColumn : VisualElement
 
         Document?.Deselect();
     }
+
+    private record struct MarkerRange(long Offset, long Length);
 
     private record struct MarkerPosition(long StartOffset, long StartRow, SharedPoint Start, long EndOffset,
         long EndRow, SharedPoint End);

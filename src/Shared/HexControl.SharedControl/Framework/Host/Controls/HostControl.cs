@@ -9,6 +9,10 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
 {
     private readonly Dictionary<string, IHostControl> _children;
 
+    // Creating a cursor can be expensive on some platforms
+    protected HostCursor? currentCursor;
+
+
     protected HostControl()
     {
         _children = new Dictionary<string, IHostControl>();
@@ -31,7 +35,7 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
     public event EventHandler<HostKeyEventArgs>? KeyDown;
     public event EventHandler<HostKeyEventArgs>? KeyUp;
 
-    public event EventHandler<IRenderContext>? Render;
+    public event HostRenderEvent? Render;
 
     public TControl? GetChild<TControl>(string name) where TControl : class, IHostControl
     {
@@ -53,7 +57,7 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
 
     public abstract bool Visible { get; set; }
     public abstract HostCursor? Cursor { get; set; }
-    
+
     public abstract void Focus();
     public abstract void Invalidate();
 
@@ -103,10 +107,9 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
         KeyUp?.Invoke(this, new HostKeyEventArgs(isRepeat, isUp, isDown, modifiers, key));
     }
 
-
-    protected void RaiseRender(IRenderContext context)
+    protected void RaiseRender(IRenderContext context, bool newSurface)
     {
-        Render?.Invoke(this, context);
+        Render?.Invoke(context, newSurface);
     }
 
 

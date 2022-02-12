@@ -10,6 +10,7 @@
     <Grid>
         <SwapChainPanel x:Name="RenderPanel" />
 
+        <TextBox x:Name="FakeTextBox" Width="0" Height="0" Opacity="0" />
         <ScrollBar
             x:Name="VerticalScrollBar"
             HorizontalAlignment="Right"

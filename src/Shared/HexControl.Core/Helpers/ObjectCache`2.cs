@@ -20,9 +20,14 @@ internal class ObjectCache<TKey, TValue> : IDisposable
     {
         lock (_lock)
         {
-            foreach (var (_, entry) in _entries)
+            foreach (var (key, entry) in _entries)
             {
-                using var _ = entry as IDisposable;
+                if (entry is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+
+                _entries.Remove(key);
             }
 
             _entries.Clear();

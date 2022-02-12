@@ -14,7 +14,7 @@ internal class DynamicArrayEntry : PatternEntry
         CanLoadMore = false;
     }
 
-    public override ColorRange[] FormattedType => new ColorRange[]
+    public override ColorRange[] FormattedType => new[]
     {
         Type(_pattern.TypeName ?? "?"),
         Regular("["),

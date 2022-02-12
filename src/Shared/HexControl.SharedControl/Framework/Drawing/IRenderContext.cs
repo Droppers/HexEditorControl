@@ -16,7 +16,7 @@ public interface IRenderContextApi : IDisposable
     void Pop();
 
     void Begin();
-    void End();
+    void End(SharedRectangle? dirtyRect);
 }
 
 internal interface IRenderContext : IRenderContextApi

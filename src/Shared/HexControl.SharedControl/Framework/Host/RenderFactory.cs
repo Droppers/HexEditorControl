@@ -13,11 +13,4 @@ internal abstract class RenderFactory
 {
     public abstract IGlyphTypeface CreateGlyphTypeface(string fontFamily);
     public abstract IGlyphTypeface CreateGlyphTypeface(EmbeddedAsset asset);
-
-    /*
-        ConvertBrush(ISharedBrush brush);
-        ConvertPen(ISharedPen pen);
-
-        CreateTypeface(string fontFamily);
-     */
 }

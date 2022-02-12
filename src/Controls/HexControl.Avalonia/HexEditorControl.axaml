@@ -5,7 +5,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="HexControl.Avalonia.HexEditorControl">
 
-    <Grid RowDefinitions="*,17" ColumnDefinitions="*,17">
+    <Grid x:Name="Container" RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
         <TextBox x:Name="FakeTextBox" Width="0" Height="0" Opacity="0" />
         <ScrollBar Grid.Row="0" Grid.Column="1" Minimum="0" Orientation="Vertical" x:Name="VerticalScrollBar" />
         <ScrollBar Grid.Row="1" Grid.Column="0" Minimum="0" Orientation="Horizontal" x:Name="HorizontalScrollBar" />

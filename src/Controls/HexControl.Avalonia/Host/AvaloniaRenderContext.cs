@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -12,22 +11,7 @@ namespace HexControl.Avalonia.Host;
 
 internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 {
-    private class ClearDrawingOperation : ICustomDrawOperation
-    {
-        public void Dispose()
-        {
-        }
-
-        public bool HitTest(Point p) => true;
-
-        public void Render(IDrawingContextImpl context)
-        {
-            context.Clear(Colors.Transparent);
-        }
-
-        public Rect Bounds { get; } = new Rect(0, 0, int.MaxValue, int.MaxValue);
-        public bool Equals(ICustomDrawOperation? other) => other is ClearDrawingOperation;
-    }
+    private readonly ClearDrawingOperation _clearDrawingOperation;
 
     private readonly Stack<State> _states;
 
@@ -44,8 +28,6 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
     public override bool RequiresClear => true;
 
     public DrawingContext Context { get; set; }
-
-    private readonly ClearDrawingOperation _clearDrawingOperation;
 
     protected override void Clear(IBrush? brush)
     {
@@ -99,6 +81,19 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         var formattedText = new FormattedText(layout.Text, typeFace, layout.Size, TextAlignment.Left,
             TextWrapping.NoWrap, Size.Infinity);
+
+        if (layout.BrushRanges.Count > 0)
+        {
+            var spans = new FormattedTextStyleSpan[layout.BrushRanges.Count];
+            for (var i = 0; i < layout.BrushRanges.Count; i++)
+            {
+                var range = layout.BrushRanges[i];
+                spans[i] = new FormattedTextStyleSpan(range.Start, range.Length, GetBrush(range.Brush));
+            }
+
+            formattedText.Spans = spans;
+        }
+
         Context.DrawText(brush, Convert(layout.Position), formattedText);
     }
 
@@ -159,13 +154,27 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         }
     }
 
+    private class ClearDrawingOperation : ICustomDrawOperation
+    {
+        public void Dispose() { }
+
+        public bool HitTest(Point p) => true;
+
+        public void Render(IDrawingContextImpl context)
+        {
+            context.Clear(Colors.Transparent);
+        }
+
+        public Rect Bounds { get; } = new(0, 0, int.MaxValue, int.MaxValue);
+        public bool Equals(ICustomDrawOperation? other) => other is ClearDrawingOperation;
+    }
+
     private struct State
     {
         public DrawingContext.PushedState PushedState { get; }
 
         public double TranslateX { get; init; }
         public double TranslateY { get; init; }
-
 
         public State(DrawingContext.PushedState state)
         {

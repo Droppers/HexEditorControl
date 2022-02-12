@@ -12,7 +12,7 @@ internal class UnsignedEntry : PatternEntry
         CanDisplayColor = true;
     }
 
-    public override ColorRange[] FormattedType => new ColorRange[]
+    public override ColorRange[] FormattedType => new[]
     {
         Type(_pattern.TypeName ?? "?")
     };

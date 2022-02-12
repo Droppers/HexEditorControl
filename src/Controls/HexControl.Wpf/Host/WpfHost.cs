@@ -25,7 +25,7 @@ internal class WpfHost : WpfControl
         using var backingContext = _backingStore.Open();
         _context ??= new WpfRenderContext(backingContext);
         _context.Context = backingContext;
-        RaiseRender(_context);
+        RaiseRender(_context, false);
         backingContext.Close();
     }
 }

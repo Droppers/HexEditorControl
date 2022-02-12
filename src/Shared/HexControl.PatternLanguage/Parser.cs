@@ -1152,7 +1152,7 @@ internal class Parser
         return Create(new ASTNodeArrayVariableDecl("",
             new ASTNodeTypeDecl("", new ASTNodeBuiltinType(Token.ValueType.Padding)), size));
     }
-    
+
     private ASTNode ParseMemberVariable(ASTNodeTypeDecl type)
     {
         if (!Peek(SeparatorComma))

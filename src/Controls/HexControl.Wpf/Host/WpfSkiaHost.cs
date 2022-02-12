@@ -20,6 +20,6 @@ internal class WpfSkiaHost : WpfControl
         _context ??= new SkiaRenderContext(context, _renderFactory);
         _context.Context = context;
 
-        RaiseRender(_context);
+        RaiseRender(_context, false);
     }
 }

@@ -23,11 +23,11 @@ public class HexEditorControl : UserControl
 
     private readonly SharedHexControl _control;
     private readonly HexControlPropertyMapper _mapper;
+
     private TextBox? _fakeTextBox;
+    private Grid? _grid;
     private ScrollBar? _horizontalScrollBar;
-
     private AvaloniaControl? _host;
-
     private ScrollBar? _verticalScrollBar;
 
     static HexEditorControl()
@@ -40,6 +40,7 @@ public class HexEditorControl : UserControl
     public HexEditorControl()
     {
         _control = new SharedHexControl();
+        _control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
 
         var factory = new AvaloniaNativeFactory();
         _mapper = new HexControlPropertyMapper(_control, factory);
@@ -65,6 +66,25 @@ public class HexEditorControl : UserControl
         set => SetValue(ForegroundProperty, value);
     }
 
+    private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
+    {
+        if (_grid is null)
+        {
+            return;
+        }
+
+        if (e.ScrollBar is SharedScrollBar.Horizontal)
+        {
+            var row = _grid.RowDefinitions[1];
+            row.Height = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
+        else
+        {
+            var column = _grid.ColumnDefinitions[1];
+            column.Width = e.Visible ? GridLength.Auto : new GridLength(0);
+        }
+    }
+
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
@@ -72,6 +92,8 @@ public class HexEditorControl : UserControl
         _verticalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.VerticalScrollBarName);
         _horizontalScrollBar = this.FindControl<ScrollBar>(SharedHexControl.HorizontalScrollBarName);
         _fakeTextBox = this.FindControl<TextBox>(SharedHexControl.FakeTextBoxName);
+
+        _grid = this.FindControl<Grid>("Container");
 
         if (_verticalScrollBar is null || _horizontalScrollBar is null || _fakeTextBox is null)
         {
@@ -90,7 +112,6 @@ public class HexEditorControl : UserControl
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-
         _host?.DoRender(context);
     }
 

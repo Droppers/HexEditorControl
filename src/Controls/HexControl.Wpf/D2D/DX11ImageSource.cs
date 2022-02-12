@@ -1,44 +1,19 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using HexControl.Core.Helpers;
+using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct3D11;
 using SharpDX.Direct3D9;
 using Resource = SharpDX.DXGI.Resource;
 
 namespace HexControl.Wpf.D2D;
 
-public static class Disposer
-{
-    public static void SafeDispose<T>(ref T? resource) where T : class
-    {
-        if (resource is IDisposable disposer)
-        {
-            try
-            {
-                disposer.Dispose();
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        resource = null;
-    }
-}
-
-internal static class NativeMethods
-{
-    [DllImport("user32.dll", SetLastError = false)]
-    public static extern IntPtr GetDesktopWindow();
-}
-
 internal class Dx11ImageSource : D3DImage, IDisposable
 {
     private static int _activeClients;
-    private Direct3DEx? _d3dContext;
-    private DeviceEx? _d3dDevice;
+    private static Direct3DEx? _d3dContext;
+    private static DeviceEx? _d3dDevice;
 
     private Texture? _renderTarget;
 
@@ -59,30 +34,44 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         EndD3D();
     }
 
-    public void InvalidateD3DImage()
+    public void InvalidateD3DImage(SharedRectangle? dirtyRect)
     {
-        if (_renderTarget is null)
+        if (_renderTarget is null || dirtyRect is not { } rect)
         {
             return;
         }
 
-        if (TryLock(new Duration(default)))
+        if (rect.X > PixelWidth || rect.Y > PixelHeight)
         {
-            AddDirtyRect(new Int32Rect(0, 0, PixelWidth, PixelHeight));
+            return;
         }
 
+        var width = rect.Width;
+        if (rect.X + rect.Width > PixelWidth)
+        {
+            width = PixelWidth - rect.X;
+        }
+
+        var height = rect.Height;
+        if (rect.Y + rect.Height > PixelHeight)
+        {
+            height = PixelHeight - rect.Y;
+        }
+
+        Lock();
+        AddDirtyRect(new Int32Rect((int)rect.X, (int)rect.Y, (int)width, (int)height));
         Unlock();
     }
 
     public void SetRenderTarget(Texture2D? target)
     {
+        Disposer.SafeDispose(ref _renderTarget);
+
         if (target is null)
         {
-            if (TryLock(new Duration(default)))
-            {
-                SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero);
-                Unlock();
-            }
+            Lock();
+            SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
+            Unlock();
 
             return;
         }
@@ -110,15 +99,12 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
         using var surface = _renderTarget.GetSurfaceLevel(0);
 
-        if (TryLock(new Duration(default)))
-        {
-            SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer);
-        }
-
+        Lock();
+        SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer, true);
         Unlock();
     }
 
-    private void InitializeD3D()
+    private static void InitializeD3D()
     {
         const CreateFlags createFlags =
             CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded | CreateFlags.FpuPreserve;
@@ -130,8 +116,8 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
         var presentParams = GetPresentParameters();
 
-        _d3dContext = new Direct3DEx();
-        _d3dDevice = new DeviceEx(_d3dContext, 0, DeviceType.Hardware, NativeMethods.GetDesktopWindow(), createFlags,
+        _d3dContext ??= new Direct3DEx();
+        _d3dDevice ??= new DeviceEx(_d3dContext, 0, DeviceType.Hardware, NativeMethods.GetDesktopWindow(), createFlags,
             presentParams);
     }
 

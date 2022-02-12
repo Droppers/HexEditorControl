@@ -14,7 +14,8 @@ internal class StructEntry : PatternEntry
         CanLoadMore = false;
     }
 
-    public override ColorRange[] FormattedType => new[] {
+    public override ColorRange[] FormattedType => new[]
+    {
         Keyword("struct"),
         Space(),
         Regular(_pattern.TypeName ?? "?")

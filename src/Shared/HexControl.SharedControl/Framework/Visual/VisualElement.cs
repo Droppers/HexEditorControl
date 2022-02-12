@@ -11,6 +11,10 @@ internal abstract class VisualElement : ObservableObject
 {
     private readonly List<VisualElement> _children;
 
+    protected readonly DistributorQueue queue;
+
+    private VisualElement? _oldMouseOwner;
+
     private Stopwatch? _sw;
 
     private VisualElementTree? _tree;
@@ -23,11 +27,13 @@ internal abstract class VisualElement : ObservableObject
         }
 
         _tree = new VisualElementTree(this);
+        queue = new DistributorQueue(this);
     }
 
     protected VisualElement()
     {
         _children = new List<VisualElement>();
+        queue = new DistributorQueue(this);
     }
 
     public IHostControl? Host { get; private set; }
@@ -41,6 +47,18 @@ internal abstract class VisualElement : ObservableObject
 
     public VisualElement? Parent { get; private set; }
     public IReadOnlyList<VisualElement> Children => _children;
+
+    public HostCursor? Cursor
+    {
+        get => Host?.Cursor;
+        set
+        {
+            if (Host is not null)
+            {
+                Host.Cursor = value;
+            }
+        }
+    }
 
     public event EventHandler<HostMouseButtonEventArgs>? MouseDown
     {
@@ -96,8 +114,6 @@ internal abstract class VisualElement : ObservableObject
         remove => _tree?.Events.RemoveHandler(this, value);
     }
 
-    private VisualElement? _oldMouseOwner;
-
     public void AttachHost(IHostControl attachHost)
     {
         Host = attachHost;
@@ -147,10 +163,19 @@ internal abstract class VisualElement : ObservableObject
         RaiseFocusDependentEvent(nameof(KeyUp), e);
     }
 
-    private void HostOnRender(object? sender, IRenderContext e)
+    private async void HostOnRender(IRenderContext context, bool newSurface)
     {
-        InvokeRender(e);
+        if (newSurface)
+        {
+            // Will flicker if we don't immediately render after a new surface is available
+            AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
+            InvokeRender(context);
+            return;
+        }
+
+        await queue.Render(context);
     }
+
 
     public void DetachHost(IHostControl detachHost)
     {
@@ -262,16 +287,25 @@ internal abstract class VisualElement : ObservableObject
         _tree?.State.ReleaseFocus();
     }
 
-    public HostCursor? Cursor
+    protected void AddDirtyRect(SharedRectangle rectangle, int grow = 0)
     {
-        get => Host?.Cursor;
-        set
+        if (Left is not 0 || Top is not 0)
         {
-            if (Host is not null)
-            {
-                Host.Cursor = value;
-            }
+            // Relative to current control location
+            rectangle = new SharedRectangle(Left + rectangle.X, Top + rectangle.Y, rectangle.Width, rectangle.Height);
         }
+
+        if (grow > 0)
+        {
+            rectangle = new SharedRectangle(
+                Math.Max(0, rectangle.X - grow),
+                Math.Max(0, rectangle.Y - grow),
+                rectangle.Width + 2 * grow,
+                rectangle.Height + 2 * grow
+            );
+        }
+
+        _tree?.AddDirtyRect(rectangle);
     }
 
     internal void AttachToTree(VisualElementTree tree)
@@ -355,7 +389,12 @@ internal abstract class VisualElement : ObservableObject
         }
     }
 
-    private void InvokeRender(IRenderContext context)
+    public void Invalidate()
+    {
+        Host?.Invalidate();
+    }
+
+    public void InvokeRender(IRenderContext context)
     {
         if (Parent is null)
         {
@@ -376,7 +415,7 @@ internal abstract class VisualElement : ObservableObject
                 continue;
             }
 
-            var shouldTranslate = child.Left is not 0 && child.Top is not 0;
+            var shouldTranslate = child.Left is not 0 || child.Top is not 0;
             if (shouldTranslate)
             {
                 context.PushTranslate(child.Left, child.Top);
@@ -392,9 +431,11 @@ internal abstract class VisualElement : ObservableObject
 
         RenderAfter(context);
 
-        if (Parent is null && _sw is not null)
+        if (_tree?.Root == this && _sw is not null)
         {
-            context.End();
+            context.End(_tree.DirtyRect);
+            _tree?.ClearDirtyRect();
+
             Debug.WriteLine($"Render: {_sw.ElapsedMilliseconds}");
         }
     }

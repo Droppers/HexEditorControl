@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿using System;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -21,17 +22,68 @@ internal class AvaloniaControl : HostControl
         _control.PointerPressed += OnPointerPressed;
         _control.PointerMoved += OnPointerMoved;
         _control.PointerReleased += OnPointerReleased;
+        _control.PointerWheelChanged += ControlOnPointerWheelChanged;
+
+        _control.PointerLeave += OnPointerLeave;
+        _control.PointerEnter += OnPointerEnter;
+
         _control.EffectiveViewportChanged += OnEffectiveViewportChanged;
 
         _control.AddHandler(InputElement.KeyDownEvent, ControlOnKeyDown, RoutingStrategies.Tunnel);
         _control.KeyDown += ControlOnKeyDown;
         _control.KeyUp += ControlOnKeyUp;
-        _control.PointerWheelChanged += ControlOnPointerWheelChanged;
     }
-
 
     public override double Width => _control.Bounds.Width;
     public override double Height => _control.Bounds.Height;
+
+    public override HostCursor? Cursor
+    {
+        get => currentCursor;
+        set
+        {
+            if (currentCursor == value)
+            {
+                return;
+            }
+
+            var oldCursor = _control.Cursor;
+            _control.Cursor = value is null ? null : new Cursor(MapCursor(value.Value));
+            oldCursor?.Dispose();
+            currentCursor = value;
+        }
+    }
+
+    public override bool Visible
+    {
+        get => _control.IsVisible;
+        set => _control.IsVisible = value;
+    }
+
+    private void OnPointerLeave(object? sender, PointerEventArgs e)
+    {
+        RaiseMouseLeave();
+    }
+
+    private void OnPointerEnter(object? sender, PointerEventArgs e)
+    {
+        RaiseMouseEnter();
+    }
+
+    private static StandardCursorType MapCursor(HostCursor cursor)
+    {
+        return cursor switch
+        {
+            HostCursor.Arrow => StandardCursorType.Arrow,
+            HostCursor.Hand => StandardCursorType.Hand,
+            HostCursor.Text => StandardCursorType.Ibeam,
+            HostCursor.SizeNs => StandardCursorType.SizeNorthSouth,
+            HostCursor.SizeNesw => StandardCursorType.BottomRightCorner,
+            HostCursor.SizeWe => StandardCursorType.SizeWestEast,
+            HostCursor.SizeNwse => StandardCursorType.BottomLeftCorner,
+            _ => throw new ArgumentOutOfRangeException(nameof(cursor), cursor, null)
+        };
+    }
 
     private void ControlOnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
@@ -149,7 +201,9 @@ internal class AvaloniaControl : HostControl
         _renderContext ??= new AvaloniaRenderContext(context);
         _renderContext.Context = context;
 
-        RaiseRender(_renderContext);
+        // TODO: currently does not use throttling internally, this (value false) will result in an invalid state inside Avalonia
+        // TODO: for new we accept the higher CPU usage
+        RaiseRender(_renderContext, true);
     }
 
     public override void Dispose()

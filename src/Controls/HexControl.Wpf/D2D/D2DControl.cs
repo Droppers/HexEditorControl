@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Timers;
 using System.Windows;
 using System.Windows.Media;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.Direct3D;
@@ -8,45 +10,59 @@ using SharpDX.Direct3D11;
 using SharpDX.DXGI;
 using AlphaMode = SharpDX.Direct2D1.AlphaMode;
 using Device = SharpDX.Direct3D11.Device;
+using DeviceContext1 = SharpDX.Direct3D11.DeviceContext1;
 using Factory = SharpDX.Direct2D1.Factory;
 using Image = System.Windows.Controls.Image;
 using PixelFormat = SharpDX.Direct2D1.PixelFormat;
 
 namespace HexControl.Wpf.D2D;
 
-internal class RenderEventArgs : EventArgs
-{
-    public RenderEventArgs(Factory factory, RenderTarget renderTarget)
-    {
-        Factory = factory;
-        RenderTarget = renderTarget;
-    }
-
-    public Factory Factory { get; }
-    public RenderTarget RenderTarget { get; }
-}
+internal delegate void RenderEvent(Factory factory, RenderTarget renderTarget, bool newSurface);
 
 internal class D2DControl : Image, IRenderStateProvider
 {
-    private readonly float _dpi = 2.5f;
+    private readonly FrameworkElement _parent;
+    private readonly Timer _resizeTimer;
+
     private bool _canRender;
 
     private Factory? _d2dFactory;
     private RenderTarget? _d2dRenderTarget;
     private Dx11ImageSource? _d3dSurface;
     private Device? _device;
+    private float _dpi = 1;
     private Texture2D? _renderTarget;
 
-    public D2DControl()
+    public D2DControl(FrameworkElement parent)
     {
+        _parent = parent;
+        _parent.SizeChanged += OnSizeChanged;
+
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
 
-        Stretch = Stretch.Fill;
+        Stretch = Stretch.None;
         VerticalAlignment = VerticalAlignment.Top;
         HorizontalAlignment = HorizontalAlignment.Left;
         UseLayoutRounding = true;
         SnapsToDevicePixels = true;
+
+        _resizeTimer = new Timer
+        {
+            Interval = 500,
+            Enabled = true
+        };
+        _resizeTimer.Elapsed += OnResizeDone;
+    }
+
+    public float Dpi
+    {
+        get => _dpi;
+        set
+        {
+            _dpi = value;
+            CreateAndBindTargets();
+        }
     }
 
     public bool CanRender
@@ -65,11 +81,25 @@ internal class D2DControl : Image, IRenderStateProvider
     }
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
-    public event EventHandler<RenderEventArgs>? Render;
+
+    private void OnResizeDone(object sender, ElapsedEventArgs e)
+    {
+        _resizeTimer.Stop();
+        GC.Collect();
+    }
+
+    public event RenderEvent? Render;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         StartD3D();
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        _resizeTimer.Stop();
+        _resizeTimer.Start();
+        CreateAndBindTargets();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -77,15 +107,10 @@ internal class D2DControl : Image, IRenderStateProvider
         EndD3D();
     }
 
-    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
-    {
-        CreateAndBindTargets();
-        base.OnRenderSizeChanged(sizeInfo);
-    }
-
     private void OnIsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        CanRender = _d3dSurface?.IsFrontBufferAvailable ?? false;
+        //CanRender = _d3dSurface?.IsFrontBufferAvailable ?? false;
+        CreateAndBindTargets();
     }
 
     private void StartD3D()
@@ -120,8 +145,24 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _device);
     }
 
-    private void CreateAndBindTargets()
+    public static void CopyToTexture(DeviceContext1 context, Texture2D source, Texture2D destination,
+        int subResource = 0)
     {
+        if (source.Description.SampleDescription.Count > 1 || source.Description.SampleDescription.Quality > 0)
+        {
+            context.ResolveSubresource(source, subResource, destination, 0, destination.Description.Format);
+        }
+        else
+        {
+            // Not multisampled, so just copy to the destination
+            context.CopySubresourceRegion(source, subResource, null, destination, 0);
+            //context.CopyResource(source, destination);
+        }
+    }
+
+    public void CreateAndBindTargets()
+    {
+        CanRender = false;
         if (_d3dSurface is null || _device is null)
         {
             return;
@@ -129,12 +170,16 @@ internal class D2DControl : Image, IRenderStateProvider
 
         _d3dSurface.SetRenderTarget(null);
 
-        Disposer.SafeDispose(ref _d2dRenderTarget);
+        var width = (int)(_parent.ActualWidth * _dpi);
+        var height = (int)(_parent.ActualHeight * _dpi);
+
+        // Not clearing state and flushing will result in a memory leak
+        _device.ImmediateContext.ClearState();
+        _device.ImmediateContext.Flush();
+
         Disposer.SafeDispose(ref _d2dFactory);
         Disposer.SafeDispose(ref _renderTarget);
-
-        var width = Math.Max((int)(ActualWidth * _dpi), 100);
-        var height = Math.Max((int)(ActualHeight * _dpi), 100);
+        Disposer.SafeDispose(ref _d2dRenderTarget);
 
         var renderDesc = new Texture2DDescription
         {
@@ -149,28 +194,29 @@ internal class D2DControl : Image, IRenderStateProvider
             CpuAccessFlags = CpuAccessFlags.None,
             ArraySize = 1
         };
-
         _renderTarget = new Texture2D(_device, renderDesc);
 
-        var surface = _renderTarget.QueryInterface<Surface>();
+        using var surface = _renderTarget.QueryInterface<Surface>();
 
         _d2dFactory = new Factory();
-        var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Ignore));
+        var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
         _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
-
         _d3dSurface.SetRenderTarget(_renderTarget);
-
         _device.ImmediateContext.Rasterizer.SetViewport(0, 0, width, height);
+
+        CanRender = true;
+
+        OnRender(true);
     }
 
-    private void OnRender()
+    private void OnRender(bool newSurface = false)
     {
         if (_d2dFactory is null || _d2dRenderTarget is null)
         {
             return;
         }
 
-        Render?.Invoke(this, new RenderEventArgs(_d2dFactory, _d2dRenderTarget));
+        Render?.Invoke(_d2dFactory, _d2dRenderTarget, newSurface);
     }
 
     public void Invalidate()
@@ -178,9 +224,9 @@ internal class D2DControl : Image, IRenderStateProvider
         OnRender();
     }
 
-    public void InvalidateImage()
+    public void InvalidateImage(SharedRectangle? dirtyRect)
     {
         _device?.ImmediateContext.Flush();
-        _d3dSurface?.InvalidateD3DImage();
+        _d3dSurface?.InvalidateD3DImage(dirtyRect);
     }
 }

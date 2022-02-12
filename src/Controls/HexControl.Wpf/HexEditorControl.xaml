@@ -4,30 +4,23 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:dx="clr-namespace:Microsoft.Wpf.Interop.DirectX;assembly=Microsoft.Wpf.Interop.DirectX"
     d:DesignHeight="450"
     d:DesignWidth="800"
     Background="#181b20"
-    SnapsToDevicePixels="True" 
+    SnapsToDevicePixels="True"
     UseLayoutRounding="True"
     IsTabStop="False"
     mc:Ignorable="d">
     <Grid x:Name="Container">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition x:Name="VerticalRow" Width="Auto" />
+            <ColumnDefinition x:Name="GridColumn" Width="Auto" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
-            <RowDefinition x:Name="HorizontalRow" Height="Auto" />
+            <RowDefinition x:Name="GridRow" Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid x:Name="ImageContainer">
-            <Image x:Name="MainImage">
-                <Image.Source>
-                    <dx:D3D11Image x:Name="InteropImage" />
-                </Image.Source>
-            </Image>
-        </Grid>
+        <Grid x:Name="HostContainer" />
 
         <ScrollBar
             x:Name="VerticalScrollBar"

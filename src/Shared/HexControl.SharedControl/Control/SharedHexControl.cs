@@ -109,7 +109,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         // Register events
         SizeChanged += OnSizeChanged;
         MouseWheel += OnMouseWheel;
-        MouseDown += OnMouseDown;
+        MouseUp += OnMouseUp;
 
         // Create child elements
         _offsetColumn = new OffsetColumn(this);
@@ -260,8 +260,11 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         Document.Offset += increment;
     }
 
-    protected void OnMouseDown(object? sender, HostMouseButtonEventArgs e)
+    protected async void OnMouseUp(object? sender, HostMouseButtonEventArgs e)
     {
+        // Otherwise WinUI doesn't let me steal its focus after pointer click :(
+        await Task.Delay(10);
+
         var textBox = Host?.GetChild<IHostTextBox>(FakeTextBoxName);
         textBox?.Focus();
     }

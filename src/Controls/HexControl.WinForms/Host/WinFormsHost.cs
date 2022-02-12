@@ -1,4 +1,5 @@
-﻿using HexControl.Renderer.Direct2D;
+﻿using HexControl.Core.Helpers;
+using HexControl.Renderer.Direct2D;
 using HexControl.WinForms.Host.Controls;
 using SharpDX.Direct2D1;
 
@@ -9,7 +10,6 @@ internal class WinFormsHost : WinFormsControl
     private readonly D2DControl _control;
 
     private D2DRenderFactory? _factory;
-    private RenderTarget? _previousTarget;
     private D2DRenderContext? _renderContext;
 
     public WinFormsHost(D2DControl control) : base(control)
@@ -18,20 +18,18 @@ internal class WinFormsHost : WinFormsControl
         _control.Render += OnRender;
     }
 
-    private void OnRender(object? sender, RenderEventArgs e)
+    private void OnRender(Factory factory, RenderTarget renderTarget, bool newSurface)
     {
-        if (!ReferenceEquals(e.RenderTarget, _previousTarget) || _factory is null || _renderContext is null)
+        if (newSurface || _factory is null || _renderContext is null)
         {
-            _renderContext?.Dispose();
+            Disposer.SafeDispose(ref _renderContext);
 
-            _factory = new WinFormsRenderFactory(e.RenderTarget);
-            _renderContext = new D2DRenderContext(_factory, e.Factory, e.RenderTarget);
+            _factory = new WinFormsRenderFactory(renderTarget);
+            _renderContext = new D2DRenderContext(_factory, factory, renderTarget);
             _renderContext.AttachStateProvider(_control);
         }
 
-        RaiseRender(_renderContext);
-
-        _previousTarget = e.RenderTarget;
+        RaiseRender(_renderContext, newSurface);
     }
 
     public override void Invalidate()
@@ -41,7 +39,7 @@ internal class WinFormsHost : WinFormsControl
 
     public override void Dispose()
     {
-        _renderContext?.Dispose();
+        Disposer.SafeDispose(ref _renderContext);
         _control.Render -= OnRender;
 
         base.Dispose();

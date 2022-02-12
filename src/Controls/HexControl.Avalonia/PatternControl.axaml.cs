@@ -63,7 +63,6 @@ public class PatternControl : UserControl
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-
         _host?.DoRender(context);
     }
 

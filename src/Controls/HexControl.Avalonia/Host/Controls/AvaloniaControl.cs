@@ -201,7 +201,9 @@ internal class AvaloniaControl : HostControl
         _renderContext ??= new AvaloniaRenderContext(context);
         _renderContext.Context = context;
 
-        RaiseRender(_renderContext);
+        // TODO: currently does not use throttling internally, this (value false) will result in an invalid state inside Avalonia
+        // TODO: for new we accept the higher CPU usage
+        RaiseRender(_renderContext, true);
     }
 
     public override void Dispose()

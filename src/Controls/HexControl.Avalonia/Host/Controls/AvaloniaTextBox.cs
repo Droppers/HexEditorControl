@@ -21,11 +21,11 @@ internal class AvaloniaTextBox : AvaloniaControl, IHostTextBox
                 return;
             }
 
-            TextChanged?.Invoke(this, new ProxyTextChangedEventArgs(text ?? ""));
+            TextChanged?.Invoke(this, new HostTextChangedEventArgs(text ?? ""));
         });
     }
 
-    public event EventHandler<ProxyTextChangedEventArgs>? TextChanged;
+    public event EventHandler<HostTextChangedEventArgs>? TextChanged;
 
     public string Text
     {

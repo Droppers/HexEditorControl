@@ -41,7 +41,7 @@ internal class D2DControl : Image, IRenderStateProvider
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
 
-        Stretch = Stretch.Fill;
+        Stretch = Stretch.None;
         VerticalAlignment = VerticalAlignment.Top;
         HorizontalAlignment = HorizontalAlignment.Left;
         UseLayoutRounding = true;

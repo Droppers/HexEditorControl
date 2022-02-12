@@ -1,8 +1,8 @@
 ﻿namespace HexControl.SharedControl.Framework.Host.Controls;
 
-internal class ProxyTextChangedEventArgs : System.EventArgs
+internal class HostTextChangedEventArgs : System.EventArgs
 {
-    public ProxyTextChangedEventArgs(string newText)
+    public HostTextChangedEventArgs(string newText)
     {
         NewText = newText;
     }
@@ -13,6 +13,6 @@ internal class ProxyTextChangedEventArgs : System.EventArgs
 internal interface IHostTextBox : IHostControl
 {
     string Text { get; set; }
-    event EventHandler<ProxyTextChangedEventArgs>? TextChanged;
+    event EventHandler<HostTextChangedEventArgs>? TextChanged;
     void Clear();
 }

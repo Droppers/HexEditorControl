@@ -1394,7 +1394,7 @@ internal class EditorColumn : VisualElement
         _keyboardSelectMode = false;
     }
 
-    private async void TextBoxOnTextChanged(object? sender, ProxyTextChangedEventArgs e)
+    private async void TextBoxOnTextChanged(object? sender, HostTextChangedEventArgs e)
     {
         if (e.NewText.Length > 0)
         {

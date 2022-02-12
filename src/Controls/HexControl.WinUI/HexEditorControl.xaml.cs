@@ -1,16 +1,10 @@
 ﻿using HexControl.Core;
-using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Control;
-using HexControl.SharedControl.Framework.Drawing;
 using HexControl.WinUI.Host;
 using HexControl.WinUI.Host.Controls;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using SharpDX;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace HexControl.WinUI;
 
@@ -22,22 +16,16 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
             typeof(HexEditorControl), new PropertyMetadata(null, PropertyChanged));
 
     private readonly HexControlPropertyMapper _mapper;
-    private readonly SwapChainRenderer _renderer;
 
     public HexEditorControl()
     {
         InitializeComponent();
 
-        _renderer = new SwapChainRenderer();
-
-        RenderPanel.Loaded += RenderPanelOnLoaded;
-        RenderPanel.Unloaded += RenderPanelOnUnloaded;
-        RenderPanel.SizeChanged += RenderPanelOnSizeChanged;
-
-        var host = new WinUIHost(this, _renderer)
+        var host = new WinUIHost(this, RenderPanel)
         {
             {SharedHexControl.VerticalScrollBarName, new WinUIScrollBar(VerticalScrollBar)},
-            {SharedHexControl.HorizontalScrollBarName, new WinUIScrollBar(HorizontalScrollBar)}
+            {SharedHexControl.HorizontalScrollBarName, new WinUIScrollBar(HorizontalScrollBar)},
+            {SharedHexControl.FakeTextBoxName, new WinUITextBox(FakeTextBox)}
         };
         var control = new SharedHexControl();
         control.AttachHost(host);
@@ -52,6 +40,7 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
         set => SetValue(DocumentProperty, value);
     }
 
+    // To allow us to change the cursor from a public property
     public InputCursor Cursor
     {
         get => ProtectedCursor;
@@ -66,9 +55,9 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
         }
 
         var property = e.Property;
-        var propertyName = true switch
+        var propertyName = 0 switch
         {
-            true when property == DocumentProperty => nameof(Document),
+            _ when property == DocumentProperty => nameof(Document),
             _ => null
         };
 
@@ -76,23 +65,5 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
         {
             await control._mapper.SetValue(propertyName, e.NewValue);
         }
-    }
-
-    private SharedSize GetRenderSize() => new(RenderPanel.ActualWidth, RenderPanel.ActualHeight);
-
-    private void RenderPanelOnLoaded(object sender, RoutedEventArgs e)
-    {
-        using var nativePanel = ComObject.As<ISwapChainPanelNative>(RenderPanel);
-        _renderer.Initialize(nativePanel, GetRenderSize());
-    }
-
-    private void RenderPanelOnUnloaded(object sender, RoutedEventArgs e)
-    {
-        _renderer.Dispose();
-    }
-
-    private void RenderPanelOnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        _renderer.Resize(GetRenderSize());
     }
 }

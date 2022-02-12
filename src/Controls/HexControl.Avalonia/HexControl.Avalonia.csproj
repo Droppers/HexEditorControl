@@ -12,7 +12,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Update="PatternControl.axaml.cs">
-		  <DependentUpon>PatternControl.axaml</DependentUpon>
+			<DependentUpon>PatternControl.axaml</DependentUpon>
 		</Compile>
 		<Compile Update="HexEditorControl.axaml.cs">
 			<DependentUpon>HexEditorControl.axaml</DependentUpon>

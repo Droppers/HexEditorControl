@@ -6,11 +6,11 @@ using Factory = SharpDX.Direct2D1.Factory;
 
 namespace HexControl.WinUI.Host;
 
-internal class WinUIRenderContextX : D2DRenderContext
+internal class WinUIRenderContext : D2DRenderContext
 {
     private readonly SwapChain _swapChain;
 
-    public WinUIRenderContextX(D2DRenderFactory factory, Factory d2dFactory, SwapChain swapChain, RenderTarget context)
+    public WinUIRenderContext(D2DRenderFactory factory, Factory d2dFactory, SwapChain swapChain, RenderTarget context)
         : base(factory, d2dFactory, context)
     {
         _swapChain = swapChain;

@@ -1,4 +1,5 @@
-﻿using HexControl.SharedControl.Framework.Drawing;
+﻿using HexControl.Core.Helpers;
+using HexControl.SharedControl.Framework.Drawing;
 using SharpDX;
 using SharpDX.Direct2D1;
 using SharpDX.DXGI;
@@ -7,17 +8,7 @@ using Factory = SharpDX.Direct2D1.Factory;
 
 namespace HexControl.WinForms;
 
-internal class RenderEventArgs : EventArgs
-{
-    public RenderEventArgs(Factory factory, RenderTarget renderTarget)
-    {
-        Factory = factory;
-        RenderTarget = renderTarget;
-    }
-
-    public Factory Factory { get; }
-    public RenderTarget RenderTarget { get; }
-}
+internal delegate void RenderEvent(Factory factory, RenderTarget renderTarget, bool newSurface);
 
 internal class D2DControl : Control, IRenderStateProvider
 {
@@ -32,6 +23,7 @@ internal class D2DControl : Control, IRenderStateProvider
     private RenderTargetProperties _renderTargetProperties;
 
     private WindowRenderTarget? _windowRenderTarget;
+    private bool initialRender = true;
 
     public bool CanRender
     {
@@ -49,7 +41,7 @@ internal class D2DControl : Control, IRenderStateProvider
     }
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
-    public event EventHandler<RenderEventArgs>? Render;
+    public event RenderEvent? Render;
 
     private void InitRendering()
     {
@@ -86,8 +78,8 @@ internal class D2DControl : Control, IRenderStateProvider
 
         lock (_drawLock)
         {
-            _d2dFactory?.Dispose();
-            _d2dRenderTarget?.Dispose();
+            Disposer.SafeDispose(ref _d2dFactory);
+            Disposer.SafeDispose(ref _d2dRenderTarget);
         }
 
         base.Dispose(disposing);
@@ -118,8 +110,10 @@ internal class D2DControl : Control, IRenderStateProvider
 
         lock (_drawLock)
         {
-            Render?.Invoke(this, new RenderEventArgs(_d2dFactory, _d2dRenderTarget));
+            Render?.Invoke(_d2dFactory, _d2dRenderTarget, initialRender);
         }
+
+        initialRender = false;
     }
 
     protected override void OnPaint(PaintEventArgs e)

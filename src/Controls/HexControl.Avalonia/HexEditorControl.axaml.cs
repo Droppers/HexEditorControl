@@ -112,7 +112,6 @@ public class HexEditorControl : UserControl
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-
         _host?.DoRender(context);
     }
 

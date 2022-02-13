@@ -429,14 +429,10 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
                 Document.Offset = Document.Cursor.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
                                   Configuration.BytesPerRow;
             }
+        }
 
-            // TODO: not always necessary to invalidate when cursor has changed, for example when the selection has changed it will already have been invalidated before.
-            Invalidate();
-        }
-        else
-        {
-            Invalidate();
-        }
+        _editorColumn.AddCursorDirtyRect(e.NewCursor);
+        Invalidate();
     }
 
     private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)

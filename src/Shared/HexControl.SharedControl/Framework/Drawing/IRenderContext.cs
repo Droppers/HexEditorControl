@@ -12,7 +12,7 @@ public interface IRenderContextApi : IDisposable
     void DrawLine(ISharedPen? pen, SharedPoint startPoint, SharedPoint endPoint);
 
     void PushTranslate(double offsetX, double offsetY);
-    void PushClip(double x, double y, double width, double height);
+    void PushClip(SharedRectangle rectangle);
     void Pop();
 
     void Begin();

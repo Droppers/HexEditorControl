@@ -94,7 +94,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
 
     public abstract void PushTranslate(double offsetX, double offsetY);
 
-    public abstract void PushClip(double x, double y, double width, double height);
+    public abstract void PushClip(SharedRectangle rectangle);
 
     public abstract void Pop();
 

@@ -41,7 +41,7 @@ internal class D2DControl : Image, IRenderStateProvider
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
 
-        Stretch = Stretch.None;
+        Stretch = Stretch.Fill;
         VerticalAlignment = VerticalAlignment.Top;
         HorizontalAlignment = HorizontalAlignment.Left;
         UseLayoutRounding = true;
@@ -109,7 +109,6 @@ internal class D2DControl : Image, IRenderStateProvider
 
     private void OnIsFrontBufferAvailableChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        //CanRender = _d3dSurface?.IsFrontBufferAvailable ?? false;
         CreateAndBindTargets();
     }
 
@@ -143,21 +142,6 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _d3dSurface);
         Disposer.SafeDispose(ref _renderTarget);
         Disposer.SafeDispose(ref _device);
-    }
-
-    public static void CopyToTexture(DeviceContext1 context, Texture2D source, Texture2D destination,
-        int subResource = 0)
-    {
-        if (source.Description.SampleDescription.Count > 1 || source.Description.SampleDescription.Quality > 0)
-        {
-            context.ResolveSubresource(source, subResource, destination, 0, destination.Description.Format);
-        }
-        else
-        {
-            // Not multisampled, so just copy to the destination
-            context.CopySubresourceRegion(source, subResource, null, destination, 0);
-            //context.CopyResource(source, destination);
-        }
     }
 
     public void CreateAndBindTargets()

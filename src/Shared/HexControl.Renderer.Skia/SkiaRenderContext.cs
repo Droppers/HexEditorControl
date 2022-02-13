@@ -37,10 +37,10 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
         Context.Translate((float)offsetX, (float)offsetY);
     }
 
-    public override void PushClip(double x, double y, double width, double height)
+    public override void PushClip(SharedRectangle rectangle)
     {
         Save();
-        Context.ClipRect(new SKRect((float)x, (float)y, (float)width, (float)height));
+        Context.ClipRect(new SKRect((float)rectangle.X, (float)rectangle.Y, (float)rectangle.Width, (float)rectangle.Height));
     }
 
     private void Save()

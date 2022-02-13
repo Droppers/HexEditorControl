@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using HexControl.Core.Helpers;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.D2D;
@@ -35,32 +36,25 @@ internal class WpfD2DHost : WpfControl
     {
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
-        var source = PresentationSource.FromVisual(_hostContainer);
-        if (source is not null)
-        {
-            var dpi = source.CompositionTarget?.TransformFromDevice.M11 ?? 1;
-            UpdateDpi((float)dpi);
-        }
-
         var window = Window.GetWindow(_hostContainer);
         if (window is null)
         {
             return;
         }
 
+        UpdateDpi(VisualTreeHelper.GetDpi(window));
         window.DpiChanged += WindowOnDpiChanged;
     }
 
     private void WindowOnDpiChanged(object sender, DpiChangedEventArgs e)
     {
-        var newDpi = (float)e.NewDpi.DpiScaleX;
-        UpdateDpi(newDpi);
+        UpdateDpi(e.NewDpi);
     }
 
-    private void UpdateDpi(float newDpi)
+    private void UpdateDpi(DpiScale scale)
     {
-        _d2dControl.Dpi = newDpi;
-        Dpi = newDpi;
+        _d2dControl.Dpi = (float)scale.DpiScaleX;
+        Dpi = (float)scale.DpiScaleX;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

@@ -675,6 +675,12 @@ internal class EditorColumn : VisualElement
             DrawCursor(context, document, ColumnSide.Right);
         }
 
+        if (_cursorUpdated || _previousCursorOffset != document.Cursor.Offset)
+        {
+            AddCursorDirtyRect(document.Cursor);
+        }
+
+
         _cursorUpdated = false;
         _previousCursorOffset = document.Cursor.Offset;
     }
@@ -745,12 +751,18 @@ internal class EditorColumn : VisualElement
                 context.DrawRectangle(null, pen, rect);
             }
         }
+    }
 
-        if (_cursorUpdated || _previousCursorOffset != cursor.Offset)
+
+    public void AddCursorDirtyRect(Cursor cursor)
+    {
+        var position = CalculateCursorPosition(cursor.Offset, 0, _leftCharacterSet, ColumnSide.Left);
+        AddDirtyRect(new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
+
+        if(_rightCharacterSet is not null)
         {
-            position = CalculateCursorPosition(cursor.Offset, 0, characterSet, column);
-            AddDirtyRect(new SharedRectangle(position.X, position.Y,
-                characterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
+            position = CalculateCursorPosition(cursor.Offset, 0, _leftCharacterSet, ColumnSide.Right);
+            AddDirtyRect(new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
         }
     }
 
@@ -1204,8 +1216,12 @@ internal class EditorColumn : VisualElement
 
     private void SetCursorOffset(long offset, int nibble = 0, bool scrollToCursor = false)
     {
-        ResetCursorTick();
-        SetCursorOffset(Document?.Cursor.Column ?? ColumnSide.Left, offset, nibble, scrollToCursor);
+        if (Document is null)
+        {
+            return;
+        }
+
+        SetCursorOffset(Document.Cursor.Column, offset, nibble, scrollToCursor);
     }
 
     private void SetCursorOffset(ColumnSide column, long offset, int nibble = 0, bool scrollToCursor = false)
@@ -1215,8 +1231,8 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        Document.ChangeCursor(column, offset, nibble, scrollToCursor);
         ResetCursorTick();
+        Document.ChangeCursor(column, offset, nibble, scrollToCursor);
     }
 
     private void ResetCursorTick()
@@ -1227,8 +1243,8 @@ internal class EditorColumn : VisualElement
         }
 
         _cursorTick = true;
-        _cursorTimer.Enabled = false;
-        _cursorTimer.Enabled = true;
+        _cursorTimer.Stop();
+        _cursorTimer.Start();
     }
 
     private bool IsPointInEditableArea(SharedPoint point)

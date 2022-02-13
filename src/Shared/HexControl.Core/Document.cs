@@ -4,7 +4,7 @@ using HexControl.Core.Events;
 
 namespace HexControl.Core;
 
-public class Cursor
+public class Cursor : IEquatable<Cursor>
 {
     public Cursor(long offset, int nibble, ColumnSide column)
     {
@@ -16,6 +16,21 @@ public class Cursor
     public long Offset { get; }
     public int Nibble { get; }
     public ColumnSide Column { get; }
+
+    public bool Equals(Cursor? other)
+    {
+        return other is not null && other.Offset == Offset && other.Nibble == Nibble && other.Column == Column;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return  ReferenceEquals(this, obj) || obj is Cursor other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Offset, Nibble, Column);
+    }
 }
 
 public class CursorChangedEventArgs : EventArgs
@@ -203,16 +218,19 @@ public class Document
 
     public void ChangeCursor(ColumnSide column, long offset, int nibble, bool scrollToCursor = false)
     {
-        var value = new Cursor(offset, nibble, column);
-        if (!ValidateCursor(value))
+        var newCursor = new Cursor(offset, nibble, column);
+        if (!ValidateCursor(newCursor))
         {
             return;
         }
 
         var oldCursor = Cursor;
-        Cursor = value;
+        Cursor = newCursor;
 
-        OnCursorChanged(oldCursor, Cursor, scrollToCursor);
+        if (!oldCursor.Equals(newCursor))
+        {
+            OnCursorChanged(oldCursor, Cursor, scrollToCursor);
+        }
     }
 
     public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCursor = true,

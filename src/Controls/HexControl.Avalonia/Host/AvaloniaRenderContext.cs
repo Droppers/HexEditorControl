@@ -135,9 +135,9 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         });
     }
 
-    public override void PushClip(double x, double y, double width, double height)
+    public override void PushClip(SharedRectangle rectangle)
     {
-        var clip = Context.PushClip(new Rect(x, y, width, height));
+        var clip = Context.PushClip(Convert(rectangle));
         _states.Push(new State(clip));
     }
 

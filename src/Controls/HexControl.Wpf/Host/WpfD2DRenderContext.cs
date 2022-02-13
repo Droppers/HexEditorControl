@@ -7,13 +7,11 @@ namespace HexControl.Wpf.Host;
 
 internal class WpfD2DRenderContext : D2DRenderContext
 {
-    private readonly RenderTarget _context;
     private readonly D2DControl _control;
 
     public WpfD2DRenderContext(D2DRenderFactory factory, Factory d2dFactory, RenderTarget context, D2DControl control) :
         base(factory, d2dFactory, context)
     {
-        _context = context;
         _control = control;
     }
 

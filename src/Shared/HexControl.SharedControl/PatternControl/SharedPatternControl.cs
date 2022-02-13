@@ -303,7 +303,7 @@ internal class SharedPatternControl : VisualElement
         var column = _columns[rowContext.Column];
 
         context.PushTranslate((int)rowContext.ColumnLeft + 5, 0);
-        context.PushClip(0, 0, GetColumnWidth(column) - 10, ROW_HEIGHT);
+        context.PushClip(new SharedRectangle(0, 0, GetColumnWidth(column) - 10, ROW_HEIGHT));
 
         return column;
     }
@@ -459,7 +459,7 @@ internal class SharedPatternControl : VisualElement
         {
             var column = _columns[i];
 
-            context.PushClip((int)left, 0, (int)GetColumnWidth(column) - 5, ROW_HEIGHT);
+            context.PushClip(new SharedRectangle((int)left, 0, (int)GetColumnWidth(column) - 5, ROW_HEIGHT));
 
             DrawTextMiddle(context, red, new SharedPoint((int)left + 5, 0), column.Name);
 
@@ -616,7 +616,7 @@ internal class SharedPatternControl : VisualElement
         var rowContext = new RowContext();
 
         context.PushTranslate(0, ROW_HEIGHT);
-        context.PushClip(0, 0, Width, Height - ROW_HEIGHT);
+        context.PushClip(new SharedRectangle(0, 0, Width, Height - ROW_HEIGHT));
 
         foreach (var entry in _entries)
         {

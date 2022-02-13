@@ -86,10 +86,9 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     public float Convert(double number) => (float)number * Dpi;
 
-    public override void PushClip(double x, double y, double width, double height)
+    public override void PushClip(SharedRectangle rectangle)
     {
-        _context.PushAxisAlignedClip(new RawRectangleF((float)x, (float)y, (float)(x + width), (float)(y + height)),
-            AntialiasMode.Aliased);
+        _context.PushAxisAlignedClip(Convert(rectangle),AntialiasMode.Aliased);
         _pushedTypes.Push(PushedType.Clip);
     }
 

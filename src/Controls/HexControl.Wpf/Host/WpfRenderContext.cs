@@ -96,9 +96,9 @@ internal class WpfRenderContext : RenderContext<Brush, Pen>
         Context.PushTransform(new TranslateTransform(offsetX, offsetY));
     }
 
-    public override void PushClip(double x, double y, double width, double height)
+    public override void PushClip(SharedRectangle rectangle)
     {
-        Context.PushClip(new RectangleGeometry(new Rect(x, y, width, height)));
+        Context.PushClip(new RectangleGeometry(new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height)));
     }
 
     public override void Pop()

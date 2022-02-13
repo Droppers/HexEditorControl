@@ -2,6 +2,8 @@
 
 A very much WIP hex editor control for WPF, Avalonia, Winforms and WinUI. In current state not usable.
 
+![](./art/pattern-example.png)
+
 ![](./art/example.png)
 
 ## Why Direct2D?

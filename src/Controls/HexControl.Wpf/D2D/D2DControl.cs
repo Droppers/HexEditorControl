@@ -183,7 +183,10 @@ internal class D2DControl : Image, IRenderStateProvider
         _d2dFactory = new Factory();
         var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
         _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
+
+        _d3dSurface.ClearRenderTarget();
         _d3dSurface.SetRenderTarget(_renderTarget);
+
         _device.ImmediateContext.Rasterizer.SetViewport(0, 0, width, height);
 
         CanRender = true;

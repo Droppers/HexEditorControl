@@ -114,7 +114,7 @@ internal class D2DControl : Image, IRenderStateProvider
 
     private void StartD3D()
     {
-        _device = new Device(DriverType.Hardware, DeviceCreationFlags.BgraSupport);
+        _device = new Device(DriverType.Hardware, DeviceCreationFlags.BgraSupport | DeviceCreationFlags.SingleThreaded);
 
         _d3dSurface = new Dx11ImageSource();
         _d3dSurface.IsFrontBufferAvailableChanged += OnIsFrontBufferAvailableChanged;
@@ -151,8 +151,6 @@ internal class D2DControl : Image, IRenderStateProvider
         {
             return;
         }
-
-        _d3dSurface.SetRenderTarget(null);
 
         var width = (int)(_parent.ActualWidth * _dpi);
         var height = (int)(_parent.ActualHeight * _dpi);

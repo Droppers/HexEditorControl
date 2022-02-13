@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using HexControl.Core.Helpers;
@@ -26,8 +28,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
     public void Dispose()
     {
-        SetRenderTarget(null);
-
+        ClearRenderTarget();
         Disposer.SafeDispose(ref _renderTarget);
 
         _activeClients--;
@@ -63,18 +64,16 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         Unlock();
     }
 
-    public void SetRenderTarget(Texture2D? target)
+    public void ClearRenderTarget()
+    {
+        Lock();
+        SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
+        Unlock();
+    }
+
+    public void SetRenderTarget(Texture2D target)
     {
         Disposer.SafeDispose(ref _renderTarget);
-
-        if (target is null)
-        {
-            Lock();
-            SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
-            Unlock();
-
-            return;
-        }
 
         var format = TranslateFormat(target);
         var handle = GetSharedHandle(target);
@@ -107,12 +106,14 @@ internal class Dx11ImageSource : D3DImage, IDisposable
     private static void InitializeD3D()
     {
         const CreateFlags createFlags =
-            CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded | CreateFlags.FpuPreserve;
+            CreateFlags.HardwareVertexProcessing | CreateFlags.FpuPreserve;
 
-        if (_activeClients != 0)
+        if (_activeClients is not 0)
         {
             return;
         }
+
+        _activeClients++;
 
         var presentParams = GetPresentParameters();
 
@@ -123,12 +124,13 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
     public void EndD3D()
     {
+        Disposer.SafeDispose(ref _renderTarget);
+
         if (_activeClients is not 0)
         {
             return;
         }
 
-        Disposer.SafeDispose(ref _renderTarget);
         Disposer.SafeDispose(ref _d3dDevice);
         Disposer.SafeDispose(ref _d3dContext);
     }

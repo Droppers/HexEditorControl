@@ -19,10 +19,5 @@
 		<ProjectReference Include="..\HexControl.Core\HexControl.Core.csproj" />
 		<ProjectReference Include="..\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
 	</ItemGroup>
-
-	<ItemGroup>
-		<Folder Include="Control\EventArgs\" />
-		<Folder Include="Framework\Helpers\" />
-	</ItemGroup>
-
+	
 </Project>

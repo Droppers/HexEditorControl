@@ -311,7 +311,6 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         UpdateScrollBars();
 
         AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
-
         await RefreshDocument();
     }
 

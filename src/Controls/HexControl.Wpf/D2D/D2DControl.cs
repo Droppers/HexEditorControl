@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Timers;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
@@ -113,9 +112,8 @@ internal class D2DControl : Image, IRenderStateProvider
         switch (ResizeMode)
         {
             case ResizeMode.Immediate:
-            case ResizeMode.Debounce
-                when !_resizeTimer.Enabled
-                : // First resize call when debounce is enable will be immediate to accept programmatic resizes
+            // First resize call when debounce is enable will be immediate to accept programmatic resizes
+            case ResizeMode.Debounce when !_resizeTimer.Enabled:
                 CreateAndBindTargets();
                 break;
             case ResizeMode.Debounce:
@@ -226,7 +224,7 @@ internal class D2DControl : Image, IRenderStateProvider
 
         OnRender(true);
     }
-    
+
     private void OnRender(bool newSurface = false)
     {
         if (_d2dFactory is null || _d2dRenderTarget is null)

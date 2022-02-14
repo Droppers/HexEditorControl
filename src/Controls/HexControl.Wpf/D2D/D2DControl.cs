@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Timers;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
@@ -10,7 +11,6 @@ using SharpDX.Direct3D11;
 using SharpDX.DXGI;
 using AlphaMode = SharpDX.Direct2D1.AlphaMode;
 using Device = SharpDX.Direct3D11.Device;
-using DeviceContext1 = SharpDX.Direct3D11.DeviceContext1;
 using Factory = SharpDX.Direct2D1.Factory;
 using Image = System.Windows.Controls.Image;
 using PixelFormat = SharpDX.Direct2D1.PixelFormat;
@@ -31,6 +31,7 @@ internal class D2DControl : Image, IRenderStateProvider
     private Dx11ImageSource? _d3dSurface;
     private Device? _device;
     private float _dpi = 1;
+
     private Texture2D? _renderTarget;
 
     public D2DControl(FrameworkElement parent)
@@ -49,11 +50,13 @@ internal class D2DControl : Image, IRenderStateProvider
 
         _resizeTimer = new Timer
         {
-            Interval = 500,
+            Interval = 300,
             Enabled = true
         };
-        _resizeTimer.Elapsed += OnResizeDone;
+        _resizeTimer.Elapsed += OnResizeFinished;
     }
+
+    public ResizeMode ResizeMode { get; set; } = ResizeMode.Debounce;
 
     public float Dpi
     {
@@ -82,8 +85,18 @@ internal class D2DControl : Image, IRenderStateProvider
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
 
-    private void OnResizeDone(object sender, ElapsedEventArgs e)
+    private void OnResizeFinished(object sender, ElapsedEventArgs e)
     {
+        if (ResizeMode is ResizeMode.Debounce)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                CreateAndBindTargets();
+                Width = double.NaN;
+                Height = double.NaN;
+            });
+        }
+
         _resizeTimer.Stop();
         GC.Collect();
     }
@@ -97,9 +110,29 @@ internal class D2DControl : Image, IRenderStateProvider
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        switch (ResizeMode)
+        {
+            case ResizeMode.Immediate:
+            case ResizeMode.Debounce
+                when !_resizeTimer.Enabled
+                : // First resize call when debounce is enable will be immediate to accept programmatic resizes
+                CreateAndBindTargets();
+                break;
+            case ResizeMode.Debounce:
+                CanRender = false;
+                Width = (_d3dSurface?.PixelWidth ?? 0) / _dpi;
+                Height = (_d3dSurface?.PixelHeight ?? 0) / _dpi;
+                break;
+        }
+
+        // Initial render with actual size
+        if (e.PreviousSize.Width is 0 || e.PreviousSize.Height is 0)
+        {
+            return;
+        }
+
         _resizeTimer.Stop();
         _resizeTimer.Start();
-        CreateAndBindTargets();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -193,7 +226,7 @@ internal class D2DControl : Image, IRenderStateProvider
 
         OnRender(true);
     }
-
+    
     private void OnRender(bool newSurface = false)
     {
         if (_d2dFactory is null || _d2dRenderTarget is null)

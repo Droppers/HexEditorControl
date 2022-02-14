@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Windows.Media;
 using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.Mathematics.Interop;
 using DashStyle = System.Windows.Media.DashStyle;
-using DashStyles = System.Windows.Media.DashStyles;
+using SolidColorBrush = SharpDX.Direct2D1.SolidColorBrush;
 
 namespace HexControl.Wpf.Host;
 
@@ -41,7 +42,8 @@ internal class WpfD2DFactory : D2DRenderFactory
             _ when dash == DashStyles.Dot => PenStyle.Dotted,
             _ when dash == DashStyles.Dash => PenStyle.Dashed,
             _ when dash == DashStyles.Solid => PenStyle.Solid,
-            _ => throw new ArgumentOutOfRangeException(nameof(dash), dash, "Only built-in WPF dash styles are supported."),
+            _ => throw new ArgumentOutOfRangeException(nameof(dash), dash,
+                "Only built-in WPF dash styles are supported.")
         };
     }
 

@@ -13,9 +13,11 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
         SkiaRenderFactory factory) : base(factory)
     {
         Context = context;
+        Synchronous = true;
     }
 
     public override bool RequiresClear => true;
+    public override bool PreferTextLayout => false;
 
     public SKCanvas Context { get; set; }
 
@@ -40,7 +42,7 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
     public override void PushClip(SharedRectangle rectangle)
     {
         Save();
-        Context.ClipRect(new SKRect((float)rectangle.X, (float)rectangle.Y, (float)rectangle.Width, (float)rectangle.Height));
+        Context.ClipRect(Convert(rectangle));
     }
 
     private void Save()
@@ -140,6 +142,9 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
 
     protected override void DrawTextLayout(SKPaint? brush, SharedTextLayout layout)
     {
-        throw new NotSupportedException("Skia does not have TextLayout capabilities.");
+        if (layout.BrushRanges.Count is 0)
+        {
+            Context.DrawText(layout.Text, Convert(layout.Position), brush);
+        }
     }
 }

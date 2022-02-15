@@ -6,7 +6,7 @@ internal interface IGlyphTypeface : IDisposable
 {
     bool TryGetGlyphIndex(int codePoint, out ushort glyphIndex);
 
-    double GetHeight(double size);
+    double GetCapHeight(double size);
     double GetWidth(double width);
 
     double GetGlyphOffsetY(TextAlignment alignment, double size);

@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿#if !SKIA_RENDER
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using HexControl.Core.Helpers;
@@ -30,7 +31,13 @@ internal class WpfD2DHost : WpfControl
         hostContainer.Children.Add(_d2dControl);
     }
 
-    public float Dpi { get; set; } = 1;
+    private float _dpi = 1;
+
+    public ResizeMode ResizeMode
+    {
+        get => _d2dControl.ResizeMode;
+        set => _d2dControl.ResizeMode = value;
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -54,7 +61,7 @@ internal class WpfD2DHost : WpfControl
     private void UpdateDpi(DpiScale scale)
     {
         _d2dControl.Dpi = (float)scale.DpiScaleX;
-        Dpi = (float)scale.DpiScaleX;
+        _dpi = (float)scale.DpiScaleX;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -85,12 +92,12 @@ internal class WpfD2DHost : WpfControl
         {
             Disposer.SafeDispose(ref _renderContext);
 
-            _factory = new WpfD2DFactory(renderTarget);
+            _factory = new WpfD2DRenderFactory(renderTarget);
             _renderContext = new WpfD2DRenderContext(_factory, factory, renderTarget, _d2dControl);
             _renderContext.AttachStateProvider(_d2dControl);
         }
 
-        _renderContext.Dpi = Dpi;
+        _renderContext.Dpi = _dpi;
         RaiseRender(_renderContext, newSurface);
     }
 
@@ -99,3 +106,4 @@ internal class WpfD2DHost : WpfControl
         _d2dControl.Invalidate();
     }
 }
+#endif

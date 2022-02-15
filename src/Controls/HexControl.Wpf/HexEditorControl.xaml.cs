@@ -3,7 +3,9 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
+#if !SKIA_RENDER
 using HexControl.Wpf.D2D;
+#endif
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 
@@ -11,6 +13,9 @@ namespace HexControl.Wpf;
 
 public partial class HexEditorControl : UserControl
 {
+    public static readonly DependencyProperty ResizeModeProperty = DependencyProperty.Register(nameof(ResizeMode),
+        typeof(ResizeMode), typeof(HexEditorControl), new PropertyMetadata(ResizeMode.Debounce, OnPropertyChanged));
+
     public static readonly DependencyProperty DocumentProperty = DependencyProperty.Register(nameof(Document),
         typeof(Document), typeof(HexEditorControl), new PropertyMetadata(null, OnPropertyChanged));
 
@@ -21,24 +26,39 @@ public partial class HexEditorControl : UserControl
     public static readonly DependencyProperty RowHeightProperty = DependencyProperty.Register(nameof(RowHeight),
         typeof(int), typeof(HexEditorControl), new PropertyMetadata(15, OnPropertyChanged));
 
-
     public static readonly DependencyProperty RenderApiProperty = DependencyProperty.Register(nameof(RenderApi),
         typeof(HexRenderApi), typeof(HexEditorControl), new PropertyMetadata(null, OnPropertyChanged));
+
+#if SKIA_RENDER
+    // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+    private readonly WpfSkiaHost _host;
+#else
+    private readonly WpfD2DHost _host;
+#endif
 
     public HexEditorControl()
     {
         InitializeComponent();
 
-        var host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
+#if SKIA_RENDER
+        _host = new WpfSkiaHost(HostContainer)
+        {
+            { "VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
+            { "HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
+            { "FakeTextBox", new WpfTextBox(FakeTextBox)}
+        };
+#else
+        _host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
         {
             {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
             {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},
             {"FakeTextBox", new WpfTextBox(FakeTextBox)}
         };
+#endif
 
         Control = new SharedHexControl();
         Control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
-        Control.AttachHost(host);
+        Control.AttachHost(_host);
 
         var factory = new WpfNativeFactory();
         Mapper = new HexControlPropertyMapper(Control, factory);
@@ -47,6 +67,12 @@ public partial class HexEditorControl : UserControl
     private HexControlPropertyMapper Mapper { get; }
 
     private SharedHexControl Control { get; }
+
+    public ResizeMode ResizeMode
+    {
+        get => (ResizeMode)GetValue(ResizeModeProperty);
+        set => SetValue(ResizeModeProperty, value);
+    }
 
     public Document? Document
     {
@@ -92,6 +118,15 @@ public partial class HexEditorControl : UserControl
         }
 
         var value = e.NewValue;
+
+#if !SKIA_RENDER
+        if (e.Property.Name is nameof(ResizeMode))
+        {
+            editor._host.ResizeMode = (ResizeMode)value;
+            return;
+        }
+#endif
+
         await editor.Mapper.SetValue(e.Property.Name, value);
     }
 }

@@ -29,7 +29,7 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
         return Typeface.GetGlyphAdvance('W') * scale;
     }
 
-    public override double GetHeight(double size)
+    public override double GetCapHeight(double size)
     {
         var scale = size / Typeface.DesignEmHeight;
         return Math.Abs(Typeface.Ascent + Typeface.Descent) * scale;

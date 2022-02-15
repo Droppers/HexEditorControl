@@ -13,7 +13,7 @@ internal abstract class CachedGlyphTypeface<TTypeface> : IGlyphTypeface
 
     public abstract TTypeface Typeface { get; }
 
-    public abstract double GetHeight(double size);
+    public abstract double GetCapHeight(double size);
     public abstract double GetWidth(double size);
 
     public virtual double GetGlyphOffsetY(TextAlignment alignment, double size) => 0;

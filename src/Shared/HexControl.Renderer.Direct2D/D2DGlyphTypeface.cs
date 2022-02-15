@@ -61,21 +61,21 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
     }
 
     // TODO: Implement
-    public override double GetHeight(double size)
+    public override double GetCapHeight(double size)
     {
-        return 8;
         var metrics = Typeface.Metrics;
         var ratio = size / metrics.DesignUnitsPerEm;
         return metrics.CapHeight * ratio;
     }
 
     // TODO: Implement
-    public override double GetWidth(double size) =>
-        //var metrics = Typeface.GetDesignGlyphMetrics(new short[] { (short)'W' }, false)[0];
-        //var metrics2 = Typeface.Metrics;
-        //var ratio = size / metrics2.DesignUnitsPerEm;
-        //return Math.Ceiling(metrics.AdvanceWidth * ratio);
-        8;
+    public override double GetWidth(double size)
+    {
+        var metrics = Typeface.GetDesignGlyphMetrics(new[] { (short)'W' }, false)[0];
+        var metrics2 = Typeface.Metrics;
+        var ratio = size / metrics2.DesignUnitsPerEm;
+        return Math.Ceiling(metrics.AdvanceWidth * ratio);
+    }
 
     public override double GetGlyphOffsetY(TextAlignment alignment, double size)
     {
@@ -84,7 +84,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
             throw new NotSupportedException($"TextAlignment {alignment} is not yet supported.");
         }
 
-        return GetHeight(size);
+        return GetCapHeight(size);
     }
 
     public override double GetTextOffsetY(TextAlignment alignment, double size)
@@ -97,8 +97,11 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
         var metrics = Typeface.Metrics;
         var ratio = size / metrics.DesignUnitsPerEm;
         var height = metrics.CapHeight * ratio;
+        var top = metrics.Ascent * ratio;
+        var ascent = metrics.Ascent * ratio;
         var descent = metrics.Descent * ratio;
-        return -(height - descent);
+        //return -(height - descent);
+        return -descent;
     }
 
     public override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)

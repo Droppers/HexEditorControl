@@ -16,7 +16,7 @@ internal class SharedPatternControl : VisualElement
 {
     public const string VerticalScrollBarName = "VerticalScrollBar";
 
-    private const int ROW_HEIGHT = 26;
+    private const int ROW_HEIGHT = 27;
 
     private readonly ColumnDefinition[] _columns =
     {
@@ -294,7 +294,7 @@ internal class SharedPatternControl : VisualElement
 
     private void DrawTextMiddle(IRenderContext context, ISharedBrush brush, SharedTextLayout layout)
     {
-        layout.Position = new SharedPoint(layout.Position.X, (int)(ROW_HEIGHT / 2f - layout.Typeface.GetHeight(12)));
+        layout.Position = new SharedPoint(layout.Position.X, ROW_HEIGHT / 2f - layout.Typeface.GetCapHeight(FontSize) / 2);//(int)(ROW_HEIGHT / 2f - layout.Typeface.GetCapHeight(12) / 2));
         context.DrawTextLayout(brush, layout);
     }
 
@@ -519,7 +519,7 @@ internal class SharedPatternControl : VisualElement
         var leftOffset = entry.Depth * 10;
         if (entry.CanExpand)
         {
-            DrawArrow(context, red, new SharedRectangle(leftOffset, ROW_HEIGHT / 2 - 8 / 2, 8, 8),
+            DrawArrow(context, red, new SharedRectangle(leftOffset, ROW_HEIGHT / 2 - 9 / 2, 9, 9),
                 entry.Expanded ? ArrowDirection.Down : ArrowDirection.Right);
         }
 

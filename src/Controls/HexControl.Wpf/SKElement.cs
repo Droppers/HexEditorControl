@@ -11,9 +11,9 @@ namespace HexControl.Wpf;
 
 internal class SKElement : FrameworkElement
 {
-    [Category("Appearance")] public event EventHandler<SKPaintSurfaceEventArgs>? PaintSurface;
+    public event EventHandler<SKPaintSurfaceEventArgs>? PaintSurface;
 
-    private const double BitmapDpi = 96.0;
+    private const double BITMAP_DPI = 96.0;
 
     private readonly bool _designMode;
 
@@ -61,16 +61,13 @@ internal class SKElement : FrameworkElement
             return;
         }
 
-        var info = new SKImageInfo(size.Width, size.Height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
-
-        // reset the bitmap if the size has changed
+        var info = new SKImageInfo(size.Width, size.Height);
         if (_bitmap == null || info.Width != _bitmap.PixelWidth || info.Height != _bitmap.PixelHeight)
         {
-            _bitmap = new WriteableBitmap(info.Width, size.Height, BitmapDpi * scaleX, BitmapDpi * scaleY,
+            _bitmap = new WriteableBitmap(info.Width, size.Height, BITMAP_DPI * scaleX, BITMAP_DPI * scaleY,
                 PixelFormats.Pbgra32, null);
         }
-
-        // draw on the bitmap
+        
         _bitmap.Lock();
         using (var surface = SKSurface.Create(info, _bitmap.BackBuffer, _bitmap.BackBufferStride))
         {
@@ -83,8 +80,7 @@ internal class SKElement : FrameworkElement
 
             OnPaintSurface(new SKPaintSurfaceEventArgs(surface, info.WithSize(userVisibleSize), info));
         }
-
-        // draw the bitmap to the screen
+        
         _bitmap.AddDirtyRect(new Int32Rect(0, 0, info.Width, size.Height));
         _bitmap.Unlock();
         drawingContext.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
@@ -92,7 +88,6 @@ internal class SKElement : FrameworkElement
 
     protected virtual void OnPaintSurface(SKPaintSurfaceEventArgs e)
     {
-        // invoke the event
         PaintSurface?.Invoke(this, e);
     }
 
@@ -127,5 +122,4 @@ internal class SKElement : FrameworkElement
         bool IsPositive(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value > 0;
     }
 }
-
 #endif

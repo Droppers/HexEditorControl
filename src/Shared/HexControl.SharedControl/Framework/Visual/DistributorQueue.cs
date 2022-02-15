@@ -14,14 +14,21 @@ internal class DistributorQueue
     private long _previousTicks;
     private bool _requestedRender;
 
+    private readonly SynchronizationContext _syncContext;
+    private readonly TaskFactory _factory;
+
     public DistributorQueue(VisualElement element)
     {
         _element = element;
         _sw = Stopwatch.StartNew();
         _lock = new SemaphoreSlim(1, 1);
+        _syncContext = SynchronizationContext.Current ?? throw new Exception();
+
+        var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+        _factory = new TaskFactory(scheduler);
     }
 
-    public async Task<bool> StartIOTask()
+    public async Task<bool> StartIOTaskAsync()
     {
         if (_isDoingIo)
         {
@@ -39,7 +46,39 @@ internal class DistributorQueue
         _isDoingIo = false;
     }
 
-    public async Task Render(IRenderContext context)
+    public void Render(IRenderContext context)
+    {
+        while (true)
+        {
+            var acquired = _lock.Wait(0);
+            if (!acquired)
+            {
+                _requestedRender = true;
+                _latestContext = context;
+                return;
+            }
+
+            _latestContext = context;
+            
+            if (_latestContext.CanRender)
+            {
+                _previousTicks = _sw.ElapsedMilliseconds;
+                _element.InvokeRender(_latestContext);
+            }
+
+            _lock.Release();
+
+            if (_requestedRender)
+            {
+                _requestedRender = false;
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    public async Task RenderAsync(IRenderContext context)
     {
         while (true)
         {

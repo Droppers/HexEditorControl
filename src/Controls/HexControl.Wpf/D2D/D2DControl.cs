@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !SKIA_RENDER
+using System;
 using System.Timers;
 using System.Windows;
 using System.Windows.Media;
@@ -246,3 +247,4 @@ internal class D2DControl : Image, IRenderStateProvider
         _d3dSurface?.InvalidateD3DImage(dirtyRect);
     }
 }
+#endif

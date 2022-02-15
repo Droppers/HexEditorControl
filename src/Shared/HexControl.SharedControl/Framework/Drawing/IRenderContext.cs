@@ -22,6 +22,7 @@ public interface IRenderContextApi : IDisposable
 internal interface IRenderContext : IRenderContextApi
 {
     bool CanRender { get; set; }
+    bool Synchronous { get; set; }
 
     bool PreferTextLayout { get; }
     bool RequiresClear { get; }

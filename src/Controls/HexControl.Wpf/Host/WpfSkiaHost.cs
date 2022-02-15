@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿#if SKIA_RENDER
+using System.Windows.Controls;
 using HexControl.Renderer.Skia;
 using HexControl.Wpf.Host.Controls;
 using SkiaSharp;
@@ -7,19 +8,42 @@ namespace HexControl.Wpf.Host;
 
 internal class WpfSkiaHost : WpfControl
 {
-    private readonly SkiaRenderFactory _renderFactory;
+    private readonly SKElement _skElement;
     private SkiaRenderContext? _context;
 
-    public WpfSkiaHost(FrameworkElement element, SkiaRenderFactory renderFactory) : base(element)
+    public WpfSkiaHost(Grid container) : base(container)
     {
-        _renderFactory = renderFactory;
+        _skElement = new SKElement();
+        _skElement.PaintSurface += OnPaintSurface;
+        container.Children.Add(_skElement);
     }
 
-    public void DoRender(SKCanvas context)
+    private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
-        _context ??= new SkiaRenderContext(context, _renderFactory);
+        DoRender(e.Surface.Canvas);
+    }
+
+    private void DoRender(SKCanvas context)
+    {
+        _context ??= new SkiaRenderContext(context, new WpfSkiaRenderFactory());
+        _context.CanRender = true;
         _context.Context = context;
 
         RaiseRender(_context, false);
     }
+
+    public override void Invalidate()
+    {
+        _skElement.InvalidateVisual();
+        return;
+        
+        if (_context is null)
+        {
+            _skElement.InvalidateVisual();
+            return;
+        }
+
+        RaiseRender(_context, false);
+    }
 }
+#endif

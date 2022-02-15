@@ -4,7 +4,9 @@ using System.Windows.Controls;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.SharedControl.Control;
 using HexControl.SharedControl.PatternControl;
+#if !SKIA_RENDER
 using HexControl.Wpf.D2D;
+#endif
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 
@@ -24,11 +26,17 @@ public partial class PatternControl : UserControl
         var control = new SharedPatternControl();
         var factory = new WpfNativeFactory();
         _mapper = new PatternControlPropertyMapper(control, factory);
-
+#if SKIA_RENDER
+        var host = new WpfSkiaHost(HostContainer)
+        {
+            {SharedPatternControl.VerticalScrollBarName, new WpfScrollBar(VerticalScrollBar)}
+        };
+#else
         var host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
         {
             {SharedPatternControl.VerticalScrollBarName, new WpfScrollBar(VerticalScrollBar)}
         };
+#endif
         control.AttachHost(host);
     }
 

@@ -173,7 +173,14 @@ internal abstract class VisualElement : ObservableObject
             return;
         }
 
-        await queue.Render(context);
+        if (context.Synchronous)
+        {
+            queue.Render(context);
+        }
+        else
+        {
+            await queue.RenderAsync(context);
+        }
     }
 
 

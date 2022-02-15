@@ -10,10 +10,8 @@ namespace HexControl.Renderer.Direct2D;
 
 internal abstract class D2DRenderFactory : RenderFactory<SolidColorBrush, D2DPen>
 {
-    private readonly RenderTarget? _renderTarget;
-
-    protected D2DRenderFactory() { }
-
+    private readonly RenderTarget _renderTarget;
+    
     protected D2DRenderFactory(RenderTarget renderTarget)
     {
         _renderTarget = renderTarget;
@@ -26,12 +24,6 @@ internal abstract class D2DRenderFactory : RenderFactory<SolidColorBrush, D2DPen
 
     public override SolidColorBrush CreateBrush(ISharedBrush brush)
     {
-        if (_renderTarget is null)
-        {
-            throw new NotSupportedException(
-                "Cannot create Direct2D resources when object factory is not initialized with render target.");
-        }
-
         if (brush is ColorBrush colorBrush)
         {
             var color = colorBrush.Color;

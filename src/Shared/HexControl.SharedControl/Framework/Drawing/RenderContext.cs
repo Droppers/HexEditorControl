@@ -27,6 +27,8 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
 
     public RenderFactory Factory => _factory;
 
+    public bool Synchronous { get; set; }
+
     public virtual bool RequiresClear => false;
     public virtual bool PreferTextLayout => false;
 

@@ -4,6 +4,8 @@ namespace HexControl.SharedControl.Framework.Drawing.Text;
 
 internal class SharedTextLayout
 {
+    private SharedPoint _position;
+
     public SharedTextLayout(IGlyphTypeface typeface, double size, string text) : this(typeface, size,
         new SharedPoint(0, 0))
     {
@@ -20,7 +22,12 @@ internal class SharedTextLayout
 
     public IGlyphTypeface Typeface { get; }
     public double Size { get; }
-    public SharedPoint Position { get; set; }
+
+    public SharedPoint Position
+    {
+        get => _position;
+        set => _position = new SharedPoint(value.X, Typeface.GetTextOffsetY(TextAlignment.Top, Size) + value.Y);
+    }
 
     public ISharedBrush? Brush { get; set; }
     public string Text { get; set; } = "";

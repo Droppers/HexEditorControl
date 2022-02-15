@@ -1,6 +1,6 @@
 ﻿namespace HexControl.Wpf;
 
-internal enum ResizeMode
+public enum ResizeMode
 {
     Immediate,
     Debounce

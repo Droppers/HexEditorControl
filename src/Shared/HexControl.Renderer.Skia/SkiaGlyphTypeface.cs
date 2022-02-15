@@ -17,11 +17,11 @@ internal sealed class SkiaGlyphTypeface : CachedGlyphTypeface<SKFont>
 
     public override SKFont Typeface { get; }
 
-    public override double GetHeight(double size)
+    public override double GetCapHeight(double size)
     {
         Typeface.Size = (float)size;
         Typeface.GetFontMetrics(out var metrics);
-        return metrics.Bottom;
+        return Math.Ceiling(metrics.CapHeight);
     }
 
     public override double GetWidth(double size)
@@ -29,7 +29,7 @@ internal sealed class SkiaGlyphTypeface : CachedGlyphTypeface<SKFont>
         Typeface.Size = (float)size;
         var widths = new float[1];
         var bounds = new SKRect[1];
-        Typeface.GetGlyphWidths(new ushort[] {'B'}, widths, bounds);
+        Typeface.GetGlyphWidths(new ushort[] {'W'}, widths, bounds);
         return widths[0];
     }
 
@@ -39,5 +39,15 @@ internal sealed class SkiaGlyphTypeface : CachedGlyphTypeface<SKFont>
         return true;
     }
 
-    public override double GetGlyphOffsetY(TextAlignment alignment, double size) => GetHeight(size);
+    public override double GetGlyphOffsetY(TextAlignment alignment, double size) => GetCapHeight(size);
+    
+    public override double GetTextOffsetY(TextAlignment alignment, double size)
+    {
+        if (alignment is not TextAlignment.Top)
+        {
+            throw new NotSupportedException($"TextAlignment {alignment} is not yet supported.");
+        }
+
+        return GetCapHeight(size);
+    }
 }

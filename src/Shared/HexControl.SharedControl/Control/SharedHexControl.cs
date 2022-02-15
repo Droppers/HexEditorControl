@@ -496,7 +496,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         }
 
         var characterWidth = Typeface.GetWidth(_fontSize);
-        var characterHeight = Typeface.GetHeight(_fontSize);
+        var characterHeight = Typeface.GetCapHeight(_fontSize);
 
         CharacterHeight = (int)Math.Ceiling(characterHeight);
         RowHeight = CharacterHeight + 8;
@@ -578,7 +578,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             return;
         }
 
-        var canDoIO = await queue.StartIOTask();
+        var canDoIO = await queue.StartIOTaskAsync();
         if (!canDoIO)
         {
             return;

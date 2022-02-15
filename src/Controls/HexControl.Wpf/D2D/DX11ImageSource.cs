@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !SKIA_RENDER
+using System;
 using System.Windows;
 using System.Windows.Interop;
 using HexControl.Core.Helpers;
@@ -173,3 +174,4 @@ internal class Dx11ImageSource : D3DImage, IDisposable
     private static bool IsShareable(Texture2D texture) =>
         (texture.Description.OptionFlags & ResourceOptionFlags.Shared) != 0;
 }
+#endif

@@ -54,10 +54,4 @@ internal class WpfSkiaRenderFactory : SkiaRenderFactory
     //    };
     //    return paint;
     //}
-
-    public override IGlyphTypeface CreateGlyphTypeface(string fontFamily) => new SkiaGlyphTypeface(fontFamily);
-
-
-    // TODO: impl
-    public override IGlyphTypeface CreateGlyphTypeface(EmbeddedAsset asset) => new SkiaGlyphTypeface("Courier New");
 }

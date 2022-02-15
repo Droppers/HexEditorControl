@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !SKIA_RENDER
+using System;
 using System.Windows.Media;
 using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;
@@ -9,13 +10,11 @@ using SolidColorBrush = SharpDX.Direct2D1.SolidColorBrush;
 
 namespace HexControl.Wpf.Host;
 
-internal class WpfD2DFactory : D2DRenderFactory
+internal class WpfD2DRenderFactory : D2DRenderFactory
 {
     private readonly RenderTarget? _target;
-
-    public WpfD2DFactory() { }
-
-    public WpfD2DFactory(RenderTarget target) : base(target)
+    
+    public WpfD2DRenderFactory(RenderTarget target) : base(target)
     {
         _target = target;
     }
@@ -57,3 +56,4 @@ internal class WpfD2DFactory : D2DRenderFactory
         return base.CreatePen(pen);
     }
 }
+#endif

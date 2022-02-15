@@ -1,4 +1,5 @@
-﻿using HexControl.Renderer.Direct2D;
+﻿#if !SKIA_RENDER
+using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.Wpf.D2D;
 using SharpDX.Direct2D1;
@@ -27,3 +28,4 @@ internal class WpfD2DRenderContext : D2DRenderContext
         _control.InvalidateImage(dirtyRect);
     }
 }
+#endif

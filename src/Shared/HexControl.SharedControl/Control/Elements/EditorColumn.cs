@@ -31,11 +31,11 @@ internal class EditorColumn : VisualElement
     private ColumnSide _activeColumn = ColumnSide.Left;
 
     private IDocumentMarker? _activeMarker;
-    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
-    private bool _cursorTick;
+    private bool _caretTick;
 
-    private Timer? _cursorTimer;
-    private bool _cursorUpdated;
+    private Timer? _caretTimer;
+    private bool _caretUpdated;
+    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
 
     private Document? _document;
     private int _horizontalCharacterOffset;
@@ -49,7 +49,7 @@ internal class EditorColumn : VisualElement
 
     private SharedPoint? _mouseDownPosition;
     private bool _mouseSelectMode;
-    private long _previousCursorOffset;
+    private long _previousCaretOffset;
     private CharacterSet? _rightCharacterSet;
     private long? _startSelectionOffset;
 
@@ -179,21 +179,21 @@ internal class EditorColumn : VisualElement
 
     protected override void OnHostAttached(IHostControl attachHost)
     {
-        InitCursorTimer();
+        InitCaretTimer();
         InitTextBox();
     }
 
-    private void InitCursorTimer()
+    private void InitCaretTimer()
     {
-        _cursorTimer = new Timer
+        _caretTimer = new Timer
         {
             Interval = 500,
             Enabled = true
         };
-        _cursorTimer.Elapsed += (_, _) =>
+        _caretTimer.Elapsed += (_, _) =>
         {
-            _cursorTick = !_cursorTick;
-            _cursorUpdated = true;
+            _caretTick = !_caretTick;
+            _caretUpdated = true;
 
             if (_syncContext is not null)
             {
@@ -341,8 +341,8 @@ internal class EditorColumn : VisualElement
         // Draw the markers that should be drawn in front of the text
         DrawMarkers(context, marker => !marker.BehindText);
 
-        // Draw the cursors
-        DrawCursors(context, Document);
+        // Draw the carets
+        DrawCarets(context, Document);
     }
 
     private bool ShouldAddMarkerDirtyRect()
@@ -662,37 +662,37 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private void DrawCursors(IRenderContext context, Document document)
+    private void DrawCarets(IRenderContext context, Document document)
     {
-        if (document.Cursor.Offset < Offset || document.Cursor.Offset > Offset + Bytes.Length)
+        if (document.Caret.Offset < Offset || document.Caret.Offset > Offset + Bytes.Length)
         {
             return;
         }
 
-        DrawCursor(context, document, ColumnSide.Left);
+        DrawCaret(context, document, ColumnSide.Left);
         if (Configuration.ColumnsVisible is VisibleColumns.HexText)
         {
-            DrawCursor(context, document, ColumnSide.Right);
+            DrawCaret(context, document, ColumnSide.Right);
         }
 
-        if (_cursorUpdated || _previousCursorOffset != document.Cursor.Offset)
+        if (_caretUpdated || _previousCaretOffset != document.Caret.Offset)
         {
-            AddCursorDirtyRect(document.Cursor);
+            AddCaretDirtyRect(document.Caret);
         }
 
 
-        _cursorUpdated = false;
-        _previousCursorOffset = document.Cursor.Offset;
+        _caretUpdated = false;
+        _previousCaretOffset = document.Caret.Offset;
     }
 
-    private void DrawCursor(IRenderContext context, Document document, ColumnSide column)
+    private void DrawCaret(IRenderContext context, Document document, ColumnSide column)
     {
-        var cursor = document.Cursor;
+        var caret = document.Caret;
         var characterSet = GetCharacterSetForColumn(column);
 
-        if (_previousCursorOffset != cursor.Offset)
+        if (_previousCaretOffset != caret.Offset)
         {
-            var previousPosition = CalculateCursorPosition(_previousCursorOffset, 0, characterSet, column);
+            var previousPosition = CalculateCaretPosition(_previousCaretOffset, 0, characterSet, column);
             if (previousPosition.X >= 0 && previousPosition.Y <= Height)
             {
                 AddDirtyRect(new SharedRectangle(previousPosition.X, previousPosition.Y,
@@ -700,29 +700,29 @@ internal class EditorColumn : VisualElement
             }
         }
 
-        var drawCursor = _previousCursorOffset != cursor.Offset &&
-                         (cursor.Column == column || document.Selection is null) ||
-                         (cursor.Column != column || _cursorTick) &&
-                         (cursor.Column == column || document.Selection is null);
+        var drawCaret = _previousCaretOffset != caret.Offset &&
+                        (caret.Column == column || document.Selection is null) ||
+                        (caret.Column != column || _caretTick) &&
+                        (caret.Column == column || document.Selection is null);
 
-        var position = CalculateCursorPosition(cursor.Offset, cursor.Nibble, characterSet, column);
+        var position = CalculateCaretPosition(caret.Offset, caret.Nibble, characterSet, column);
         if (position.X < 0 || position.Y > Height)
         {
             return;
         }
 
-        if (column == document.Cursor.Column)
+        if (column == document.Caret.Column)
         {
             var topOffset = 0;
-            var leftOffset = characterSet.Groupable && IsEndOfGroup(cursor.Offset) &&
-                             document.Selection?.End == cursor.Offset
+            var leftOffset = characterSet.Groupable && IsEndOfGroup(caret.Offset) &&
+                             document.Selection?.End == caret.Offset
                 ? _parent.CharacterWidth
                 : 1;
 
-            // Move the cursor up to the end of last row for visual reasons
-            var moveCursorUp = document.Selection?.End == cursor.Offset &&
-                               cursor.Offset % Configuration.BytesPerRow is 0;
-            if (moveCursorUp)
+            // Move the caret up to the end of last row for visual reasons
+            var moveCaretUp = document.Selection?.End == caret.Offset &&
+                              caret.Offset % Configuration.BytesPerRow is 0;
+            if (moveCaretUp)
             {
                 topOffset = _parent.RowHeight;
 
@@ -733,20 +733,20 @@ internal class EditorColumn : VisualElement
             var rect = new SharedRectangle(position.X - leftOffset, position.Y - topOffset, 2,
                 _parent.RowHeight);
 
-            if (drawCursor)
+            if (drawCaret)
             {
-                context.DrawRectangle(_parent.CursorBackground, null, rect);
+                context.DrawRectangle(_parent.CaretBackground, null, rect);
             }
         }
         else
         {
-            var pen = new SharedPen(_parent.CursorBackground, 1, PenStyle.Dotted);
+            var pen = new SharedPen(_parent.CaretBackground, 1, PenStyle.Dotted);
             var aliasOffset = GetLineAntiAliasOffset(pen);
             var rect = new SharedRectangle(position.X + aliasOffset, position.Y + aliasOffset,
                 _parent.CharacterWidth * characterSet.Width,
                 _parent.RowHeight - aliasOffset * 2);
 
-            if (drawCursor)
+            if (drawCaret)
             {
                 context.DrawRectangle(null, pen, rect);
             }
@@ -754,19 +754,22 @@ internal class EditorColumn : VisualElement
     }
 
 
-    public void AddCursorDirtyRect(Cursor cursor)
+    public void AddCaretDirtyRect(Caret caret)
     {
-        var position = CalculateCursorPosition(cursor.Offset, 0, _leftCharacterSet, ColumnSide.Left);
-        AddDirtyRect(new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
+        var position = CalculateCaretPosition(caret.Offset, 0, _leftCharacterSet, ColumnSide.Left);
+        AddDirtyRect(new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight),
+            CharacterWidth);
 
-        if(_rightCharacterSet is not null)
+        if (_rightCharacterSet is not null)
         {
-            position = CalculateCursorPosition(cursor.Offset, 0, _leftCharacterSet, ColumnSide.Right);
-            AddDirtyRect(new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight), CharacterWidth);
+            position = CalculateCaretPosition(caret.Offset, 0, _leftCharacterSet, ColumnSide.Right);
+            AddDirtyRect(
+                new SharedRectangle(position.X, position.Y, _leftCharacterSet.Width * CharacterWidth, RowHeight),
+                CharacterWidth);
         }
     }
 
-    private SharedPoint CalculateCursorPosition(long offset, long nibble, CharacterSet characterSet, ColumnSide column)
+    private SharedPoint CalculateCaretPosition(long offset, long nibble, CharacterSet characterSet, ColumnSide column)
     {
         var relativeOffset = offset - Offset;
         var row = relativeOffset / Configuration.BytesPerRow;
@@ -1205,7 +1208,7 @@ internal class EditorColumn : VisualElement
         var (column, offset, nibble) = GetOffsetFromPoint(e.PointRelativeTo(this));
         if (_mouseDownPosition is not null)
         {
-            SetCursorOffset(column, offset, nibble);
+            SetCaretOffset(column, offset, nibble);
             Deselect();
         }
 
@@ -1214,37 +1217,37 @@ internal class EditorColumn : VisualElement
         _mouseSelectMode = false;
     }
 
-    private void SetCursorOffset(long offset, int nibble = 0, bool scrollToCursor = false)
+    private void SetCaretOffset(long offset, int nibble = 0, bool scrollToCaret = false)
     {
         if (Document is null)
         {
             return;
         }
 
-        SetCursorOffset(Document.Cursor.Column, offset, nibble, scrollToCursor);
+        SetCaretOffset(Document.Caret.Column, offset, nibble, scrollToCaret);
     }
 
-    private void SetCursorOffset(ColumnSide column, long offset, int nibble = 0, bool scrollToCursor = false)
+    private void SetCaretOffset(ColumnSide column, long offset, int nibble = 0, bool scrollToCaret = false)
     {
         if (Document is null)
         {
             return;
         }
 
-        ResetCursorTick();
-        Document.ChangeCursor(column, offset, nibble, scrollToCursor);
+        ResetCaretTick();
+        Document.ChangeCaret(column, offset, nibble, scrollToCaret);
     }
 
-    private void ResetCursorTick()
+    private void ResetCaretTick()
     {
-        if (_cursorTimer is null)
+        if (_caretTimer is null)
         {
             return;
         }
 
-        _cursorTick = true;
-        _cursorTimer.Stop();
-        _cursorTimer.Start();
+        _caretTick = true;
+        _caretTimer.Stop();
+        _caretTimer.Start();
     }
 
     private bool IsPointInEditableArea(SharedPoint point)
@@ -1322,7 +1325,7 @@ internal class EditorColumn : VisualElement
         var startOffset = newOffset >= _startSelectionOffset ? _startSelectionOffset.Value : newOffset;
         var endOffset = newOffset >= _startSelectionOffset ? newOffset : _startSelectionOffset.Value;
 
-        SetCursorOffset(newOffset >= _startSelectionOffset.Value ? endOffset : startOffset, scrollToCursor: true);
+        SetCaretOffset(newOffset >= _startSelectionOffset.Value ? endOffset : startOffset, scrollToCaret: true);
 
         if (startOffset == endOffset)
         {
@@ -1341,7 +1344,7 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        var cursor = Document.Cursor;
+        var caret = Document.Caret;
         var selection = Document.Selection;
         var ctrlPressed = (e.Modifiers & HostKeyModifier.Control) is not 0;
         if (e.Key is HostKey.Left or HostKey.Up or HostKey.Down or HostKey.Right)
@@ -1371,26 +1374,26 @@ internal class EditorColumn : VisualElement
         {
             // Respect user dragging up for continuation with keyboard controls
             _startSelectionOffset =
-                (cursor.Offset == selection?.Start ? selection.End - 1 : selection?.Start) ??
-                cursor.Offset;
+                (caret.Offset == selection?.Start ? selection.End - 1 : selection?.Start) ??
+                caret.Offset;
             _keyboardSelectMode = true;
         }
         else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete)
         {
             _parent.Document?.Buffer.Delete(selection.Start, selection.End - selection.Start);
-            SetCursorOffset(selection.Start);
+            SetCaretOffset(selection.Start);
             Deselect();
         }
-        else if (cursor.Nibble is 0)
+        else if (caret.Nibble is 0)
         {
             if (e.Key is HostKey.Back)
             {
-                _parent.Document?.Buffer.Delete(cursor.Offset - 1, 1);
-                SetCursorOffset(cursor.Offset - 1);
+                _parent.Document?.Buffer.Delete(caret.Offset - 1, 1);
+                SetCaretOffset(caret.Offset - 1);
             }
             else if (e.Key is HostKey.Delete)
             {
-                _parent.Document?.Buffer.Delete(cursor.Offset, 1);
+                _parent.Document?.Buffer.Delete(caret.Offset, 1);
             }
         }
     }
@@ -1432,15 +1435,15 @@ internal class EditorColumn : VisualElement
 
         Deselect();
 
-        var cursor = Document.Cursor;
-        var appendToDocument = cursor.Offset >= Document.Length;
+        var caret = Document.Caret;
+        var appendToDocument = caret.Offset >= Document.Length;
 
-        var characterSet = GetCharacterSetForColumn(cursor.Column);
+        var characterSet = GetCharacterSetForColumn(caret.Column);
         var oldByte = (byte)0;
 
         if (!appendToDocument)
         {
-            var readByte = await ReadCursorByte(cursor);
+            var readByte = await ReadCaretByte(caret);
             if (readByte is null)
             {
                 return;
@@ -1450,38 +1453,38 @@ internal class EditorColumn : VisualElement
         }
 
         // Write to byte and validate if it is possible to write this character
-        if (!characterSet.TryWrite(oldByte, @char, cursor.Nibble, out var newByte))
+        if (!characterSet.TryWrite(oldByte, @char, caret.Nibble, out var newByte))
         {
             return;
         }
 
         if (appendToDocument)
         {
-            _parent.Document?.Buffer.Insert(cursor.Offset, newByte);
+            _parent.Document?.Buffer.Insert(caret.Offset, newByte);
         }
         else
         {
-            _parent.Document?.Buffer.Write(cursor.Offset, newByte);
+            _parent.Document?.Buffer.Write(caret.Offset, newByte);
         }
 
         HandleArrowKeys(Document, HostKey.Right);
     }
 
-    private async Task<byte?> ReadCursorByte(Cursor cursor)
+    private async Task<byte?> ReadCaretByte(Caret caret)
     {
         if (Document is null)
         {
             return null;
         }
 
-        var relativeOffset = cursor.Offset - Offset;
+        var relativeOffset = caret.Offset - Offset;
         if (relativeOffset < Bytes.Length)
         {
             return Bytes[relativeOffset];
         }
 
         // Allow for writing outside of current visible buffer
-        var readLength = await Document.Buffer.ReadAsync(cursor.Offset, _readBuffer);
+        var readLength = await Document.Buffer.ReadAsync(caret.Offset, _readBuffer);
         if (readLength <= 0)
         {
             return null;
@@ -1492,11 +1495,11 @@ internal class EditorColumn : VisualElement
 
     private void HandleArrowKeys(Document document, HostKey key, bool jumpByte = false)
     {
-        var offset = document.Cursor.Offset;
-        var nibble = document.Cursor.Nibble;
+        var offset = document.Caret.Offset;
+        var nibble = document.Caret.Nibble;
 
         // Allow for nibble level control when not selecting and byte level when selecting.
-        var charset = GetCharacterSetForColumn(document.Cursor.Column);
+        var charset = GetCharacterSetForColumn(document.Caret.Column);
         switch (key)
         {
             case HostKey.Right when nibble == charset.Width - 1 || _keyboardSelectMode || jumpByte:
@@ -1529,7 +1532,7 @@ internal class EditorColumn : VisualElement
 
         if (document.Selection is null)
         {
-            SetCursorOffset(offset, nibble, true);
+            SetCaretOffset(offset, nibble, true);
         }
 
         Select(offset, _activeColumn);

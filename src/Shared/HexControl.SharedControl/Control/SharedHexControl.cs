@@ -78,7 +78,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private readonly OffsetColumn _offsetColumn;
 
     private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
-    private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
+    private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
 
     private string _fontFamily = "Default";
@@ -93,7 +93,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     //private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     //private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(0, 0, 0));
     //private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
-    //private ISharedBrush _cursorBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
+    //private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
     //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
 
     private byte[] _readBuffer = Array.Empty<byte>();
@@ -155,10 +155,10 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         set => Set(ref _modifiedForeground, value);
     }
 
-    public ISharedBrush CursorBackground
+    public ISharedBrush CaretBackground
     {
-        get => Get(ref _cursorBackground);
-        set => Set(ref _cursorBackground, value);
+        get => Get(ref _caretBackground);
+        set => Set(ref _caretBackground, value);
     }
 
     public int ScrollWheelSkipRows
@@ -378,7 +378,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             Document.OffsetChanged -= DocumentOnOffsetChanged;
             Document.SelectionChanged -= DocumentOnSelectionChanged;
-            Document.CursorChanged -= DocumentOnCursorChanged;
+            Document.CaretChanged -= DocumentOnCaretChanged;
             Document.ConfigurationChanged -= DocumentOnConfigurationChanged;
 
             Document.Buffer.Modified -= BufferOnModified;
@@ -389,7 +389,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             newDocument.OffsetChanged += DocumentOnOffsetChanged;
             newDocument.SelectionChanged += DocumentOnSelectionChanged;
-            newDocument.CursorChanged += DocumentOnCursorChanged;
+            newDocument.CaretChanged += DocumentOnCaretChanged;
             newDocument.ConfigurationChanged += DocumentOnConfigurationChanged;
 
             newDocument.Buffer.Modified += BufferOnModified;
@@ -410,27 +410,27 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         }
     }
 
-    private void DocumentOnCursorChanged(object? sender, CursorChangedEventArgs e)
+    private void DocumentOnCaretChanged(object? sender, CaretChangedEventArgs e)
     {
         if (Document is null)
         {
             return;
         }
 
-        if (e.ScrollToCursor)
+        if (e.ScrollToCaret)
         {
-            if (Document.Cursor.Offset < Document.Offset)
+            if (Document.Caret.Offset < Document.Offset)
             {
-                Document.Offset = Document.Cursor.Offset;
+                Document.Offset = Document.Caret.Offset;
             }
-            else if (Document.Cursor.Offset > _editorColumn.MaxVisibleOffset)
+            else if (Document.Caret.Offset > _editorColumn.MaxVisibleOffset)
             {
-                Document.Offset = Document.Cursor.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
+                Document.Offset = Document.Caret.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
                                   Configuration.BytesPerRow;
             }
         }
 
-        _editorColumn.AddCursorDirtyRect(e.NewCursor);
+        _editorColumn.AddCaretDirtyRect(e.NewCaret);
         Invalidate();
     }
 
@@ -564,7 +564,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     {
         if (e.RequestCenter)
         {
-            // TODO: should be implemented in OnCursorChanged instead.
+            // TODO: should be implemented in OnCaretChanged instead.
         }
 
         Invalidate();

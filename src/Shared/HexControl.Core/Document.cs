@@ -4,9 +4,9 @@ using HexControl.Core.Events;
 
 namespace HexControl.Core;
 
-public class Cursor : IEquatable<Cursor>
+public class Caret : IEquatable<Caret>
 {
-    public Cursor(long offset, int nibble, ColumnSide column)
+    public Caret(long offset, int nibble, ColumnSide column)
     {
         Offset = offset;
         Nibble = nibble;
@@ -17,26 +17,26 @@ public class Cursor : IEquatable<Cursor>
     public int Nibble { get; }
     public ColumnSide Column { get; }
 
-    public bool Equals(Cursor? other) => other is not null && other.Offset == Offset && other.Nibble == Nibble &&
-                                         other.Column == Column;
+    public bool Equals(Caret? other) => other is not null && other.Offset == Offset && other.Nibble == Nibble &&
+                                        other.Column == Column;
 
-    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Cursor other && Equals(other);
+    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Caret other && Equals(other);
 
     public override int GetHashCode() => HashCode.Combine(Offset, Nibble, Column);
 }
 
-public class CursorChangedEventArgs : EventArgs
+public class CaretChangedEventArgs : EventArgs
 {
-    public CursorChangedEventArgs(Cursor oldCursor, Cursor newCursor, bool scrollToCursor)
+    public CaretChangedEventArgs(Caret oldCaret, Caret newCaret, bool scrollToCaret)
     {
-        OldCursor = oldCursor;
-        NewCursor = newCursor;
-        ScrollToCursor = scrollToCursor;
+        OldCaret = oldCaret;
+        NewCaret = newCaret;
+        ScrollToCaret = scrollToCaret;
     }
 
-    public Cursor OldCursor { get; }
-    public Cursor NewCursor { get; }
-    public bool ScrollToCursor { get; }
+    public Caret OldCaret { get; }
+    public Caret NewCaret { get; }
+    public bool ScrollToCaret { get; }
 }
 
 internal record MarkerState(IDocumentMarker Marker, long Offset, long Length);
@@ -44,7 +44,7 @@ internal record MarkerState(IDocumentMarker Marker, long Offset, long Length);
 internal record DocumentState(
     IReadOnlyList<MarkerState> MarkerStates,
     Selection? SelectionState = null,
-    Cursor? CursorState = null);
+    Caret? CaretState = null);
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
@@ -69,12 +69,12 @@ public class Document
         _redoStates = new Stack<DocumentState>();
 
         _markers = new List<IDocumentMarker>();
-        Cursor = new Cursor(0, 0, ColumnSide.Left);
+        Caret = new Caret(0, 0, ColumnSide.Left);
     }
 
     public StaticMarkerProvider? StaticMarkerProvider { get; set; }
 
-    public Cursor Cursor { get; private set; }
+    public Caret Caret { get; private set; }
 
     public DocumentConfiguration Configuration
     {
@@ -128,7 +128,7 @@ public class Document
 
     public event EventHandler<ConfigurationChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
-    public event EventHandler<CursorChangedEventArgs>? CursorChanged;
+    public event EventHandler<CaretChangedEventArgs>? CaretChanged;
     public event EventHandler<OffsetChangedEventArgs>? OffsetChanged;
     public event EventHandler<EventArgs>? MarkersChanged;
 
@@ -180,9 +180,9 @@ public class Document
             }
         }
 
-        if (state.CursorState is not null)
+        if (state.CaretState is not null)
         {
-            Cursor = state.CursorState;
+            Caret = state.CaretState;
         }
     }
 
@@ -208,31 +208,31 @@ public class Document
     public static Document FromBuffer(byte[] bytes, DocumentConfiguration? configuration = null) =>
         new(new FileBuffer(""), configuration);
 
-    public void ChangeCursor(ColumnSide column, long offset, int nibble, bool scrollToCursor = false)
+    public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {
-        var newCursor = new Cursor(offset, nibble, column);
-        if (!ValidateCursor(newCursor))
+        var newCaret = new Caret(offset, nibble, column);
+        if (!ValidateCaret(newCaret))
         {
             return;
         }
 
-        var oldCursor = Cursor;
-        Cursor = newCursor;
+        var oldCaret = Caret;
+        Caret = newCaret;
 
-        if (!oldCursor.Equals(newCursor))
+        if (!oldCaret.Equals(newCaret))
         {
-            OnCursorChanged(oldCursor, Cursor, scrollToCursor);
+            OnCaretChanged(oldCaret, Caret, scrollToCaret);
         }
     }
 
-    public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCursor = true,
+    public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCaret = true,
         bool requestCenter = false)
     {
-        Select(new Selection(startOffset, endOffset, column), moveCursor, requestCenter);
+        Select(new Selection(startOffset, endOffset, column), moveCaret, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).
-    public void Select(Selection? newArea, bool moveCursor = true, bool requestCenter = false)
+    public void Select(Selection? newArea, bool moveCaret = true, bool requestCenter = false)
     {
         var oldArea = Selection;
 
@@ -244,9 +244,9 @@ public class Document
 
         Selection = newArea;
 
-        if (newArea is not null && moveCursor)
+        if (newArea is not null && moveCaret)
         {
-            Cursor = new Cursor(newArea.End, 0, newArea.Column);
+            Caret = new Caret(newArea.End, 0, newArea.Column);
         }
 
         OnSelectionChanged(oldArea, newArea, requestCenter);
@@ -284,16 +284,16 @@ public class Document
         throw new ArgumentOutOfRangeException(nameof(id), $"Marker with id '{id}' does not exist.");
     }
 
-    private bool ValidateCursor(Cursor cursor)
+    private bool ValidateCaret(Caret caret)
     {
-        if (cursor.Offset < 0 || cursor.Offset > Length)
+        if (caret.Offset < 0 || caret.Offset > Length)
         {
-            throw new ArgumentException("Cursor offset must be between zero and Length of the document.");
+            throw new ArgumentException("Caret offset must be between zero and Length of the document.");
         }
 
-        if (cursor.Nibble < 0 || cursor.Nibble >= GetCharacterSetForColumn(cursor.Column).Width)
+        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSetForColumn(caret.Column).Width)
         {
-            throw new ArgumentException("Cursor nibble must be between zero and Width of the column's character set.");
+            throw new ArgumentException("Caret nibble must be between zero and Width of the column's character set.");
         }
 
         return true;
@@ -314,9 +314,9 @@ public class Document
         Select(null);
     }
 
-    protected virtual void OnCursorChanged(Cursor oldCursor, Cursor newCursor, bool scrollToCursor)
+    protected virtual void OnCaretChanged(Caret oldCaret, Caret newCaret, bool scrollToCaret)
     {
-        CursorChanged?.Invoke(this, new CursorChangedEventArgs(oldCursor, newCursor, scrollToCursor));
+        CaretChanged?.Invoke(this, new CaretChangedEventArgs(oldCaret, newCaret, scrollToCaret));
     }
 
     protected virtual void OnSelectionChanged(Selection? oldArea, Selection? newArea, bool requestCenter)
@@ -383,14 +383,14 @@ public class Document
             }
         }
 
-        if (deleteOffset >= Cursor.Offset)
+        if (deleteOffset >= Caret.Offset)
         {
             return new DocumentState(markerStates);
         }
 
-        var cursorState = new Cursor(Cursor.Offset, Cursor.Nibble, Cursor.Column);
-        Cursor = new Cursor(Cursor.Offset, 0, Cursor.Column);
-        return new DocumentState(markerStates, CursorState: cursorState);
+        var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
+        Caret = new Caret(Caret.Offset, 0, Caret.Column);
+        return new DocumentState(markerStates, CaretState: caretState);
     }
 
     private DocumentState ApplyInsertModification(long insertOffset, byte[] insertBytes)
@@ -422,20 +422,20 @@ public class Document
             }
         }
 
-        var cursorState = new Cursor(Cursor.Offset, Cursor.Nibble, Cursor.Column);
+        var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
 
-        // Don't move cursor to the right for single byte inserts, this usually means a user is typing
+        // Don't move caret to the right for single byte inserts, this usually means a user is typing
         if (insertBytes.Length >= 2)
         {
-            Cursor = new Cursor(insertOffset + insertBytes.Length, 0, Cursor.Column);
+            Caret = new Caret(insertOffset + insertBytes.Length, 0, Caret.Column);
         }
 
-        return new DocumentState(markerStates, CursorState: cursorState);
+        return new DocumentState(markerStates, CaretState: caretState);
     }
 
     private DocumentState ApplyWriteModification(long writeOffset, byte[] writeBytes)
     {
-        var cursorState = new Cursor(Cursor.Offset, Cursor.Nibble, Cursor.Column);
-        return new DocumentState(Array.Empty<MarkerState>(), CursorState: cursorState);
+        var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
+        return new DocumentState(Array.Empty<MarkerState>(), CaretState: caretState);
     }
 }

@@ -40,9 +40,9 @@ public class TestApi : HexRenderApi
         var totalWidth = details.Editor.Rectangle.X + rightDimen.X + details.Editor.RightVisibleWidth -
                          details.Offset.Value.Rectangle.X;
         var document = details.Control.Document;
-        if (document is not null && document.Selection is null && document.Cursor.Offset >= document.Offset)
+        if (document is not null && document.Selection is null && document.Caret.Offset >= document.Offset)
         {
-            var cursor = document.Cursor;
+            var cursor = document.Caret;
             var row = (cursor.Offset - document.Offset) / document.Configuration.BytesPerRow;
 
             var y = row * details.Control.RowHeight + details.Editor.Rectangle.Y + leftDimen.Y;
@@ -120,6 +120,6 @@ public partial class MainWindow : Window
 
     private void Insert_OnClick(object sender, RoutedEventArgs e)
     {
-        _doc.Buffer.Insert(_doc.Cursor.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+        _doc.Buffer.Insert(_doc.Caret.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
     }
 }

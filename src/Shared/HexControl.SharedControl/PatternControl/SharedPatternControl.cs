@@ -294,7 +294,8 @@ internal class SharedPatternControl : VisualElement
 
     private void DrawTextMiddle(IRenderContext context, ISharedBrush brush, SharedTextLayout layout)
     {
-        layout.Position = new SharedPoint(layout.Position.X, ROW_HEIGHT / 2f - layout.Typeface.GetCapHeight(FontSize) / 2);//(int)(ROW_HEIGHT / 2f - layout.Typeface.GetCapHeight(12) / 2));
+        layout.Position =
+            new SharedPoint(layout.Position.X, ROW_HEIGHT / 2f - layout.Typeface.GetCapHeight(FontSize) / 2);
         context.DrawTextLayout(brush, layout);
     }
 

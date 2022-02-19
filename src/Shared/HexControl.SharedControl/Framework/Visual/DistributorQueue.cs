@@ -6,16 +6,16 @@ namespace HexControl.SharedControl.Framework.Visual;
 internal class DistributorQueue
 {
     private readonly VisualElement _element;
+    private readonly TaskFactory _factory;
     private readonly SemaphoreSlim _lock;
     private readonly Stopwatch _sw;
+
+    private readonly SynchronizationContext _syncContext;
 
     private bool _isDoingIo;
     private IRenderContext _latestContext = null!;
     private long _previousTicks;
     private bool _requestedRender;
-
-    private readonly SynchronizationContext _syncContext;
-    private readonly TaskFactory _factory;
 
     public DistributorQueue(VisualElement element)
     {
@@ -59,7 +59,7 @@ internal class DistributorQueue
             }
 
             _latestContext = context;
-            
+
             if (_latestContext.CanRender)
             {
                 _previousTicks = _sw.ElapsedMilliseconds;

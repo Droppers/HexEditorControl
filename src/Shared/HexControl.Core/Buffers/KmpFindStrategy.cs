@@ -18,11 +18,13 @@ internal class KmpFindStrategy : IFindStrategy
 {
     private readonly Lazy<int[]> _kmpFailure;
     private readonly byte[] _pattern;
+    private readonly byte[] _readBuffer;
 
     public KmpFindStrategy(byte[] pattern)
     {
         _pattern = pattern;
         _kmpFailure = new Lazy<int[]>(ComputeKmpFailureFunction);
+        _readBuffer = new byte[4096];
     }
 
     public unsafe long SearchInFile(
@@ -50,8 +52,7 @@ internal class KmpFindStrategy : IFindStrategy
 
     public long SearchInBuffer(BaseBuffer buffer, long startOffset, long maxSearchLength, bool backward)
     {
-        var readBuffer = new byte[4];
-        var provider = new BufferByteProvider(buffer, readBuffer);
+        var provider = new BufferByteProvider(buffer, _readBuffer);
 
         return backward
             ? LastIndexOfInProvider(provider, startOffset, maxSearchLength)
@@ -137,6 +138,7 @@ internal class KmpFindStrategy : IFindStrategy
 
     private unsafe long LastIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength)
     {
+        startIndex += maxSearchLength - 1;
         var currentIndex = startIndex;
         long i = 0;
 
@@ -215,6 +217,7 @@ internal class KmpFindStrategy : IFindStrategy
 
     private unsafe long LastIndexOf(byte* bytes, long startIndex, long maxSearchLength)
     {
+        startIndex += maxSearchLength - 1;
         var currentIndex = startIndex;
         long i = 0;
 

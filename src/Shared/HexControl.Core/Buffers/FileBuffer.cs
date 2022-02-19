@@ -44,6 +44,7 @@ public class FileBuffer : BaseBuffer, IDisposable
 
     private static long GetLength(string fileName) => new FileInfo(fileName).Length;
 
-    protected override long FindInVirtual(IFindStrategy strategy, long startOffset, long length, bool backward) =>
-        strategy.SearchInFile(_viewAccessor, startOffset, length, backward);
+    protected override long FindInVirtual(IFindStrategy strategy, long offset, long length, FindOptions options,
+        CancellationToken cancellationToken) =>
+        strategy.SearchInFile(_viewAccessor, offset, length, options.Backward);
 }

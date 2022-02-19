@@ -1,5 +1,5 @@
 ﻿using System.Buffers;
-using System.Diagnostics;
+using System.Collections;
 using HexControl.Core.Buffers.Chunks;
 using HexControl.Core.Buffers.History;
 using HexControl.Core.Buffers.History.Changes;
@@ -53,6 +53,10 @@ public abstract class BaseBuffer : IBuffer
     internal LinkedList<IChunk> Chunks { get; }
     public ChangeTracker Changes { get; }
 
+    public int Version { get; private set; }
+
+    public bool IsModified => Version > 0;
+
     public long Length { get; set; }
 
     // TODO: track length when making changes to the buffer
@@ -90,7 +94,6 @@ public abstract class BaseBuffer : IBuffer
             return await node.Value.ReadAsync(buffer, readOffset, buffer.Length, cancellationToken);
         }
 
-        var previousChunkLength = -1;
         var readLength = buffer.Length;
         var actualRead = 0L;
         var modificationStart = -1L;
@@ -297,7 +300,7 @@ public abstract class BaseBuffer : IBuffer
                 modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
             }
 
-            return node.Value.Read(buffer, readOffset, buffer.Length);
+            return node.Value.Read(buffer, readOffset - currentOffset, buffer.Length);
         }
 
         var readLength = buffer.Length;
@@ -341,84 +344,85 @@ public abstract class BaseBuffer : IBuffer
         Insert(insertOffset, new[] {insertByte});
     }
 
-    public long Find(byte[] pattern, long startOffset, bool backward, bool wrapAround)
+    public FindQuery Query(byte[] pattern, FindOptions options)
     {
-        // TODO: this is a complete mess and should be rewritten
         var strategy = new KmpFindStrategy(pattern);
-        var (startNode, _) = GetNodeAt(startOffset);
-        IChunk? groupFirstChunk = null;
-        long groupOffset = 0; // TODO: startOffset (startNodeOffset)
-        long groupLength = 0;
-        var didWrapAround = false;
-        var node = startNode;
-        var i = 0;
-        while (node != null)
+        return new FindQuery(this, pattern, strategy, options);
+    }
+
+    internal bool FindInternal(FindQuery query, CancellationToken cancellationToken = default)
+    {
+        var options = query.Options;
+        var dontWrap = !options.Backward && options.StartOffset is 0 ||
+                       options.Backward && options.StartOffset == Length - 1;
+
+        while (true)
         {
-            var chunk = node.Value;
-            var endReached = node == startNode && i > 0;
-            var next = backward ? node.Previous : node.Next;
-            groupFirstChunk ??= chunk;
-            Debug.WriteLine(
-                $"{chunk.GetType().Name} ({groupFirstChunk.GetType().Name}) ({chunk.Length}), {groupOffset} with length {groupLength}");
-            groupLength += chunk.Length;
-            var nextIsDifferent = groupFirstChunk is MemoryChunk && next?.Value is ReadOnlyChunk ||
-                                  groupFirstChunk is ReadOnlyChunk && next?.Value is MemoryChunk;
-            if (nextIsDifferent && next?.Value.Length > pattern.Length || endReached || next is null)
+            var initialOffset = query.NextStartOffset ?? options.StartOffset;
+
+            var findOffset = initialOffset;
+            if (options.Backward)
             {
-                Debug.WriteLine($"SEARCH: {groupOffset} with length {groupLength} {nextIsDifferent}");
-                if (groupFirstChunk is ReadOnlyChunk)
+                findOffset = query.DidWrap ? options.StartOffset - query.Pattern.Length : 0;
+            }
+
+            var findLength = options.Backward
+                ? query.DidWrap ? Length - findOffset - (Length - (query.NextStartOffset ?? Length)) :
+                options.StartOffset - (options.StartOffset - initialOffset)
+                : query.DidWrap
+                    ? options.StartOffset - findOffset + query.Pattern.Length
+                    : Length - findOffset;
+
+
+            // Find without overhead when the buffer is not modified.
+            var foundOffset = IsModified
+                ? FindInMemory(query.Strategy, findOffset, findLength, options, cancellationToken)
+                : FindInVirtual(query.Strategy, findOffset, findLength, options, cancellationToken);
+            if (foundOffset is not -1)
+            {
+                query.CurrentOffset = foundOffset;
+                query.NextStartOffset = foundOffset + (options.Backward ? -query.Pattern.Length : query.Pattern.Length);
+
+                if (!dontWrap && (options.Backward && foundOffset is 0 ||
+                                  !options.Backward && foundOffset == Length - query.Pattern.Length))
                 {
-                    var res = FindInVirtual(strategy, groupOffset, groupLength, backward);
-                    if (res != -1)
-                    {
-                        return res;
-                    }
+                    query.DidWrap = true;
+                    query.NextStartOffset = options.Backward ? Length : 0;
+                }
+
+                return true;
+            }
+
+            if (!query.DidWrap && !dontWrap)
+            {
+                if (options.WrapAround)
+                {
+                    query.DidWrap = true;
+                    query.NextStartOffset = options.Backward ? Length : 0;
                 }
                 else
                 {
-                    var res = FindInMemory(strategy, Math.Max(0, groupOffset - (pattern.Length - 1)),
-                        groupLength + (pattern.Length * 2 - 2), backward);
-                    if (res != -1)
-                    {
-                        return res;
-                    }
+                    return false;
                 }
-
-                if (endReached)
-                {
-                    break;
-                }
-
-                groupFirstChunk = null;
-                groupOffset += groupLength;
-                groupLength = 0;
-            }
-
-            if (next == null && wrapAround)
-            {
-                Console.WriteLine("---------------- WRAP");
-                didWrapAround = true;
-                groupOffset = backward ? Length - 1 : 0;
-                node = backward ? Chunks.Last : Chunks.First;
             }
             else
             {
-                node = next;
+                return false;
             }
-
-            i++;
         }
-
-        return -1;
     }
 
-    private long FindInMemory(IFindStrategy strategy, long startOffset, long length, bool backward) =>
-        strategy.SearchInBuffer(this, startOffset, length, backward);
+    private long FindInMemory(IFindStrategy strategy, long offset, long length, FindOptions options,
+        CancellationToken cancellationToken) =>
+        strategy.SearchInBuffer(this, offset, length, options.Backward);
 
-    protected abstract long FindInVirtual(IFindStrategy strategy, long startOffset, long length, bool backward);
+    protected abstract long FindInVirtual(IFindStrategy strategy, long offset, long length, FindOptions options,
+        CancellationToken cancellationToken);
 
     private void PushChanges(ChangeCollection changes, long oldLength)
     {
+        Version++;
+
         Changes.Push(changes);
         OnModified(changes.Modification, ModificationSource.User);
 
@@ -624,57 +628,92 @@ public abstract class BaseBuffer : IBuffer
         return (null, 0);
     }
 
-    public BufferStream GetStream() => new(this);
+    public BufferStream CreateStream() => new(this);
 
-    public class FindResult
+    public class FindQuery : IEnumerable<long>
     {
-        private readonly bool _backward;
         private readonly BaseBuffer _buffer;
 
-        private readonly long _currentOffset;
-        private readonly byte[] _pattern;
-        private readonly bool _wrapAround;
-
-        private bool _used;
-
-        public FindResult(BaseBuffer buffer, byte[] pattern, bool backward, bool wrapAround, long currentOffset)
+        internal FindQuery(BaseBuffer buffer, byte[] pattern, IFindStrategy strategy, FindOptions options)
         {
             _buffer = buffer;
-            _pattern = pattern;
-            _backward = backward;
-            _wrapAround = wrapAround;
-            _currentOffset = currentOffset;
+            Pattern = pattern;
+            Strategy = strategy;
+            Options = options;
 
-            _used = false;
+            BufferVersion = _buffer.Version;
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async Task<long> Next()
+        public bool DidWrap { get; set; }
+
+        public byte[] Pattern { get; }
+        public IFindStrategy Strategy { get; }
+        public FindOptions Options { get; }
+
+        public int BufferVersion { get; }
+        public bool IsModifiedSince => _buffer.Version != BufferVersion;
+
+        public long? CurrentOffset { get; internal set; }
+        public long? NextStartOffset { get; internal set; }
+
+        public IEnumerator<long> GetEnumerator() => new FindIterator(this);
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public long? Next()
         {
-            if (_used)
+            if (_buffer.FindInternal(this, CancellationToken.None))
             {
-                throw new InvalidOperationException(
-                    $"Use the new {nameof(FindResult)} instance returned by 'Next()' or 'Previous()'.");
+                return CurrentOffset;
             }
 
-            _used = true;
-            var startOffset = _backward ? _currentOffset - _pattern.Length : _currentOffset + _pattern.Length;
-            return _buffer.Find(_pattern, startOffset, _backward, _wrapAround);
+            CurrentOffset = null;
+            NextStartOffset = null;
+            return null;
         }
 
-        public async Task<long> Previous()
+        public void Reset()
         {
-            if (_used)
+            DidWrap = false;
+            CurrentOffset = null;
+        }
+
+        private readonly struct FindIterator : IEnumerator<long>
+        {
+            private readonly FindQuery _query;
+
+            public FindIterator(FindQuery query)
             {
-                throw new InvalidOperationException(
-                    $"Use the new {nameof(FindResult)} instance returned by 'Next()' or 'Previous()'.");
+                _query = query;
             }
 
-            _used = true;
-            var startOffset = _backward ? _currentOffset - _pattern.Length : _currentOffset + _pattern.Length;
-            return _buffer.Find(_pattern, startOffset, _backward, _wrapAround);
+            public bool MoveNext()
+            {
+                var next = _query.Next();
+                return next is not null;
+            }
+
+            public void Reset()
+            {
+                _query.Reset();
+            }
+
+            public long Current => _query.CurrentOffset ?? -1;
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+                // ignore
+            }
         }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+    }
+
+    public readonly struct FindOptions
+    {
+        public long StartOffset { get; init; }
+        public bool Backward { get; init; }
+        public bool WrapAround { get; init; }
     }
 }
 

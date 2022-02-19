@@ -17,20 +17,12 @@ public class Cursor : IEquatable<Cursor>
     public int Nibble { get; }
     public ColumnSide Column { get; }
 
-    public bool Equals(Cursor? other)
-    {
-        return other is not null && other.Offset == Offset && other.Nibble == Nibble && other.Column == Column;
-    }
+    public bool Equals(Cursor? other) => other is not null && other.Offset == Offset && other.Nibble == Nibble &&
+                                         other.Column == Column;
 
-    public override bool Equals(object? obj)
-    {
-        return  ReferenceEquals(this, obj) || obj is Cursor other && Equals(other);
-    }
+    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Cursor other && Equals(other);
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Offset, Nibble, Column);
-    }
+    public override int GetHashCode() => HashCode.Combine(Offset, Nibble, Column);
 }
 
 public class CursorChangedEventArgs : EventArgs

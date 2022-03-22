@@ -9,7 +9,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Folder Include="Configuration\" />
+	  <Compile Remove="Configuration\**" />
+	  <EmbeddedResource Remove="Configuration\**" />
+	  <None Remove="Configuration\**" />
 	</ItemGroup>
 
 </Project>

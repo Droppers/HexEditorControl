@@ -630,6 +630,75 @@ public abstract class BaseBuffer : IBuffer
 
     public BufferStream CreateStream() => new(this);
 
+    // TODO: should technically be located on FileBuffer, we don't have access to the FileStream in here
+    // Might resort to making these methods abstract and providing protected helper methods for it.
+    public async Task<bool> SaveAsync()
+    {
+        if (!IsModified)
+        {
+            return false;
+        }
+
+        var canOverwrite = false;
+        if (canOverwrite)
+        {
+            // TODO: detect whether changes altered the the offsets of file chunks
+            //  - No delete modifications
+            //  - No insert modifications
+            //  - Is a FileBuffer
+            return await SaveOverwriteAsync();
+        }
+        
+        return await SaveToFileAsync("C:/temp/test.bin");
+    }
+
+
+    private async Task<bool> SaveOverwriteAsync()
+    {
+        await using var stream = File.OpenWrite("C:/temp/test.bin");
+
+        var offset = 0L;
+        foreach (var chunk in Chunks)
+        {
+            if (chunk is MemoryChunk memory)
+            {
+                stream.Seek(offset, SeekOrigin.Begin);
+                stream.Write(memory.Bytes, 0, (int)memory.Length);
+            }
+
+            offset += chunk.Length;
+        }
+        return true;
+    }
+
+    public async Task<bool> SaveToFileAsync(string fileName)
+    {
+        await using var stream = File.Open(fileName, FileMode.OpenOrCreate);
+        return await SaveToFileAsync(stream);
+    }
+
+    public async Task<bool> SaveToFileAsync(FileStream fileStream)
+    {
+        var offset = 0L;
+        foreach (var chunk in Chunks)
+        {
+            fileStream.Seek(offset, SeekOrigin.Begin);
+            if (chunk is MemoryChunk memory)
+            {
+                await fileStream.WriteAsync(memory.Bytes, 0, (int)memory.Length);
+            }
+            else
+            { 
+                var bytes = await chunk.ReadAsync(0, Length);
+                await fileStream.WriteAsync(bytes, 0, bytes.Length);
+            }
+
+            offset += chunk.Length;
+        }
+
+        return true;
+    }
+
     public class FindQuery : IEnumerable<long>
     {
         private readonly BaseBuffer _buffer;

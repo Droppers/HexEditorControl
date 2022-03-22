@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using HexControl.Core;
 using HexControl.PatternLanguage;
@@ -89,10 +90,10 @@ public partial class MainWindow : Window
         Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         //Document = _doc;
 
-        var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
+        //var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
 
-        var runner = new PatternRunner(Document);
-        Patterns = runner.Run(code).ToList();
+        //var runner = new PatternRunner(Document);
+        //Patterns = runner.Run(code).ToList();
     }
 
     public Document Document { get; set; }
@@ -121,5 +122,10 @@ public partial class MainWindow : Window
     private void Insert_OnClick(object sender, RoutedEventArgs e)
     {
         _doc.Buffer.Insert(_doc.Caret.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+    }
+
+    private async void Save_OnClick(object sender, RoutedEventArgs e)
+    {
+        await Document.Buffer.SaveAsync();
     }
 }

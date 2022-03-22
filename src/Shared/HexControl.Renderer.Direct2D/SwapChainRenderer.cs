@@ -1,4 +1,5 @@
 ﻿using System;
+using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct3D;
 using SharpDX.DXGI;
@@ -30,12 +31,10 @@ internal class SwapChainRenderer : IDisposable, IRenderStateProvider
     {
         CanRender = false;
 
-        _backBuffer?.Dispose();
-        _d2dBitmapTarget?.Dispose();
-        _d2dContext?.Dispose();
-        _d2dDevice?.Dispose();
-        _swapChain?.Dispose();
-        _d3dDevice2?.Dispose();
+        Disposer.SafeDispose(ref _backBuffer);
+        Disposer.SafeDispose(ref _d2dBitmapTarget);
+        Disposer.SafeDispose(ref _swapChain);
+        Disposer.SafeDispose(ref _d3dDevice2);
     }
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
@@ -64,7 +63,7 @@ internal class SwapChainRenderer : IDisposable, IRenderStateProvider
 
         var swapChainDescription1 = new SwapChainDescription1
         {
-            AlphaMode = AlphaMode.Ignore,
+            AlphaMode = AlphaMode.Premultiplied,
             BufferCount = 2,
             Flags = SwapChainFlags.AllowModeSwitch,
             Format = Format.B8G8R8A8_UNorm,
@@ -130,8 +129,8 @@ internal class SwapChainRenderer : IDisposable, IRenderStateProvider
             _d2dContext.Target = null;
         }
 
-        _backBuffer?.Dispose();
-        _d2dBitmapTarget?.Dispose();
+        Disposer.SafeDispose(ref _backBuffer);
+        Disposer.SafeDispose(ref _d2dBitmapTarget);
     }
 
     private void CreateRenderTarget()

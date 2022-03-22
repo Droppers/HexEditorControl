@@ -53,6 +53,14 @@
                 VerticalAlignment="Top"
                 Click="Restore_OnClick"
                 Content="Restore document" />
+            <Button
+                Visibility="Visible"
+                x:Name="Save"
+                Padding="5"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Click="Save_OnClick"
+                Content="Save" />
         </StackPanel>
     </Grid>
 

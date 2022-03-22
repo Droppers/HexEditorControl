@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
@@ -722,6 +723,7 @@ internal class EditorColumn : VisualElement
             // Move the caret up to the end of last row for visual reasons
             var moveCaretUp = document.Selection?.End == caret.Offset &&
                               caret.Offset % Configuration.BytesPerRow is 0;
+            
             if (moveCaretUp)
             {
                 topOffset = _parent.RowHeight;
@@ -1325,15 +1327,15 @@ internal class EditorColumn : VisualElement
         var startOffset = newOffset >= _startSelectionOffset ? _startSelectionOffset.Value : newOffset;
         var endOffset = newOffset >= _startSelectionOffset ? newOffset : _startSelectionOffset.Value;
 
-        SetCaretOffset(newOffset >= _startSelectionOffset.Value ? endOffset : startOffset, scrollToCaret: true);
-
         if (startOffset == endOffset)
         {
             Document.Deselect();
+            SetCaretOffset(startOffset, scrollToCaret: true);
         }
         else
         {
-            Document.Select(startOffset, endOffset, column, false);
+            var newCaretLocation = newOffset >= _startSelectionOffset.Value ? NewCaretLocation.SelectionEnd : NewCaretLocation.SelectionStart;
+            Document.Select(startOffset, endOffset, column, newCaretLocation, true);
         }
     }
 

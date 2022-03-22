@@ -4,6 +4,13 @@ using HexControl.Core.Events;
 
 namespace HexControl.Core;
 
+public enum NewCaretLocation
+{
+    Current,
+    SelectionEnd,
+    SelectionStart
+}
+
 public class Caret : IEquatable<Caret>
 {
     public Caret(long offset, int nibble, ColumnSide column)
@@ -225,14 +232,14 @@ public class Document
         }
     }
 
-    public void Select(long startOffset, long endOffset, ColumnSide column, bool moveCaret = true,
+    public void Select(long startOffset, long endOffset, ColumnSide column, NewCaretLocation newCaretLocation = NewCaretLocation.Current,
         bool requestCenter = false)
     {
-        Select(new Selection(startOffset, endOffset, column), moveCaret, requestCenter);
+        Select(new Selection(startOffset, endOffset, column), newCaretLocation, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).
-    public void Select(Selection? newArea, bool moveCaret = true, bool requestCenter = false)
+    public void Select(Selection? newArea, NewCaretLocation newCaretLocation = NewCaretLocation.Current, bool requestCenter = false)
     {
         var oldArea = Selection;
 
@@ -244,9 +251,9 @@ public class Document
 
         Selection = newArea;
 
-        if (newArea is not null && moveCaret)
+        if (newArea is not null && newCaretLocation is not NewCaretLocation.Current)
         {
-            Caret = new Caret(newArea.End, 0, newArea.Column);
+            Caret = new Caret(newCaretLocation is NewCaretLocation.SelectionStart ? newArea.Start : newArea.End, 0, newArea.Column);
         }
 
         OnSelectionChanged(oldArea, newArea, requestCenter);
@@ -254,14 +261,6 @@ public class Document
 
     public Guid AddMarker(Guid id, IDocumentMarker marker)
     {
-        //for (var i = 0; i < _markers.Count; i++)
-        //{
-        //    if (_markers[i].Id == id)
-        //    {
-        //        throw new ArgumentException($"A marker with id '{id}' already exists.", nameof(id));
-        //    }
-        //}
-
         _markers.Add(marker);
         OnMarkersChanged();
 

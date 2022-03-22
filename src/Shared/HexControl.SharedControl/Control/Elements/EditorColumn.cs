@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
@@ -638,7 +637,7 @@ internal class EditorColumn : VisualElement
 
         return column switch
         {
-            ColumnSide.Left => _leftCharacterSet!,
+            ColumnSide.Left => _leftCharacterSet,
             ColumnSide.Right => _rightCharacterSet!,
             ColumnSide.Both => throw new ArgumentException(
                 "Only a character set for either left or right columns can be determined.", nameof(column)),

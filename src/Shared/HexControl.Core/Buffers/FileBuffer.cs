@@ -1,48 +1,75 @@
 ﻿using System.IO.MemoryMappedFiles;
 using HexControl.Core.Buffers.Chunks;
+using JetBrains.Annotations;
 
 namespace HexControl.Core.Buffers;
 
-public class FileBuffer : BaseBuffer, IDisposable
+public enum FileOpenMode
+{
+    ReadOnly,
+    ReadWrite
+}
+
+[PublicAPI]
+public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
 {
     private readonly FileStream _fileStream;
-
     private readonly MemoryMappedFile _memoryMappedFile;
-    private readonly MemoryMappedViewStream _stream;
     private readonly MemoryMappedViewAccessor _viewAccessor;
 
-    public FileBuffer(string fileName)
+    public FileBuffer(string fileName, FileOpenMode openMode)
     {
-        Filename = fileName;
+        Filename = fileName ?? throw new ArgumentNullException(fileName);
+        
+        _fileStream = OpenFileStream(fileName, openMode);
 
-        _fileStream = File.OpenRead(fileName);
-
-        // TODO: improve handle creation, read/ write , etc
-        _memoryMappedFile =
-            MemoryMappedFile.CreateFromFile(fileName, FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
+        // Memory mapped file is used for finding byte sequences, especially useful for larger files
+        _memoryMappedFile = OpenMemoryMappedFile(_fileStream);
         _viewAccessor = _memoryMappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
 
-        var length = GetLength(fileName);
-        _stream = _memoryMappedFile.CreateViewStream(0, length, MemoryMappedFileAccess.Read);
-
-        var chunk = new FileChunk(this, _fileStream, _memoryMappedFile, _viewAccessor, _stream)
+        Initialize(new FileChunk(this, _fileStream, _viewAccessor)
         {
-            Length = length
-        };
-        Init(chunk);
+            Length = _fileStream.Length
+        });
     }
-
+    
     public string Filename { get; }
 
     public void Dispose()
     {
-        _fileStream.Dispose();
-        _stream.Dispose();
         _viewAccessor.Dispose();
         _memoryMappedFile.Dispose();
+        _fileStream.Dispose();
     }
 
-    private static long GetLength(string fileName) => new FileInfo(fileName).Length;
+
+    public async ValueTask DisposeAsync()
+    {
+        _viewAccessor.Dispose();
+        _memoryMappedFile.Dispose();
+        await _fileStream.DisposeAsync();
+    }
+
+    private FileStream OpenFileStream(string fileName, FileOpenMode openMode)
+    {
+        try
+        {
+            IsReadOnly = openMode is FileOpenMode.ReadOnly;
+            return openMode is FileOpenMode.ReadOnly
+                ? File.OpenRead(fileName)
+                : File.Open(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        }
+        catch (UnauthorizedAccessException) when (openMode is FileOpenMode.ReadWrite)
+        {
+            // Could not open in read write mode, attempt to open in readonly mode
+            IsReadOnly = true;
+            return File.OpenRead(fileName);
+        }
+    }
+
+    private MemoryMappedFile OpenMemoryMappedFile(FileStream fileStream) =>
+        MemoryMappedFile.CreateFromFile(fileStream, null, 0, MemoryMappedFileAccess.Read,
+            HandleInheritability.Inheritable, true);
 
     protected override long FindInVirtual(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken) =>

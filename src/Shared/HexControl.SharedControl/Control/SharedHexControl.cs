@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using HexControl.Core;
 using HexControl.Core.Buffers;
+using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Events;
 using HexControl.SharedControl.Control.Elements;
 using HexControl.SharedControl.Framework;

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using HexControl.Core.Buffers.Chunks;
 using HexControl.Core.Buffers.History.Changes;
+using HexControl.Core.Buffers.Modifications;
 
 namespace HexControl.Core.Buffers.History;
 

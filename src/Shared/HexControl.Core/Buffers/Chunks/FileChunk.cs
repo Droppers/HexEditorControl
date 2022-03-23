@@ -1,22 +1,18 @@
 ﻿using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
+using System;
 
 namespace HexControl.Core.Buffers.Chunks;
 
 public class FileChunk : ReadOnlyChunk
 {
     private readonly MemoryMappedViewAccessor _accessor;
-    private readonly MemoryMappedFile _file;
     private readonly FileStream _fileStream;
-    private readonly MemoryMappedViewStream _stream;
 
-    public FileChunk(BaseBuffer buffer, FileStream fileStream, MemoryMappedFile file, MemoryMappedViewAccessor accessor,
-        MemoryMappedViewStream stream) : base(buffer)
+    public FileChunk(BaseBuffer buffer, FileStream fileStream, MemoryMappedViewAccessor accessor) : base(buffer)
     {
         _fileStream = fileStream;
-        _file = file;
         _accessor = accessor;
-        _stream = stream;
     }
 
     protected override unsafe void InternalRead(byte[] readBuffer, long sourceReadOffset, long readLength)
@@ -35,14 +31,14 @@ public class FileChunk : ReadOnlyChunk
 
     // TODO: cancellation support
     protected override async Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         _fileStream.Seek(sourceReadOffset, SeekOrigin.Begin);
-        await _fileStream.ReadAsync(readBuffer, 0, (int)readLength, cancellationToken);
+        await _fileStream.ReadAsync(readBuffer.AsMemory(0, (int)readLength), cancellationToken);
     }
 
     public override IChunk Clone() =>
-        new FileChunk(buffer, _fileStream, _file, _accessor, _stream)
+        new FileChunk(buffer, _fileStream, _accessor)
         {
             Length = Length,
             SourceOffset = SourceOffset

@@ -3,49 +3,17 @@ using System.Collections;
 using HexControl.Core.Buffers.Chunks;
 using HexControl.Core.Buffers.History;
 using HexControl.Core.Buffers.History.Changes;
+using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Events;
+using JetBrains.Annotations;
 
 namespace HexControl.Core.Buffers;
 
-// TODO: move to file
-public record BufferModification(long Offset);
-
-public record WriteModification(long Offset, byte[] Bytes) : BufferModification(Offset);
-
-public record InsertModification(long Offset, byte[] Bytes) : BufferModification(Offset);
-
-public record DeleteModification(long Offset, long Length) : BufferModification(Offset);
-
-// TODO: move to file
-public enum ModificationSource
+[PublicAPI]
+public abstract class BaseBuffer
 {
-    User,
-    Undo,
-    Redo
-}
-
-// TODO: move to file
-public class ModifiedEventArgs : EventArgs
-{
-    public ModifiedEventArgs(BufferModification modification, ModificationSource source = ModificationSource.User)
-    {
-        Modification = modification;
-        Source = source;
-    }
-
-    public BufferModification Modification { get; }
-    public ModificationSource Source { get; }
-}
-
-// TODO: get rid if interface, only abstract class?
-public abstract class BaseBuffer : IBuffer
-{
-    private readonly ArrayPool<byte> _arrayPool;
-
     protected BaseBuffer()
     {
-        _arrayPool = ArrayPool<byte>.Shared;
-
         Chunks = new LinkedList<IChunk>();
         Changes = new ChangeTracker(this);
     }
@@ -59,17 +27,17 @@ public abstract class BaseBuffer : IBuffer
 
     public long Length { get; set; }
 
-    // TODO: track length when making changes to the buffer
-    public event EventHandler<LengthChangedEventArgs>? LengthChanged;
+    public bool IsReadOnly { get; protected set; }
 
     public long OriginalLength { get; private set; } = -1;
+
+    public event EventHandler<LengthChangedEventArgs>? LengthChanged;
 
     public void Write(long writeOffset, byte value)
     {
         Write(writeOffset, new[] {value});
     }
 
-    // TODO: this code is not pretty
     public async Task<long> ReadAsync(
         long readOffset,
         byte[] buffer,
@@ -117,10 +85,10 @@ public abstract class BaseBuffer : IBuffer
 
             var relativeOffset = readOffset + actualRead - currentOffset;
             var length = Math.Min(readLength - actualRead, chunk.Length - relativeOffset);
-            var readBuffer = _arrayPool.Rent((int)length);
+            var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
             var bufferLength = await chunk.ReadAsync(readBuffer, relativeOffset, length, cancellationToken);
             Array.Copy(readBuffer, 0, buffer, actualRead, bufferLength);
-            _arrayPool.Return(readBuffer);
+            ArrayPool<byte>.Shared.Return(readBuffer);
 
             actualRead += bufferLength;
             currentOffset += chunk.Length;
@@ -134,13 +102,15 @@ public abstract class BaseBuffer : IBuffer
         CancellationToken cancellationToken = default)
     {
         var buffer = new byte[readLength];
-        await ReadAsync(readOffset, buffer, modifiedRanges);
+        await ReadAsync(readOffset, buffer, modifiedRanges, cancellationToken);
         return buffer;
     }
 
-    // TODO: fill gaps with zeros, e.g. writing at 300 when document is completely empty, or writing past the length.
+    // TODO: fill gaps with zeros, e.g. writing at offset 300 when document is completely empty, or writing past the length.
     public void Write(long writeOffset, byte[] writeBytes)
     {
+        GuardAgainstReadOnly();
+
         var oldLength = Length;
         var changes = ChangeCollection.Write(writeOffset, writeBytes);
 
@@ -190,6 +160,8 @@ public abstract class BaseBuffer : IBuffer
 
     public void Insert(long insertOffset, byte[] insertBytes)
     {
+        GuardAgainstReadOnly();
+
         var oldLength = Length;
 
         var (node, currentOffset) = GetNodeAt(insertOffset);
@@ -229,6 +201,8 @@ public abstract class BaseBuffer : IBuffer
 
     public void Delete(long deleteOffset, long deleteLength)
     {
+        GuardAgainstReadOnly();
+
         var oldLength = Length;
         var (node, currentOffset) = GetNodeAt(deleteOffset);
 
@@ -325,10 +299,10 @@ public abstract class BaseBuffer : IBuffer
             var relativeOffset = readOffset + actualRead - currentOffset;
             var length = Math.Min(readLength - actualRead, chunk.Length - relativeOffset);
 
-            var readBuffer = _arrayPool.Rent((int)length);
+            var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
             var bufferLength = chunk.Read(readBuffer, relativeOffset, length);
             Array.Copy(readBuffer, 0, buffer, actualRead, bufferLength);
-            _arrayPool.Return(readBuffer);
+            ArrayPool<byte>.Shared.Return(readBuffer);
 
             actualRead += bufferLength;
             currentOffset += chunk.Length;
@@ -350,7 +324,7 @@ public abstract class BaseBuffer : IBuffer
         return new FindQuery(this, pattern, strategy, options);
     }
 
-    internal bool FindInternal(FindQuery query, CancellationToken cancellationToken = default)
+    private bool FindInternal(FindQuery query, CancellationToken cancellationToken = default)
     {
         var options = query.Options;
         var dontWrap = !options.Backward && options.StartOffset is 0 ||
@@ -483,7 +457,7 @@ public abstract class BaseBuffer : IBuffer
         RemoveBefore(changes, memoryNode, node.Value.Length - relativeOffset);
     }
 
-    protected void Init(IChunk chunk)
+    protected void Initialize(IChunk chunk)
     {
         Length = chunk.Length;
         OriginalLength = chunk.Length;
@@ -648,7 +622,7 @@ public abstract class BaseBuffer : IBuffer
             //  - Is a FileBuffer
             return await SaveOverwriteAsync();
         }
-        
+
         return await SaveToFileAsync("C:/temp/test.bin");
     }
 
@@ -668,6 +642,7 @@ public abstract class BaseBuffer : IBuffer
 
             offset += chunk.Length;
         }
+
         return true;
     }
 
@@ -688,7 +663,7 @@ public abstract class BaseBuffer : IBuffer
                 await fileStream.WriteAsync(memory.Bytes, 0, (int)memory.Length);
             }
             else
-            { 
+            {
                 var bytes = await chunk.ReadAsync(0, Length);
                 await fileStream.WriteAsync(bytes, 0, bytes.Length);
             }
@@ -699,6 +674,15 @@ public abstract class BaseBuffer : IBuffer
         return true;
     }
 
+    private void GuardAgainstReadOnly()
+    {
+        if (IsReadOnly)
+        {
+            throw new InvalidOperationException("Document is readonly. Modifications are not permitted.");
+        }
+    }
+
+    [PublicAPI]
     public class FindQuery : IEnumerable<long>
     {
         private readonly BaseBuffer _buffer;
@@ -778,6 +762,7 @@ public abstract class BaseBuffer : IBuffer
         }
     }
 
+    [PublicAPI]
     public readonly struct FindOptions
     {
         public long StartOffset { get; init; }
@@ -786,6 +771,7 @@ public abstract class BaseBuffer : IBuffer
     }
 }
 
+[PublicAPI]
 public readonly struct ModifiedRange
 {
     public ModifiedRange(long startOffset, long endOffset)

@@ -1,4 +1,5 @@
 ﻿using HexControl.Core.Buffers;
+using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Characters;
 using HexControl.Core.Events;
 
@@ -208,12 +209,12 @@ public class Document
         ConfigurationChanged?.Invoke(sender, e);
     }
 
-    public static Document FromFile(string fileName, DocumentConfiguration? configuration = null) =>
-        new(new FileBuffer(fileName), configuration);
+    public static Document FromFile(string fileName, FileOpenMode openMode = FileOpenMode.ReadWrite, DocumentConfiguration? configuration = null) =>
+        new(new FileBuffer(fileName, openMode), configuration);
 
     // TODO: implement
     public static Document FromBuffer(byte[] bytes, DocumentConfiguration? configuration = null) =>
-        new(new FileBuffer(""), configuration);
+        new(new FileBuffer("", FileOpenMode.ReadOnly), configuration);
 
     public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {

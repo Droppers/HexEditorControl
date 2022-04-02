@@ -324,8 +324,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 }
             }
         }
-
-        //arrayPattern.Entries = entries;
+        
         arrayPattern.SetEntries(entries.ToArray());
         arrayPattern.Size = size;
 

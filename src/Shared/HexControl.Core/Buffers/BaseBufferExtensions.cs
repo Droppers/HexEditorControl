@@ -24,7 +24,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(Int128.Size);
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             bytes = SwapEndianess(bytes, endianess);
 
             var span = bytes.AsSpan();
@@ -48,7 +48,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(UInt128.Size);
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             bytes = SwapEndianess(bytes, endianess);
 
             var span = bytes.AsSpan();
@@ -72,7 +72,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(long));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToInt64(SwapEndianess(bytes, endianess));
         }
         finally
@@ -91,7 +91,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(ulong));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
         }
         finally
@@ -110,7 +110,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(int));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToInt32(SwapEndianess(bytes, endianess));
         }
         finally
@@ -130,7 +130,7 @@ public static class BaseBufferExtensions
 
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToUInt32(SwapEndianess(bytes, endianess));
         }
         finally
@@ -149,7 +149,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(short));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToInt16(SwapEndianess(bytes, endianess));
         }
         finally
@@ -168,7 +168,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(ushort));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return BitConverter.ToUInt16(SwapEndianess(bytes, endianess));
         }
         finally
@@ -187,7 +187,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(char));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return (char)BitConverter.ToInt16(SwapEndianess(bytes, endianess));
         }
         finally
@@ -206,7 +206,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(sbyte));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return (sbyte)bytes[0];
         }
         finally
@@ -225,7 +225,7 @@ public static class BaseBufferExtensions
         var bytes = Pool.Rent(sizeof(byte));
         try
         {
-            buffer.Read(offset, bytes);
+            buffer.Read(bytes, offset);
             return bytes[0];
         }
         finally

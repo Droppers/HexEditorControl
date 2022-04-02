@@ -71,8 +71,7 @@ public class Document
 
     public Document(BaseBuffer buffer, DocumentConfiguration? configuration = null)
     {
-        Buffer = buffer;
-        Buffer.Modified += BufferOnModified;
+        Buffer = ReplaceBuffer(buffer);
 
         Configuration = _configuration = configuration ?? new DocumentConfiguration();
 
@@ -121,7 +120,7 @@ public class Document
             }
 
             _offset = newOffset;
-            OffsetChanged?.Invoke(this, new OffsetChangedEventArgs(oldOffset, newOffset));
+            OnOffsetChanged(oldOffset, newOffset);
         }
     }
 
@@ -141,7 +140,14 @@ public class Document
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
     public event EventHandler<CaretChangedEventArgs>? CaretChanged;
     public event EventHandler<OffsetChangedEventArgs>? OffsetChanged;
+    public event EventHandler<LengthChangedEventArgs>? LengthChanged;
     public event EventHandler<EventArgs>? MarkersChanged;
+    public event EventHandler<EventArgs>? Saved;
+
+    private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)
+    {
+        OnLengthChanged(e.OldLength, e.NewLength);
+    }
 
     private void BufferOnModified(object? sender, ModifiedEventArgs e)
     {
@@ -170,6 +176,14 @@ public class Document
                 _redoStates.Clear();
                 break;
         }
+    }
+
+    private void BufferOnSaved(object? sender, EventArgs e)
+    {
+        _undoStates.Clear();
+        _redoStates.Clear();
+
+        OnSaved();
     }
 
     private void ApplyDocumentState(DocumentState state)
@@ -216,8 +230,9 @@ public class Document
         DocumentConfiguration? configuration = null) =>
         new(new FileBuffer(fileName, openMode), configuration);
 
-    public static Document FromBytes(byte[] bytes, DocumentConfiguration? configuration = null) =>
-        new(new MemoryBuffer(bytes), configuration);
+    public static Document FromBytes(byte[] bytes, bool readOnly = false,
+        DocumentConfiguration? configuration = null) =>
+        new(new MemoryBuffer(bytes, readOnly), configuration);
 
     public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {
@@ -320,19 +335,34 @@ public class Document
         Select(null);
     }
 
-    public void ReplaceBuffer(BaseBuffer buffer)
+    public BaseBuffer ReplaceBuffer(BaseBuffer newBuffer)
     {
-        if (buffer.IsModified)
+        var oldBuffer = Buffer;
+
+        if (newBuffer.IsModified)
         {
-            throw new ArgumentException("Buffer can only be replaced by a fresh buffer.", nameof(buffer));
+            throw new ArgumentException("Buffer can only be replaced by a fresh buffer.", nameof(newBuffer));
         }
 
-        if (buffer.Length != Buffer.Length)
+        // Old buffer is null when called from the constructor
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+        if (oldBuffer is not null)
         {
-            throw new ArgumentException("Buffer can only be replaced by a buffer of equal size.", nameof(buffer));
+            if (newBuffer.Length != Buffer.Length)
+            {
+                throw new ArgumentException("Buffer can only be replaced by a buffer of equal size.",
+                    nameof(newBuffer));
+            }
+
+            oldBuffer.LengthChanged -= BufferOnLengthChanged;
+            oldBuffer.Modified -= BufferOnModified;
+            oldBuffer.Saved -= BufferOnSaved;
         }
 
-        Buffer = buffer;
+        newBuffer.LengthChanged += BufferOnLengthChanged;
+        newBuffer.Modified += BufferOnModified;
+        newBuffer.Saved += BufferOnSaved;
+        return Buffer = newBuffer;
     }
 
     protected virtual void OnCaretChanged(Caret oldCaret, Caret newCaret, bool scrollToCaret)
@@ -345,14 +375,24 @@ public class Document
         SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(oldArea, newArea, requestCenter));
     }
 
-    protected virtual void OnOffsetChanged(OffsetChangedEventArgs e)
+    protected virtual void OnOffsetChanged(long oldOffset, long newOffset)
     {
-        OffsetChanged?.Invoke(this, e);
+        OffsetChanged?.Invoke(this, new OffsetChangedEventArgs(oldOffset, newOffset));
+    }
+
+    protected virtual void OnLengthChanged(long oldLength, long newLength)
+    {
+        LengthChanged?.Invoke(this, new LengthChangedEventArgs(oldLength, newLength));
     }
 
     protected virtual void OnMarkersChanged()
     {
         MarkersChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected virtual void OnSaved()
+    {
+        Saved?.Invoke(this, EventArgs.Empty);
     }
 
     private DocumentState ApplyDeleteModification(long deleteOffset, long deleteLength)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows;
 using HexControl.Core;
 using HexControl.PatternLanguage.Patterns;
@@ -73,23 +74,12 @@ public class TestApi : HexRenderApi
 
 public partial class MainWindow : Window
 {
-    private readonly Document _doc;
-
     public MainWindow()
     {
         InitializeComponent();
         DataContext = this;
-
-        //_doc = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
-        //_doc.Buffer.Write(38, new byte[100]);
-
+        
         Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
-        //Document = _doc;
-
-        //var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
-
-        //var runner = new PatternRunner(Document);
-        //Patterns = runner.Run(code).ToList();
     }
 
     public Document Document { get; set; }
@@ -117,7 +107,7 @@ public partial class MainWindow : Window
 
     private void Insert_OnClick(object sender, RoutedEventArgs e)
     {
-        _doc.Buffer.Insert(_doc.Caret.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+        Document.Buffer.Insert(Document.Caret.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
     }
 
     private async void Save_OnClick(object sender, RoutedEventArgs e)

@@ -382,7 +382,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             Document.ConfigurationChanged -= DocumentOnConfigurationChanged;
 
             Document.Buffer.Modified -= BufferOnModified;
-            Document.Buffer.LengthChanged -= BufferOnLengthChanged;
+            Document.Saved += DocumentOnSaved;
+            Document.LengthChanged -= DocumentOnLengthChanged;
         }
 
         if (newDocument is not null)
@@ -393,7 +394,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             newDocument.ConfigurationChanged += DocumentOnConfigurationChanged;
 
             newDocument.Buffer.Modified += BufferOnModified;
-            newDocument.Buffer.LengthChanged += BufferOnLengthChanged;
+            newDocument.Saved += DocumentOnSaved;
+            newDocument.LengthChanged += DocumentOnLengthChanged;
 
             Document = newDocument;
             _offsetColumn.Configuration = newDocument.Configuration;
@@ -434,18 +436,23 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         Invalidate();
     }
 
-    private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)
+    private async void BufferOnModified(object? sender, ModifiedEventArgs e)
+    {
+        // TODO: this should only be refreshed if the changes are actually visible on screen
+        await RefreshDocument();
+    }
+
+    private async void DocumentOnSaved(object? sender, EventArgs e)
+    {
+        await RefreshDocument();
+    }
+
+    private void DocumentOnLengthChanged(object? sender, LengthChangedEventArgs e)
     {
         _offsetColumn.Length = Document?.Length ?? 0;
 
         UpdateChildDimensions();
         UpdateScrollBars();
-    }
-
-    private async void BufferOnModified(object? sender, ModifiedEventArgs e)
-    {
-        // TODO: this should only be refreshed if the changes are actually visible on screen
-        await RefreshDocument();
     }
 
     private void ApplyConfiguration()

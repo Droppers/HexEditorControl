@@ -275,7 +275,7 @@ internal class KmpFindStrategy : IFindStrategy
             if (_currentOffset == -1 || requestedOffset != _currentOffset)
             {
                 _currentOffset = requestedOffset;
-                _buffer.Read(_currentOffset, _readBuffer);
+                _buffer.Read(_readBuffer, _currentOffset);
             }
 
             return _readBuffer[offset - _currentOffset];

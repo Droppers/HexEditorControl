@@ -5,11 +5,12 @@ using HexControl.Core.Buffers.Modifications;
 
 namespace HexControl.Core.Buffers.History;
 
-public class ChangeTracker
+internal class ChangeTracker
 {
     private readonly BaseBuffer _buffer;
     private readonly Stack<ChangeCollection> _redoStack;
     private readonly Stack<ChangeCollection> _undoStack;
+
 
     public ChangeTracker(BaseBuffer buffer)
     {
@@ -17,6 +18,9 @@ public class ChangeTracker
         _undoStack = new Stack<ChangeCollection>();
         _redoStack = new Stack<ChangeCollection>();
     }
+
+    public IReadOnlyCollection<ChangeCollection> UndoStack => _undoStack;
+    public IReadOnlyCollection<ChangeCollection> RedoStack => _redoStack;
 
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
@@ -73,6 +77,12 @@ public class ChangeTracker
         _undoStack.Push(pop);
 
         return pop.Modification;
+    }
+
+    public void Clear()
+    {
+        _undoStack.Clear();
+        _redoStack.Clear();
     }
 
     private void ApplyChanges(ChangeCollection collection, bool revert)

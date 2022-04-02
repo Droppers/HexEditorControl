@@ -12,14 +12,15 @@ namespace HexControl.Core.Buffers;
 [PublicAPI]
 public abstract class BaseBuffer
 {
+    private readonly ChangeTracker _changes;
+
     protected BaseBuffer()
     {
         Chunks = new LinkedList<IChunk>();
-        Changes = new ChangeTracker(this);
+        _changes = new ChangeTracker(this);
     }
 
     internal LinkedList<IChunk> Chunks { get; }
-    public ChangeTracker Changes { get; }
 
     public int Version { get; private set; }
 
@@ -32,45 +33,53 @@ public abstract class BaseBuffer
     public long OriginalLength { get; private set; } = -1;
 
     public event EventHandler<LengthChangedEventArgs>? LengthChanged;
+    public event EventHandler<ModifiedEventArgs>? Modified;
+    public event EventHandler<EventArgs>? Saved;
 
     public void Write(long writeOffset, byte value)
     {
         Write(writeOffset, new[] {value});
     }
 
-    public async Task<long> ReadAsync(
-        long readOffset,
+    public Task<long> ReadAsync(
+        long offset,
         byte[] buffer,
+        List<ModifiedRange>? modifications = null,
+        CancellationToken cancellationToken = default) =>
+        ReadAsync(buffer, offset, buffer.LongLength, modifications, cancellationToken);
+
+    public async Task<long> ReadAsync(byte[] buffer,
+        long offset,
+        long count,
         List<ModifiedRange>? modifications = null,
         CancellationToken cancellationToken = default)
     {
-        if (readOffset > Length)
+        if (offset > Length)
         {
             return 0;
         }
 
-        var (node, currentOffset) = GetNodeAt(readOffset);
+        var (node, currentOffset) = GetNodeAt(offset);
 
         // Shortcut for in case all data can be read from the current node
-        if (node is not null && readOffset + buffer.Length < currentOffset + node.Value.Length)
+        if (node is not null && offset + count < currentOffset + node.Value.Length)
         {
             if (node.Value is MemoryChunk)
             {
-                modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
+                modifications?.Add(new ModifiedRange(offset, count));
             }
 
-            return await node.Value.ReadAsync(buffer, readOffset - currentOffset, buffer.Length, cancellationToken);
+            return await node.Value.ReadAsync(buffer, offset - currentOffset, count, cancellationToken);
         }
 
-        var readLength = buffer.Length;
         var actualRead = 0L;
         var modificationStart = -1L;
-        while (node != null && readLength - actualRead > 0)
+        while (node != null && count - actualRead > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var chunk = node.Value;
-            var isLastChunk = node.Next is null || chunk.Length >= readLength - actualRead;
+            var isLastChunk = node.Next is null || chunk.Length >= count - actualRead;
 
             if (chunk is MemoryChunk && modificationStart == -1)
             {
@@ -83,8 +92,8 @@ public abstract class BaseBuffer
                 modificationStart = -1;
             }
 
-            var relativeOffset = readOffset + actualRead - currentOffset;
-            var length = Math.Min(readLength - actualRead, chunk.Length - relativeOffset);
+            var relativeOffset = offset + actualRead - currentOffset;
+            var length = Math.Min(count - actualRead, chunk.Length - relativeOffset);
             var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
             var bufferLength = await chunk.ReadAsync(readBuffer, relativeOffset, length, cancellationToken);
             Array.Copy(readBuffer, 0, buffer, actualRead, bufferLength);
@@ -98,11 +107,11 @@ public abstract class BaseBuffer
         return actualRead;
     }
 
-    public async Task<byte[]> ReadAsync(long readOffset, long readLength, List<ModifiedRange>? modifiedRanges = null,
+    public async Task<byte[]> ReadAsync(long offset, long readLength, List<ModifiedRange>? modifiedRanges = null,
         CancellationToken cancellationToken = default)
     {
         var buffer = new byte[readLength];
-        await ReadAsync(readOffset, buffer, modifiedRanges, cancellationToken);
+        await ReadAsync(offset, buffer, modifiedRanges, cancellationToken);
         return buffer;
     }
 
@@ -242,49 +251,51 @@ public abstract class BaseBuffer
 
     public void Undo()
     {
-        var modification = Changes.Undo();
+        var modification = _changes.Undo();
         OnModified(modification, ModificationSource.Undo);
     }
 
     public void Redo()
     {
-        var modification = Changes.Redo();
+        var modification = _changes.Redo();
         OnModified(modification, ModificationSource.Redo);
     }
 
-    public event EventHandler<ModifiedEventArgs>? Modified;
+    public long Read(byte[] buffer,
+        long offset,
+        List<ModifiedRange>? modifications = null) =>
+        Read(buffer, offset, buffer.LongLength, modifications);
 
-    public long Read(
-        long readOffset,
-        byte[] buffer,
+    public long Read(byte[] buffer,
+        long offset,
+        long count,
         List<ModifiedRange>? modifications = null)
     {
-        if (readOffset > Length)
+        if (offset > Length)
         {
             return 0;
         }
 
-        var (node, currentOffset) = GetNodeAt(readOffset);
+        var (node, currentOffset) = GetNodeAt(offset);
 
         // Shortcut for in case all data can be read from the current node
-        if (node is not null && readOffset + buffer.Length < currentOffset + node.Value.Length)
+        if (node is not null && offset + count < currentOffset + node.Value.Length)
         {
             if (node.Value is MemoryChunk)
             {
-                modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
+                modifications?.Add(new ModifiedRange(offset, count));
             }
 
-            return node.Value.Read(buffer, readOffset - currentOffset, buffer.Length);
+            return node.Value.Read(buffer, offset - currentOffset, count);
         }
 
-        var readLength = buffer.Length;
         var actualRead = 0L;
         var modificationStart = -1L;
-        while (node != null && readLength - actualRead > 0)
+        while (node != null && count - actualRead > 0)
         {
             var chunk = node.Value;
 
-            var isLastChunk = node.Next is null || chunk.Length >= readLength - actualRead;
+            var isLastChunk = node.Next is null || chunk.Length >= count - actualRead;
             if (chunk is MemoryChunk && modificationStart is -1)
             {
                 modificationStart = currentOffset;
@@ -296,8 +307,8 @@ public abstract class BaseBuffer
                 modificationStart = -1;
             }
 
-            var relativeOffset = readOffset + actualRead - currentOffset;
-            var length = Math.Min(readLength - actualRead, chunk.Length - relativeOffset);
+            var relativeOffset = offset + actualRead - currentOffset;
+            var length = Math.Min(count - actualRead, chunk.Length - relativeOffset);
 
             var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
             var bufferLength = chunk.Read(readBuffer, relativeOffset, length);
@@ -395,11 +406,13 @@ public abstract class BaseBuffer
     protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken);
 
+    protected abstract IChunk CreateDefaultChunk();
+
     private void PushChanges(ChangeCollection changes, long oldLength)
     {
         Version++;
 
-        Changes.Push(changes);
+        _changes.Push(changes);
         OnModified(changes.Modification, ModificationSource.User);
 
         if (oldLength != Length)
@@ -416,6 +429,11 @@ public abstract class BaseBuffer
     protected virtual void OnModified(BufferModification modification, ModificationSource source)
     {
         Modified?.Invoke(this, new ModifiedEventArgs(modification, source));
+    }
+
+    protected virtual void OnSaved()
+    {
+        Saved?.Invoke(this, EventArgs.Empty);
     }
 
     private void InsertInMiddleOfChunk(
@@ -461,6 +479,12 @@ public abstract class BaseBuffer
 
     protected void Initialize(IChunk chunk)
     {
+        // Reset
+        Chunks.Clear();
+        _changes.Clear();
+        Version = 0;
+
+        // Initialize
         Length = chunk.Length;
         OriginalLength = chunk.Length;
         Chunks.AddFirst(chunk);
@@ -605,76 +629,70 @@ public abstract class BaseBuffer
         return (null, 0);
     }
 
-    public BufferStream CreateStream() => new(this);
+    public BufferStream AsStream() => new(this);
 
-    // TODO: should technically be located on FileBuffer, we don't have access to the FileStream in here
-    // Might resort to making these methods abstract and providing protected helper methods for it.
-    public async Task<bool> SaveAsync()
+    public async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
+        GuardAgainstReadOnly();
+
         if (!IsModified)
         {
             return false;
         }
 
-        var canOverwrite = false;
-        if (canOverwrite)
+        var result = await SaveInternalAsync(cancellationToken);
+        if (!result)
         {
-            // TODO: detect whether changes altered the the offsets of file chunks
-            //  - No delete modifications
-            //  - No insert modifications
-            //  - Is a FileBuffer
-            return await SaveOverwriteAsync();
+            return false;
         }
 
-        return await SaveToFileAsync("C:/temp/test.bin");
-    }
-
-
-    private async Task<bool> SaveOverwriteAsync()
-    {
-        await using var stream = File.OpenWrite("C:/temp/test.bin");
-
-        var offset = 0L;
-        foreach (var chunk in Chunks)
-        {
-            if (chunk is MemoryChunk memory)
-            {
-                stream.Seek(offset, SeekOrigin.Begin);
-                stream.Write(memory.Bytes, 0, (int)memory.Length);
-            }
-
-            offset += chunk.Length;
-        }
+        // Reset buffer after saving
+        Initialize(CreateDefaultChunk());
+        OnSaved();
 
         return true;
     }
 
-    public async Task<bool> SaveToFileAsync(string fileName)
+    protected abstract Task<bool> SaveInternalAsync(CancellationToken cancellationToken);
+
+    public async Task<bool> SaveToFileAsync(string fileName, CancellationToken cancellationToken = default)
     {
         await using var stream = File.Open(fileName, FileMode.OpenOrCreate);
-        return await SaveToFileAsync(stream);
+        return await SaveToFileAsync(stream, cancellationToken);
     }
 
-    public async Task<bool> SaveToFileAsync(FileStream fileStream)
+    public async Task<bool> SaveToFileAsync(FileStream fileStream, CancellationToken cancellationToken = default)
     {
+        fileStream.SetLength(Length);
+
         var offset = 0L;
         foreach (var chunk in Chunks)
         {
             fileStream.Seek(offset, SeekOrigin.Begin);
             if (chunk is MemoryChunk memory)
             {
-                await fileStream.WriteAsync(memory.Bytes, 0, (int)memory.Length);
+                await fileStream.WriteAsync(memory.Bytes, cancellationToken);
             }
             else
             {
-                var bytes = await chunk.ReadAsync(0, Length);
-                await fileStream.WriteAsync(bytes, 0, bytes.Length);
+                var bytes = await chunk.ReadAsync(0, Length, cancellationToken);
+                await fileStream.WriteAsync(bytes, cancellationToken);
             }
 
             offset += chunk.Length;
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     Check whether the structure of the buffer might have changed. This implies verifying if any insert of delete
+    ///     modifications have been made.
+    /// </summary>
+    public bool HasStructureChanged()
+    {
+        return IsModified &&
+               _changes.UndoStack.Any(entry => entry.Modification is InsertModification or DeleteModification);
     }
 
     private void GuardAgainstReadOnly()

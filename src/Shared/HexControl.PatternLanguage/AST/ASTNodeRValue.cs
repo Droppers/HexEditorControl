@@ -100,7 +100,7 @@ internal class ASTNodeRValue : ASTNode
             else
             {
                 var buffer = new byte[pattern.Size];
-                evaluator.Buffer.Read(pattern.Offset, buffer);
+                evaluator.Buffer.Read(buffer, pattern.Offset);
                 literal = Encoding.UTF8.GetString(buffer);
             }
         }

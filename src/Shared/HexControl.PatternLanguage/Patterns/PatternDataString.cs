@@ -18,7 +18,7 @@ public class PatternDataString : PatternData
     {
         var bytes = new byte[Size];
         //std::string buffer(this->getSize(), 0x00);
-        evaluator.Buffer.Read(Offset, bytes);
+        evaluator.Buffer.Read(bytes, Offset);
 
         //std::erase_if(buffer, [](auto c){
         //    return c == 0x00;

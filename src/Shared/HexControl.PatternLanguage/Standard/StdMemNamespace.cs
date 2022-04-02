@@ -38,7 +38,7 @@ internal class StdMemNamespace : IFunctionNamespace
             var occurrences = 0;
             for (var offset = 0; offset < ctx.Buffer.Length - sequence.Count; offset++)
             {
-                ctx.Buffer.Read(offset, bytes);
+                ctx.Buffer.Read(bytes, offset);
 
                 if (!bytes.SequenceEqual(sequence))
                 {

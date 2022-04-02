@@ -124,7 +124,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                     throw new Exception("reached end of file before finding end of unsized array");
                 }
 
-                evaluator.Buffer.Read(evaluator.CurrentOffset, buffer);
+                evaluator.Buffer.Read(buffer, evaluator.CurrentOffset);
                 evaluator.CurrentOffset += buffer.Length;
 
                 entryCount++;
@@ -301,7 +301,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 var buffer = ExactArrayPool<byte>.Shared.Rent((int)pattern.Size);
                 try
                 {
-                    evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
+                    evaluator.Buffer.Read(buffer, evaluator.CurrentOffset - pattern.Size);
                     var reachedEnd = true;
                     for (var i = 0; i < buffer.Length; i++)
                     {

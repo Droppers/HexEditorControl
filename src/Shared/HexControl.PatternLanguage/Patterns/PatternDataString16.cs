@@ -18,7 +18,7 @@ public class PatternDataString16 : PatternData
     {
         var bytes = new byte[Size];
         //std::string buffer(this->getSize(), 0x00);
-        evaluator.Buffer.Read(Offset, bytes);
+        evaluator.Buffer.Read(bytes, Offset);
 
         // TODO: change the endianess
         //for (auto & c : buffer)

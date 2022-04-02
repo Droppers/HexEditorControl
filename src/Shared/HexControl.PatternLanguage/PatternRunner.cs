@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using HexControl.Core;
 using HexControl.Core.Buffers;
-using HexControl.Core.Buffers.Extensions;
 using HexControl.PatternLanguage.Helpers;
 using HexControl.PatternLanguage.Patterns;
 

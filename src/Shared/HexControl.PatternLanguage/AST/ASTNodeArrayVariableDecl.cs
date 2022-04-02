@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Buffers;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Literals;
 using HexControl.PatternLanguage.Patterns;

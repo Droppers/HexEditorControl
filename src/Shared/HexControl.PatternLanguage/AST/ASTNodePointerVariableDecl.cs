@@ -10,10 +10,10 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
 {
     private readonly string _name;
     private readonly ASTNode? _placementOffset;
-    private readonly ASTNode _sizeType;
-    private readonly ASTNode _type;
+    private readonly ASTNodeTypeDecl _sizeType;
+    private readonly ASTNodeTypeDecl _type;
 
-    public ASTNodePointerVariableDecl(string name, ASTNode type, ASTNode sizeType, ASTNode? placementOffset = null)
+    public ASTNodePointerVariableDecl(string name, ASTNodeTypeDecl type, ASTNodeTypeDecl sizeType, ASTNode? placementOffset = null)
     {
         _name = name;
         _type = type;
@@ -24,8 +24,8 @@ internal class ASTNodePointerVariableDecl : AttributableASTNode
     private ASTNodePointerVariableDecl(ASTNodePointerVariableDecl other) : base(other)
     {
         _name = other._name;
-        _type = other._type.Clone();
-        _sizeType = other._sizeType.Clone();
+        _type = other._type;
+        _sizeType = other._sizeType;
 
         _placementOffset = other._placementOffset?.Clone();
     }

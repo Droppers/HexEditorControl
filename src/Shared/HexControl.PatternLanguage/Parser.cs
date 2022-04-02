@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Buffers;
 using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.AST;
@@ -1080,19 +1080,15 @@ internal class Parser
         {
             // Custom type
             var typeName = ParseNamespaceResolution();
-
-            Debug.WriteLine(typeName + "-> " + GetNamespacePrefixedName(typeName));
-
+            
             if (_types.ContainsKey(typeName))
             {
-                var clone = _types[typeName].Clone();
-                return Create(new ASTNodeTypeDecl(string.Empty, clone, endian));
+                return Create(new ASTNodeTypeDecl(string.Empty, _types[typeName], endian));
             }
 
             if (_types.ContainsKey(GetNamespacePrefixedName(typeName)))
             {
-                return Create(new ASTNodeTypeDecl(string.Empty, _types[GetNamespacePrefixedName(typeName)].Clone(),
-                    endian));
+                return Create(new ASTNodeTypeDecl(string.Empty, _types[GetNamespacePrefixedName(typeName)], endian));
             }
 
             throw new ParserException(this, $"unknown type '{typeName}'");
@@ -1165,7 +1161,7 @@ internal class Parser
 
         do
         {
-            variables.Add(Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type.Clone())));
+            variables.Add(Create(new ASTNodeVariableDecl(GetIdentifier(-1).Value, type)));
         } while (Sequence(SeparatorComma, Identifier));
 
         return Create(new ASTNodeMultiVariableDecl(variables));

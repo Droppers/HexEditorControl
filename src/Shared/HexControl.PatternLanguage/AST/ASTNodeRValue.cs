@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Buffers;
 using HexControl.Core.Numerics;
 using HexControl.PatternLanguage.Extensions;
 using HexControl.PatternLanguage.Helpers;

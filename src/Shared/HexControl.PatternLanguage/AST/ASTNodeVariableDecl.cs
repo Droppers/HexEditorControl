@@ -7,7 +7,7 @@ namespace HexControl.PatternLanguage.AST;
 
 internal class ASTNodeVariableDecl : AttributableASTNode
 {
-    public ASTNodeVariableDecl(string name, ASTNode type, ASTNode? placementOffset = null, bool inVariable = false,
+    public ASTNodeVariableDecl(string name, ASTNodeTypeDecl type, ASTNode? placementOffset = null, bool inVariable = false,
         bool outVariable = false)
     {
         Name = name;
@@ -20,14 +20,14 @@ internal class ASTNodeVariableDecl : AttributableASTNode
     private ASTNodeVariableDecl(ASTNodeVariableDecl other) : base(other)
     {
         Name = other.Name;
-        Type = other.Type.Clone();
+        Type = other.Type;
         PlacementOffset = other.PlacementOffset?.Clone();
     }
 
     public override bool MultiPattern => false;
 
     public string Name { get; }
-    public ASTNode Type { get; }
+    public ASTNodeTypeDecl Type { get; }
 
     public ASTNode? PlacementOffset { get; }
 

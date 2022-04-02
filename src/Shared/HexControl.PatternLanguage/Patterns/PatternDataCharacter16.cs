@@ -1,4 +1,4 @@
-﻿using HexControl.Core.Buffers.Extensions;
+﻿using HexControl.Core.Buffers;
 using HexControl.Core.Helpers;
 
 namespace HexControl.PatternLanguage.Patterns;

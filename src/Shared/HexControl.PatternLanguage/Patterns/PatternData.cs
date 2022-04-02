@@ -1,6 +1,6 @@
 ﻿using System;
 using HexControl.Core;
-using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Buffers;
 using HexControl.Core.Helpers;
 using HexControl.PatternLanguage.Functions;
 using HexControl.PatternLanguage.Helpers;

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using HexControl.Core.Buffers.Extensions;
+using HexControl.Core.Buffers;
 using HexControl.PatternLanguage.Patterns;
 
 namespace HexControl.PatternLanguage.AST;

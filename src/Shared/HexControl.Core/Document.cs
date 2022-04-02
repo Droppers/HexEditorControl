@@ -2,9 +2,11 @@
 using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Characters;
 using HexControl.Core.Events;
+using JetBrains.Annotations;
 
 namespace HexControl.Core;
 
+[PublicAPI]
 public enum NewCaretLocation
 {
     Current,
@@ -12,6 +14,7 @@ public enum NewCaretLocation
     SelectionStart
 }
 
+[PublicAPI]
 public class Caret : IEquatable<Caret>
 {
     public Caret(long offset, int nibble, ColumnSide column)
@@ -33,9 +36,10 @@ public class Caret : IEquatable<Caret>
     public override int GetHashCode() => HashCode.Combine(Offset, Nibble, Column);
 }
 
+[PublicAPI]
 public class CaretChangedEventArgs : EventArgs
 {
-    public CaretChangedEventArgs(Caret oldCaret, Caret newCaret, bool scrollToCaret)
+    internal CaretChangedEventArgs(Caret oldCaret, Caret newCaret, bool scrollToCaret)
     {
         OldCaret = oldCaret;
         NewCaret = newCaret;
@@ -54,8 +58,7 @@ internal record DocumentState(
     Selection? SelectionState = null,
     Caret? CaretState = null);
 
-// ReSharper disable MemberCanBePrivate.Global
-// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
+[PublicAPI]
 public class Document
 {
     private readonly List<IDocumentMarker> _markers;
@@ -96,7 +99,7 @@ public class Document
         }
     }
 
-    public BaseBuffer Buffer { get; }
+    public BaseBuffer Buffer { get; private set; }
 
     public IReadOnlyList<IDocumentMarker> Markers => _markers;
 
@@ -315,6 +318,21 @@ public class Document
     public void Deselect()
     {
         Select(null);
+    }
+
+    public void ReplaceBuffer(BaseBuffer buffer)
+    {
+        if (buffer.IsModified)
+        {
+            throw new ArgumentException("Buffer can only be replaced by a fresh buffer.", nameof(buffer));
+        }
+
+        if (buffer.Length != Buffer.Length)
+        {
+            throw new ArgumentException("Buffer can only be replaced by a buffer of equal size.", nameof(buffer));
+        }
+
+        Buffer = buffer;
     }
 
     protected virtual void OnCaretChanged(Caret oldCaret, Caret newCaret, bool scrollToCaret)

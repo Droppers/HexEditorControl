@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using HexControl.Core;
-using HexControl.PatternLanguage;
 using HexControl.PatternLanguage.Patterns;
 using HexControl.SharedControl.Control;
 using HexControl.SharedControl.Framework.Drawing;

@@ -1,6 +1,4 @@
 ﻿using HexControl.Renderer.Skia;
-using HexControl.SharedControl.Framework;
-using HexControl.SharedControl.Framework.Host.Typeface;
 
 namespace HexControl.Wpf.Host;
 

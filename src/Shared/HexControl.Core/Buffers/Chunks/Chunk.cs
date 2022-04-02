@@ -1,5 +1,8 @@
-﻿namespace HexControl.Core.Buffers.Chunks;
+﻿using JetBrains.Annotations;
 
+namespace HexControl.Core.Buffers.Chunks;
+
+[PublicAPI]
 public abstract class Chunk : IChunk
 {
     protected readonly BaseBuffer buffer;
@@ -51,9 +54,8 @@ public abstract class Chunk : IChunk
 
     private (long offset, long length) TranslateOffsetLength(long readOffset, long readLength)
     {
-        var translation = readOffset;
-        var translatedOffset = SourceOffset + translation;
-        var translatedLength = Math.Min(Length - translation, readLength);
+        var translatedOffset = SourceOffset + readOffset;
+        var translatedLength = Math.Min(Length - readOffset, readLength);
         return (translatedOffset, translatedLength);
     }
 

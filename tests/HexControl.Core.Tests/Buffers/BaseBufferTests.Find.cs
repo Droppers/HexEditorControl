@@ -184,10 +184,10 @@ public partial class BaseBufferTests
             { 26, 0, 520, 494, 468, 442, 416, 390, 364, 338, 312, 286, 260, 234, 208, 182, 156, 130, 104, 78, 52 };
 
         var actualOffsets = query.ToArray();
-
+        
         Assert.Equal(expectedOffsets.Length, actualOffsets.Length);
 
-        for (var i = 0; i < expectedOffsets.Length; i++)
+        for (var i = 0; i < actualOffsets.Length; i++)
         {
 
             Assert.Equal(expectedOffsets[i], actualOffsets[i]);

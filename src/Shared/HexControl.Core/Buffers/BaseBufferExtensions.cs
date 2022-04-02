@@ -1,7 +1,7 @@
 ﻿using HexControl.Core.Helpers;
 using HexControl.Core.Numerics;
 
-namespace HexControl.Core.Buffers.Extensions;
+namespace HexControl.Core.Buffers;
 
 public enum Endianess
 {
@@ -10,9 +10,9 @@ public enum Endianess
     Little
 }
 
-public static class BufferExtensions
+public static class BaseBufferExtensions
 {
-    private static readonly ExactArrayPool<byte> Pool = ExactArrayPool<byte>.Instance;
+    private static readonly ExactArrayPool<byte> Pool = ExactArrayPool<byte>.Shared;
 
     public static Int128 ReadInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {

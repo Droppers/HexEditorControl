@@ -11,16 +11,19 @@ namespace HexControl.Core.Tests.Buffers;
 public delegate ExpectedBuilder ExpectsDelegate(ExpectedBuilder expects);
 
 // A buffer implementation which validates chunks and undo / redo
-public class ValidatingBuffer : FileBuffer
+public class ValidatingBuffer : MemoryBuffer
 {
     private readonly ITestOutputHelper _output;
     private readonly Stack<List<IChunk>> _previousChunks;
 
-    public ValidatingBuffer(string fileName, ITestOutputHelper output) : base(fileName)
+    public ValidatingBuffer(byte[] bytes, ITestOutputHelper output) : base(bytes)
     {
+        Bytes = bytes;
         _output = output;
         _previousChunks = new Stack<List<IChunk>>();
     }
+
+    public byte[] Bytes { get; }
 
     public void ValidateWrite(long writeOffset, byte value, ExpectsDelegate? expects = null)
     {
@@ -95,7 +98,7 @@ public class ValidatingBuffer : FileBuffer
 
                 switch (expectedChunk)
                 {
-                    case ReadOnlyChunk virtualChunkA when actualChunk is ReadOnlyChunk virtualChunkB:
+                    case IImmutableChunk virtualChunkA when actualChunk is IImmutableChunk virtualChunkB:
                         Assert.Equal(virtualChunkA.Length, virtualChunkB.Length);
                         Assert.Equal(virtualChunkA.SourceOffset, virtualChunkB.SourceOffset);
                         break;
@@ -158,8 +161,8 @@ public class ValidatingBuffer : FileBuffer
             {
                 MemoryChunk memory =>
                     $"Memory({memory.Bytes.Length})", //$"Memory(new [] {{{string.Join(",", memory.Bytes)}}})",
-                FileChunk file => $"File({file.Length}, {file.SourceOffset})",
-                ReadOnlyChunk _ => "Virtual()",
+                FileChunk file => $"Immutable({file.Length}, {file.SourceOffset})",
+                IImmutableChunk _ => "Virtual()",
                 _ => throw new InvalidOperationException("Chunk type is not supported.")
             });
         }

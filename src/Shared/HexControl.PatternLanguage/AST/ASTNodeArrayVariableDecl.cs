@@ -298,7 +298,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 }
 
 
-                var buffer = ExactArrayPool<byte>.Instance.Rent((int)pattern.Size);
+                var buffer = ExactArrayPool<byte>.Shared.Rent((int)pattern.Size);
                 try
                 {
                     evaluator.Buffer.Read(evaluator.CurrentOffset - pattern.Size, buffer);
@@ -320,7 +320,7 @@ internal class ASTNodeArrayVariableDecl : AttributableASTNode
                 }
                 finally
                 {
-                    ExactArrayPool<byte>.Instance.Return(buffer);
+                    ExactArrayPool<byte>.Shared.Return(buffer);
                 }
             }
         }

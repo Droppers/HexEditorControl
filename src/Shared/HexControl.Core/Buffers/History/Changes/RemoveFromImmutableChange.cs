@@ -2,18 +2,19 @@
 
 namespace HexControl.Core.Buffers.History.Changes;
 
-internal class RemoveFromVirtualChange : IChunkChange<ReadOnlyChunk>
+internal class RemoveFromImmutableChange : IChunkChange<IImmutableChunk>
 {
     private readonly long _removeLength;
     private readonly long _removeOffset;
 
-    public RemoveFromVirtualChange(long removeOffset, long removeLength)
+    public RemoveFromImmutableChange(long removeOffset, long removeLength)
     {
         _removeOffset = removeOffset;
         _removeLength = removeLength;
     }
 
-    public IChunkChange<ReadOnlyChunk> Apply(BaseBuffer buffer, LinkedListNode<IChunk> contextNode, ReadOnlyChunk chunk)
+    public IChunkChange<IImmutableChunk> Apply(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
+        IImmutableChunk chunk)
     {
         if (_removeOffset > 0)
         {
@@ -29,8 +30,8 @@ internal class RemoveFromVirtualChange : IChunkChange<ReadOnlyChunk>
         return this;
     }
 
-    public IChunkChange<ReadOnlyChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
-        ReadOnlyChunk chunk)
+    public IChunkChange<IImmutableChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
+        IImmutableChunk chunk)
     {
         if (_removeOffset > 0)
         {

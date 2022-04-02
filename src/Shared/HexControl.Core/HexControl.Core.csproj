@@ -9,13 +9,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Configuration\**" />
-	  <EmbeddedResource Remove="Configuration\**" />
-	  <None Remove="Configuration\**" />
+		<Compile Remove="Configuration\**" />
+		<EmbeddedResource Remove="Configuration\**" />
+		<None Remove="Configuration\**" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="JetBrains.Annotations" Version="10.3.0" />
+		<PackageReference Include="JetBrains.Annotations" Version="10.3.0" />
 	</ItemGroup>
 
 </Project>

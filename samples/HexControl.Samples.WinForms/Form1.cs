@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.IO;
+using System.Windows.Forms;
 using HexControl.Core;
 
 namespace HexControl.Samples.WinForms;
@@ -9,7 +10,10 @@ public partial class Form1 : Form
     {
         InitializeComponent();
 
-        var document = Document.FromFile(@"..\..\..\..\..\files\sample-binary");
+        var fileName = @"..\..\..\..\..\files\sample-binary";
+        var bytes = File.ReadAllBytes(fileName);
+        var document = Document.FromBytes(bytes);
+        //var document = Document.FromFile(fileName);
         hexEditorControl2.Document = document;
 
         AutoScaleMode = AutoScaleMode.Dpi;

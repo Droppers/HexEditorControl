@@ -126,8 +126,9 @@ public class ChangeTracker
 
         switch (change)
         {
-            case IChunkChange<ReadOnlyChunk> virtualChange when currentNode?.Value is ReadOnlyChunk virtualChunk:
-                Do(virtualChange, currentNode, virtualChunk, revert);
+            case IChunkChange<IImmutableChunk> immutableChange
+                when currentNode?.Value is IImmutableChunk immutableChunk:
+                Do(immutableChange, currentNode, immutableChunk, revert);
                 break;
             case IChunkChange<MemoryChunk> memoryChange when currentNode?.Value is MemoryChunk memoryChunk:
                 Do(memoryChange, currentNode, memoryChunk, revert);

@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 
 namespace HexControl.Core.Buffers;
 
+[PublicAPI]
 public enum FileOpenMode
 {
     ReadOnly,
@@ -20,7 +21,7 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
     public FileBuffer(string fileName, FileOpenMode openMode)
     {
         Filename = fileName ?? throw new ArgumentNullException(fileName);
-        
+
         _fileStream = OpenFileStream(fileName, openMode);
 
         // Memory mapped file is used for finding byte sequences, especially useful for larger files
@@ -32,15 +33,8 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
             Length = _fileStream.Length
         });
     }
-    
-    public string Filename { get; }
 
-    public void Dispose()
-    {
-        _viewAccessor.Dispose();
-        _memoryMappedFile.Dispose();
-        _fileStream.Dispose();
-    }
+    public string Filename { get; }
 
 
     public async ValueTask DisposeAsync()
@@ -48,6 +42,13 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
         _viewAccessor.Dispose();
         _memoryMappedFile.Dispose();
         await _fileStream.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        _viewAccessor.Dispose();
+        _memoryMappedFile.Dispose();
+        _fileStream.Dispose();
     }
 
     private FileStream OpenFileStream(string fileName, FileOpenMode openMode)
@@ -71,7 +72,7 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
         MemoryMappedFile.CreateFromFile(fileStream, null, 0, MemoryMappedFileAccess.Read,
             HandleInheritability.Inheritable, true);
 
-    protected override long FindInVirtual(IFindStrategy strategy, long offset, long length, FindOptions options,
+    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken) =>
         strategy.SearchInFile(_viewAccessor, offset, length, options.Backward);
 }

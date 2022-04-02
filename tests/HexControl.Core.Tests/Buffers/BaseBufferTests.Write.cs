@@ -10,9 +10,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(100, SampleBytes, expects =>
             expects
                 .Length(546)
-                .File(100, 0)
+                .Immutable(100, 0)
                 .Memory(SampleBytes)
-                .File(436, 110));
+                .Immutable(436, 110));
         _buffer.ValidateUndoRedo();
     }
 
@@ -24,9 +24,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(102, new byte[] {4, 3, 2, 1, 0}, expects =>
             expects
                 .Length(546)
-                .File(100, 0)
+                .Immutable(100, 0)
                 .Memory(new byte[] {0, 1, 4, 3, 2, 1, 0, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
-                .File(426, 120));
+                .Immutable(426, 120));
 
         _buffer.ValidateUndoRedo();
     }
@@ -39,9 +39,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(105, SampleBytes, expects =>
             expects
                 .Length(546)
-                .File(100, 0)
+                .Immutable(100, 0)
                 .Memory(new byte[] {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
-                .File(431, 115));
+                .Immutable(431, 115));
 
         _buffer.ValidateUndoRedo();
     }
@@ -56,9 +56,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(80, new byte[100], expects =>
             expects
                 .Length(546)
-                .File(80, 0)
+                .Immutable(80, 0)
                 .Memory(new byte[100])
-                .File(366, 180));
+                .Immutable(366, 180));
 
         _buffer.ValidateUndoRedo();
     }
@@ -73,9 +73,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(105, new byte[100], expects =>
             expects
                 .Length(546)
-                .File(100, 0)
+                .Immutable(100, 0)
                 .Memory(PadRight(new byte[] {0, 1, 2, 3, 4}, 105))
-                .File(341, 205));
+                .Immutable(341, 205));
 
         _buffer.ValidateUndoRedo();
     }
@@ -90,9 +90,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(110, bytes, expects =>
             expects
                 .Length(546)
-                .File(100, 0)
+                .Immutable(100, 0)
                 .Memory(Combine(bytes, bytes))
-                .File(426, 120));
+                .Immutable(426, 120));
 
         _buffer.ValidateUndoRedo();
     }
@@ -107,9 +107,9 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(95, bytes, expects =>
             expects
                 .Length(546)
-                .File(95, 0)
+                .Immutable(95, 0)
                 .Memory(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 5, 6, 7, 8, 9})
-                .File(436, 110));
+                .Immutable(436, 110));
 
         _buffer.ValidateUndoRedo();
     }
@@ -123,7 +123,7 @@ public partial class BaseBufferTests
             expects
                 .Length(546)
                 .Memory(bytes)
-                .File(536, 10));
+                .Immutable(536, 10));
         _buffer.ValidateUndoRedo();
     }
 
@@ -135,7 +135,7 @@ public partial class BaseBufferTests
         _buffer.ValidateWrite(546, bytes, expects =>
             expects
                 .Length(556)
-                .File(546, 0)
+                .Immutable(546, 0)
                 .Memory(bytes));
         _buffer.ValidateUndoRedo();
     }

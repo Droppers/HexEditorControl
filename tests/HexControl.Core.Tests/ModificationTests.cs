@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Chunks;
@@ -12,7 +13,8 @@ public class ModificationTests
 
     public ModificationTests()
     {
-        _buffer = new FileBuffer(@"..\..\..\..\..\files\sample.txt");
+        var bytes = File.ReadAllBytes(@"..\..\..\..\..\files\sample.txt");
+        _buffer = new MemoryBuffer(bytes);
     }
 
     [Fact]

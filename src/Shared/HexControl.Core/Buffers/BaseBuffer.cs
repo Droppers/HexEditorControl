@@ -59,7 +59,7 @@ public abstract class BaseBuffer
                 modifications?.Add(new ModifiedRange(readOffset, buffer.Length));
             }
 
-            return await node.Value.ReadAsync(buffer, readOffset, buffer.Length, cancellationToken);
+            return await node.Value.ReadAsync(buffer, readOffset - currentOffset, buffer.Length, cancellationToken);
         }
 
         var readLength = buffer.Length;
@@ -208,7 +208,7 @@ public abstract class BaseBuffer
 
         var changes = ChangeCollection.Delete(deleteOffset, deleteLength);
 
-        if (node?.Value is ReadOnlyChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length &&
+        if (node?.Value is IImmutableChunk && deleteOffset - currentOffset + deleteLength < node.Value.Length &&
             deleteOffset - currentOffset is not 0)
         {
             DeleteInMiddleOfChunk(changes, node, deleteOffset - currentOffset, deleteLength);
@@ -335,27 +335,29 @@ public abstract class BaseBuffer
             var initialOffset = query.NextStartOffset ?? options.StartOffset;
 
             var findOffset = initialOffset;
+            long findLength;
             if (options.Backward)
             {
-                findOffset = query.DidWrap ? options.StartOffset - query.Pattern.Length : 0;
+                findLength = query.DidWrap
+                    ? initialOffset - options.StartOffset + (query.Pattern.Length - 1)
+                    : options.StartOffset - (options.StartOffset - initialOffset) + 1;
+                findOffset = initialOffset;
             }
-
-            var findLength = options.Backward
-                ? query.DidWrap ? Length - findOffset - (Length - (query.NextStartOffset ?? Length)) :
-                options.StartOffset - (options.StartOffset - initialOffset)
-                : query.DidWrap
+            else
+            {
+                findLength = query.DidWrap
                     ? options.StartOffset - findOffset + query.Pattern.Length
                     : Length - findOffset;
-
+            }
 
             // Find without overhead when the buffer is not modified.
             var foundOffset = IsModified
                 ? FindInMemory(query.Strategy, findOffset, findLength, options, cancellationToken)
-                : FindInVirtual(query.Strategy, findOffset, findLength, options, cancellationToken);
+                : FindInImmutable(query.Strategy, findOffset, findLength, options, cancellationToken);
             if (foundOffset is not -1)
             {
                 query.CurrentOffset = foundOffset;
-                query.NextStartOffset = foundOffset + (options.Backward ? -query.Pattern.Length : query.Pattern.Length);
+                query.NextStartOffset = foundOffset + (options.Backward ? -1 : query.Pattern.Length);
 
                 if (!dontWrap && (options.Backward && foundOffset is 0 ||
                                   !options.Backward && foundOffset == Length - query.Pattern.Length))
@@ -390,7 +392,7 @@ public abstract class BaseBuffer
         CancellationToken cancellationToken) =>
         strategy.SearchInBuffer(this, offset, length, options.Backward);
 
-    protected abstract long FindInVirtual(IFindStrategy strategy, long offset, long length, FindOptions options,
+    protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken);
 
     private void PushChanges(ChangeCollection changes, long oldLength)
@@ -422,9 +424,9 @@ public abstract class BaseBuffer
         IChunk chunk,
         in ChangeCollection changes)
     {
-        var newVirtualChunk = node.Value.Clone();
-        newVirtualChunk.SourceOffset += relativeOffset;
-        newVirtualChunk.Length -= relativeOffset;
+        var newImmutableChunk = node.Value.Clone();
+        newImmutableChunk.SourceOffset += relativeOffset;
+        newImmutableChunk.Length -= relativeOffset;
 
         changes.Add(InsertChunk(node, chunk));
         var memoryNode = node.Next;
@@ -434,7 +436,7 @@ public abstract class BaseBuffer
         }
 
         RemoveBefore(changes, memoryNode, node.Value.Length - relativeOffset);
-        changes.Add(InsertChunk(memoryNode, newVirtualChunk));
+        changes.Add(InsertChunk(memoryNode, newImmutableChunk));
     }
 
     private void DeleteInMiddleOfChunk(
@@ -443,11 +445,11 @@ public abstract class BaseBuffer
         long relativeOffset,
         long deleteLength)
     {
-        var newVirtualChunk = node.Value.Clone();
-        newVirtualChunk.SourceOffset += relativeOffset + deleteLength;
-        newVirtualChunk.Length -= relativeOffset + deleteLength;
+        var newImmutableChunk = node.Value.Clone();
+        newImmutableChunk.SourceOffset += relativeOffset + deleteLength;
+        newImmutableChunk.Length -= relativeOffset + deleteLength;
 
-        changes.Add(InsertChunk(node, newVirtualChunk));
+        changes.Add(InsertChunk(node, newImmutableChunk));
         var memoryNode = node.Next;
         if (memoryNode is null)
         {
@@ -481,19 +483,19 @@ public abstract class BaseBuffer
             throw new InvalidOperationException("Next node is not supposed to be null.");
         }
 
-        var newVirtualLength = node.Value.Length - (relativeOffset + writeBuffer.Length);
+        var newImmutableLength = node.Value.Length - (relativeOffset + writeBuffer.Length);
         RemoveBefore(changes, memoryNode, node.Value.Length - relativeOffset);
 
-        if (newVirtualLength <= 0)
+        if (newImmutableLength <= 0)
         {
-            RemoveAfter(changes, memoryNode, Math.Abs(newVirtualLength));
+            RemoveAfter(changes, memoryNode, Math.Abs(newImmutableLength));
         }
         else
         {
-            var newVirtualChunk = node.Value.Clone();
-            newVirtualChunk.SourceOffset += relativeOffset + writeBuffer.Length;
-            newVirtualChunk.Length = newVirtualLength;
-            changes.Add(InsertChunk(memoryNode, newVirtualChunk));
+            var newImmutableChunk = node.Value.Clone();
+            newImmutableChunk.SourceOffset += relativeOffset + writeBuffer.Length;
+            newImmutableChunk.Length = newImmutableLength;
+            changes.Add(InsertChunk(memoryNode, newImmutableChunk));
         }
     }
 
@@ -564,7 +566,8 @@ public abstract class BaseBuffer
 
         IChange change = node.Value switch
         {
-            ReadOnlyChunk virtualChunk => new RemoveFromVirtualChange(offset, length).Apply(this, node, virtualChunk),
+            IImmutableChunk immutableChunk => new RemoveFromImmutableChange(offset, length).Apply(this, node,
+                immutableChunk),
             MemoryChunk memoryChunk => new RemoveFromMemoryChange(offset, length).Apply(this, node, memoryChunk),
             _ => throw new NotSupportedException($"Chunk {node.Value.GetType().Name} not supported for removing.")
         };

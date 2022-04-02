@@ -15,7 +15,7 @@ internal sealed class ExactArrayPool<TType>
         _lock = new object();
     }
 
-    public static ExactArrayPool<TType> Instance => Lazy.Value;
+    public static ExactArrayPool<TType> Shared => Lazy.Value;
 
     public void Return(TType[] array)
     {

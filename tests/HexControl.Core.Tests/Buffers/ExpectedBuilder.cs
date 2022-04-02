@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using HexControl.Core.Buffers.Chunks;
 
 namespace HexControl.Core.Tests.Buffers;
@@ -18,9 +20,9 @@ public class ExpectedBuilder
 
     public List<IChunk> Chunks { get; }
 
-    public ExpectedBuilder File(long length, long sourceOffset)
+    public ExpectedBuilder Immutable(long length, long sourceOffset)
     {
-        Chunks.Add(new FileChunk(_buffer, null!, null!, null!, null!)
+        Chunks.Add(new ImmutableMemoryChunk(_buffer, _buffer.Bytes)
         {
             Length = length,
             SourceOffset = sourceOffset

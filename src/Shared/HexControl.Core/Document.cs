@@ -209,12 +209,12 @@ public class Document
         ConfigurationChanged?.Invoke(sender, e);
     }
 
-    public static Document FromFile(string fileName, FileOpenMode openMode = FileOpenMode.ReadWrite, DocumentConfiguration? configuration = null) =>
+    public static Document FromFile(string fileName, FileOpenMode openMode = FileOpenMode.ReadWrite,
+        DocumentConfiguration? configuration = null) =>
         new(new FileBuffer(fileName, openMode), configuration);
 
-    // TODO: implement
-    public static Document FromBuffer(byte[] bytes, DocumentConfiguration? configuration = null) =>
-        new(new FileBuffer("", FileOpenMode.ReadOnly), configuration);
+    public static Document FromBytes(byte[] bytes, DocumentConfiguration? configuration = null) =>
+        new(new MemoryBuffer(bytes), configuration);
 
     public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {
@@ -233,14 +233,16 @@ public class Document
         }
     }
 
-    public void Select(long startOffset, long endOffset, ColumnSide column, NewCaretLocation newCaretLocation = NewCaretLocation.Current,
+    public void Select(long startOffset, long endOffset, ColumnSide column,
+        NewCaretLocation newCaretLocation = NewCaretLocation.Current,
         bool requestCenter = false)
     {
         Select(new Selection(startOffset, endOffset, column), newCaretLocation, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).
-    public void Select(Selection? newArea, NewCaretLocation newCaretLocation = NewCaretLocation.Current, bool requestCenter = false)
+    public void Select(Selection? newArea, NewCaretLocation newCaretLocation = NewCaretLocation.Current,
+        bool requestCenter = false)
     {
         var oldArea = Selection;
 
@@ -254,7 +256,8 @@ public class Document
 
         if (newArea is not null && newCaretLocation is not NewCaretLocation.Current)
         {
-            Caret = new Caret(newCaretLocation is NewCaretLocation.SelectionStart ? newArea.Start : newArea.End, 0, newArea.Column);
+            Caret = new Caret(newCaretLocation is NewCaretLocation.SelectionStart ? newArea.Start : newArea.End, 0,
+                newArea.Column);
         }
 
         OnSelectionChanged(oldArea, newArea, requestCenter);

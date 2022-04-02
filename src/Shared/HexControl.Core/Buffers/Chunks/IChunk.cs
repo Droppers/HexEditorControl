@@ -1,5 +1,8 @@
-﻿namespace HexControl.Core.Buffers.Chunks;
+﻿using JetBrains.Annotations;
 
+namespace HexControl.Core.Buffers.Chunks;
+
+[PublicAPI]
 public interface IChunk
 {
     public long SourceOffset { get; set; }

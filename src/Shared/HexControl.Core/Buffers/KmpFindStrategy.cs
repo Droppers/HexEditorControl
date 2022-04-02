@@ -138,7 +138,6 @@ internal class KmpFindStrategy : IFindStrategy
 
     private unsafe long LastIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength)
     {
-        startIndex += maxSearchLength - 1;
         var currentIndex = startIndex;
         long i = 0;
 
@@ -217,7 +216,6 @@ internal class KmpFindStrategy : IFindStrategy
 
     private unsafe long LastIndexOf(byte* bytes, long startIndex, long maxSearchLength)
     {
-        startIndex += maxSearchLength - 1;
         var currentIndex = startIndex;
         long i = 0;
 

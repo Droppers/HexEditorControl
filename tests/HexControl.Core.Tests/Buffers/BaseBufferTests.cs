@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Xunit.Abstractions;
 
 namespace HexControl.Core.Tests.Buffers;
@@ -11,7 +12,8 @@ public partial class BaseBufferTests
 
     public BaseBufferTests(ITestOutputHelper testOutputHelper)
     {
-        _buffer = new ValidatingBuffer(@"..\..\..\..\..\files\sample.txt", testOutputHelper);
+        var bytes = File.ReadAllBytes(@"..\..\..\..\..\files\sample.txt");
+        _buffer = new ValidatingBuffer(bytes, testOutputHelper);
     }
 
     private static byte[] PadRight(byte[] source, int length)

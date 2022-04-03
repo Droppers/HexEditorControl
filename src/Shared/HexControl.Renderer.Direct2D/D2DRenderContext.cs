@@ -145,10 +145,11 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     private RawRectangleF Convert(SharedRectangle rectangle)
     {
-        var left = (int)(rectangle.X * Dpi);
-        var top = (int)(rectangle.Y * Dpi);
-        var width = (int)(rectangle.Width * Dpi);
-        var height = (int)(rectangle.Height * Dpi);
+        // TODO: This is wrong for higher than 1 DPI when coordinate if for example 10.5
+        var left = (float)(rectangle.X * Dpi);
+        var top = (float)(rectangle.Y * Dpi);
+        var width = (float)(rectangle.Width * Dpi);
+        var height = (float)(rectangle.Height * Dpi);
         return new RawRectangleF(left, top, left + width, top + height);
     }
 

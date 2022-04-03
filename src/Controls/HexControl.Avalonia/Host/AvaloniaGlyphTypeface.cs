@@ -31,8 +31,9 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
 
     public override double GetCapHeight(double size)
     {
+        // TODO: This is as wrong as it can get, but I have no idea how to calculate or retrieve the cap height.
         var scale = size / Typeface.DesignEmHeight;
-        return Math.Abs(Typeface.Ascent + Typeface.Descent) * scale;
+        return Math.Abs(Typeface.Ascent + Typeface.Descent) * scale + 1;
     }
 
     public override double GetGlyphOffsetY(TextAlignment alignment, double size)
@@ -43,8 +44,9 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
         }
 
 
+        // TODO: Also wrong and does not make any sense
         var scale = size / Typeface.DesignEmHeight;
-        return -(Typeface.Descent * scale);
+        return -(Typeface.Descent * scale) + 1;
     }
 
     public override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex) =>

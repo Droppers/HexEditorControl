@@ -141,6 +141,8 @@ internal class EditorColumn : VisualElement
         }
     }
 
+    private bool IsReadOnly => Document?.Buffer.IsReadOnly == true;
+
     public ITextBuilder? TextBuilder { get; set; }
 
     private int RowHeight => _parent.RowHeight;
@@ -859,25 +861,35 @@ internal class EditorColumn : VisualElement
         // TODO: fix funky rectangle borders, introduce a 'render flags' option in IRenderContext to determine how borders behave :)!
         var columnWidth = GetVisibleColumnWidth(column);
         var aliasOffset = GetLineAntiAliasOffset(pen);
+        var characterSet = GetCharacterSetForColumn(column);
 
         if (position.StartRow == position.EndRow)
         {
-            var rect = new SharedRectangle(position.Start.X + aliasOffset, position.Start.Y + aliasOffset,
-                position.End.X - position.Start.X - aliasOffset * 2,
-                RowHeight - aliasOffset * 2);
+            var rect = new SharedRectangle(
+                position.Start.X - aliasOffset,
+                position.Start.Y - aliasOffset,
+                position.End.X - position.Start.X + aliasOffset * 2,
+                RowHeight + aliasOffset * 2);
             context.DrawRectangle(brush, pen, rect);
         }
         else if (marker.Length <= Configuration.BytesPerRow)
         {
-            var firstRect = new SharedRectangle(position.Start.X + aliasOffset, position.Start.Y + aliasOffset,
-                columnWidth - position.Start.X,
-                RowHeight - aliasOffset * 2);
+            var extendPastEdge = characterSet.Groupable ? _parent.CharacterWidth / 2 : 0;
+
+            var firstRect = new SharedRectangle(
+                position.Start.X - aliasOffset,
+                position.Start.Y - aliasOffset,
+                columnWidth - position.Start.X + extendPastEdge + aliasOffset * 2,
+                RowHeight + aliasOffset * 2);
             context.DrawRectangle(brush, pen, firstRect);
 
             if (position.End.X > 0)
             {
-                var secondRect = new SharedRectangle(aliasOffset, position.End.Y + aliasOffset, position.End.X,
-                    RowHeight - aliasOffset * 2);
+                var secondRect = new SharedRectangle(
+                    -extendPastEdge - aliasOffset,
+                    position.End.Y - aliasOffset,
+                    position.End.X + extendPastEdge + aliasOffset * 2,
+                    RowHeight + aliasOffset * 2);
                 context.DrawRectangle(brush, pen, secondRect);
             }
         }
@@ -902,30 +914,29 @@ internal class EditorColumn : VisualElement
         var points = ObjectPool<List<SharedPoint>>.Shared.Rent();
         if (position.StartOffset == 0 || position.End.Y == 0)
         {
-            points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + aliasOffset));
+            points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y - aliasOffset));
         }
         else
         {
-            points.Add(new SharedPoint(aliasOffset, position.Start.Y + RowHeight + aliasOffset));
-            points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y + RowHeight + aliasOffset));
-            points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y + aliasOffset));
+            points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y + RowHeight - aliasOffset));
+            points.Add(new SharedPoint(position.Start.X - aliasOffset, position.Start.Y - aliasOffset));
         }
 
-        points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.Start.Y + aliasOffset + 0));
+        points.Add(new SharedPoint(columnWidth + extendPastEdge + aliasOffset, position.Start.Y - aliasOffset));
 
         if (position.EndOffset == Configuration.BytesPerRow - 1)
         {
-            points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y - aliasOffset));
+            points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y + aliasOffset));
         }
         else
         {
-            points.Add(new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y - aliasOffset));
-            points.Add(new SharedPoint(position.End.X - aliasOffset, position.End.Y - aliasOffset));
-            points.Add(new SharedPoint(position.End.X - aliasOffset, position.End.Y + RowHeight - aliasOffset));
+            points.Add(new SharedPoint(columnWidth + extendPastEdge + aliasOffset, position.End.Y + aliasOffset));
+            points.Add(new SharedPoint(position.End.X + aliasOffset, position.End.Y + aliasOffset));
+            points.Add(new SharedPoint(position.End.X + aliasOffset, position.End.Y + RowHeight + aliasOffset));
         }
 
-        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.End.Y + RowHeight - aliasOffset));
-        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + RowHeight + aliasOffset));
+        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.End.Y + RowHeight + aliasOffset));
+        points.Add(new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + RowHeight - aliasOffset));
 
         context.DrawPolygon(brush, pen, points);
 
@@ -1207,7 +1218,7 @@ internal class EditorColumn : VisualElement
         CaptureMouse();
     }
 
-    private long ClampOffset(long offset) => Math.Max(0, Math.Min(offset, _parent.Document?.Length ?? 0));
+    private long ClampOffset(long offset) => Math.Max(0, Math.Min(offset, Document?.Length ?? 0));
 
     private void OnMouseUp(object? sender, HostMouseButtonEventArgs e)
     {
@@ -1377,13 +1388,13 @@ internal class EditorColumn : VisualElement
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z)
+        else if (ctrlPressed && e.Key is HostKey.Z && !IsReadOnly)
         {
-            Document?.Buffer.Undo();
+            Document.Buffer.Undo();
         }
-        else if (ctrlPressed && e.Key is HostKey.Y)
+        else if (ctrlPressed && e.Key is HostKey.Y && !IsReadOnly)
         {
-            Document?.Buffer.Redo();
+            Document.Buffer.Redo();
         }
         else if (e.Key is HostKey.Shift)
         {
@@ -1393,22 +1404,23 @@ internal class EditorColumn : VisualElement
                 caret.Offset;
             _keyboardSelectMode = true;
         }
-        else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete)
+        else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete && !IsReadOnly)
         {
-            _parent.Document?.Buffer.Delete(selection.Start, selection.End - selection.Start);
+            Document.Buffer.Delete(selection.Start, selection.End - selection.Start);
             SetCaretOffset(selection.Start);
             Deselect();
         }
-        else if (caret.Nibble is 0)
+        else if (caret.Nibble is 0 && !IsReadOnly)
         {
-            if (e.Key is HostKey.Back)
+            switch (e.Key)
             {
-                _parent.Document?.Buffer.Delete(caret.Offset - 1, 1);
-                SetCaretOffset(caret.Offset - 1);
-            }
-            else if (e.Key is HostKey.Delete)
-            {
-                _parent.Document?.Buffer.Delete(caret.Offset, 1);
+                case HostKey.Back:
+                    Document.Buffer.Delete(caret.Offset - 1, 1);
+                    SetCaretOffset(caret.Offset - 1);
+                    break;
+                case HostKey.Delete:
+                    Document.Buffer.Delete(caret.Offset, 1);
+                    break;
             }
         }
     }
@@ -1443,7 +1455,7 @@ internal class EditorColumn : VisualElement
 
     private async Task HandleWriteKey(char @char)
     {
-        if (Document is null)
+        if (Document is null || IsReadOnly)
         {
             return;
         }
@@ -1475,11 +1487,11 @@ internal class EditorColumn : VisualElement
 
         if (appendToDocument)
         {
-            _parent.Document?.Buffer.Insert(caret.Offset, newByte);
+            Document.Buffer.Insert(caret.Offset, newByte);
         }
         else
         {
-            _parent.Document?.Buffer.Write(caret.Offset, newByte);
+            Document.Buffer.Write(caret.Offset, newByte);
         }
 
         HandleArrowKeys(Document, HostKey.Right);

@@ -85,6 +85,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private int _fontSize = 13;
     private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
     private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
+
+    private long _lastRefreshLength;
     private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
     private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
 
@@ -101,11 +103,9 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private IRenderContext? _renderContext;
 
     private bool _requireTypefaceUpdate = true;
+    private bool _scrollToCaret;
 
     private int _scrollWheelSkipRows = 3;
-
-    private long _lastRefreshLength = 0;
-    private bool _scrollToCaret = false;
 
     public SharedHexControl() : base(true)
     {

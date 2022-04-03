@@ -723,7 +723,7 @@ internal class EditorColumn : VisualElement
             // Move the caret up to the end of last row for visual reasons
             var moveCaretUp = document.Selection?.End == caret.Offset &&
                               caret.Offset % Configuration.BytesPerRow is 0;
-            
+
             if (moveCaretUp)
             {
                 topOffset = _parent.RowHeight;
@@ -1023,7 +1023,7 @@ internal class EditorColumn : VisualElement
         var typeface = builder.Typeface;
         var bytesPerRow = Configuration.BytesPerRow;
         // Round content length to full row lengths for padding of final row
-        var contentLength = (int)(Math.Ceiling(Bytes.Length / (float)bytesPerRow) * bytesPerRow); 
+        var contentLength = (int)(Math.Ceiling(Bytes.Length / (float)bytesPerRow) * bytesPerRow);
         var maxBytesWritten = Configuration.ColumnsVisible is not VisibleColumns.HexText
             ? bytesPerRow
             : bytesPerRow * 2;
@@ -1054,13 +1054,13 @@ internal class EditorColumn : VisualElement
                     {
                         break;
                     }
-                    
+
                     horizontalCharacterOffset = 0;
                     visualCol = leftColumnVisibleCharacters + SPACING_BETWEEN_COLUMNS;
                     byteColumn = 0;
                     continue;
                 }
-                
+
                 if (characterSet is not null)
                 {
                     visualCol +=
@@ -1345,7 +1345,9 @@ internal class EditorColumn : VisualElement
         }
         else
         {
-            var newCaretLocation = newOffset >= _startSelectionOffset.Value ? NewCaretLocation.SelectionEnd : NewCaretLocation.SelectionStart;
+            var newCaretLocation = newOffset >= _startSelectionOffset.Value
+                ? NewCaretLocation.SelectionEnd
+                : NewCaretLocation.SelectionStart;
             Document.Select(startOffset, endOffset, column, newCaretLocation, true);
         }
     }

@@ -104,6 +104,9 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private int _scrollWheelSkipRows = 3;
 
+    private long _lastRefreshLength = 0;
+    private bool _scrollToCaret = false;
+
     public SharedHexControl() : base(true)
     {
         // Register events
@@ -421,19 +424,39 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
         if (e.ScrollToCaret)
         {
-            if (Document.Caret.Offset < Document.Offset)
+            // We have not received this information about increased length yet, 'enqueue' scroll to caret instead
+            if (Document.Caret.Offset > _lastRefreshLength)
             {
-                Document.Offset = Document.Caret.Offset;
+                _scrollToCaret = true;
             }
-            else if (Document.Caret.Offset > _editorColumn.MaxVisibleOffset)
+            else
             {
-                Document.Offset = Document.Caret.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
-                                  Configuration.BytesPerRow;
+                ScrollToCaret();
             }
         }
 
         _editorColumn.AddCaretDirtyRect(e.NewCaret);
         Invalidate();
+    }
+
+    private void ScrollToCaret()
+    {
+        if (Document is null)
+        {
+            return;
+        }
+
+        _scrollToCaret = false;
+
+        if (Document.Caret.Offset < Document.Offset)
+        {
+            Document.Offset = Document.Caret.Offset;
+        }
+        else if (Document.Caret.Offset > _editorColumn.MaxVisibleOffset)
+        {
+            Document.Offset = Document.Caret.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
+                              Configuration.BytesPerRow;
+        }
     }
 
     private async void BufferOnModified(object? sender, ModifiedEventArgs e)
@@ -605,11 +628,16 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             : _readBuffer;
 
         _offsetColumn.Offset = Document.Offset;
-
         _editorColumn.Bytes = displayBuffer;
         _editorColumn.Offset = Document.Offset;
 
         queue.StopIOTask();
+
+        _lastRefreshLength = Document.Length;
+        if (_scrollToCaret)
+        {
+            ScrollToCaret();
+        }
 
         var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
         var width = _editorColumn.Left + editorWidth - _offsetColumn.Left;

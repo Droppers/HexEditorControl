@@ -78,8 +78,9 @@ internal class EditorColumn : VisualElement
         {
             var height = Height - _parent.HeaderHeight;
             var rows = height / _parent.RowHeight;
-            var offset = (int)rows * Configuration.BytesPerRow;
-            return Offset + Math.Min(offset, Bytes.Length);
+            var offset = (long)rows * Configuration.BytesPerRow;
+            offset = Offset + Math.Min(offset, Bytes.Length);
+            return (long)(Math.Ceiling(offset / (double)Configuration.BytesPerRow) * Configuration.BytesPerRow);
         }
     }
 
@@ -1021,6 +1022,8 @@ internal class EditorColumn : VisualElement
 
         var typeface = builder.Typeface;
         var bytesPerRow = Configuration.BytesPerRow;
+        // Round content length to full row lengths for padding of final row
+        var contentLength = (int)(Math.Ceiling(Bytes.Length / (float)bytesPerRow) * bytesPerRow); 
         var maxBytesWritten = Configuration.ColumnsVisible is not VisibleColumns.HexText
             ? bytesPerRow
             : bytesPerRow * 2;
@@ -1045,19 +1048,19 @@ internal class EditorColumn : VisualElement
                 var columnIndex = (byteColumn + horizontalCharacterOffset) % bytesPerRow;
                 var byteIndex = row * bytesPerRow + columnIndex;
 
-                if (byteIndex > Bytes.Length - 1)
+                if (byteIndex > contentLength - 1)
                 {
                     if (column is ColumnSide.Right)
                     {
                         break;
                     }
-
+                    
                     horizontalCharacterOffset = 0;
                     visualCol = leftColumnVisibleCharacters + SPACING_BETWEEN_COLUMNS;
                     byteColumn = 0;
                     continue;
                 }
-
+                
                 if (characterSet is not null)
                 {
                     visualCol +=
@@ -1089,8 +1092,17 @@ internal class EditorColumn : VisualElement
         ColumnSide column,
         int byteIndex, int columnIndex)
     {
-        var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex);
-        var writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, Bytes[byteIndex]);
+        int writtenCharacters;
+        if (byteIndex > Bytes.Length - 1) // Pad excess bytes with whitespaces
+        {
+            writtenCharacters = characterSet.Width;
+            builder.Whitespace(characterSet.Width);
+        }
+        else
+        {
+            var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex);
+            writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, Bytes[byteIndex]);
+        }
 
         // Add whitespace between characters
         if (column is ColumnSide.Left && columnIndex == Configuration.BytesPerRow - 1)

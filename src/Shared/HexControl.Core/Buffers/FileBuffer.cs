@@ -16,37 +16,47 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
 {
     private const int BUFFER_SIZE = 8192;
 
-    private readonly FileStream _fileStream;
-    private readonly MemoryMappedFile _memoryMappedFile;
-    private readonly MemoryMappedViewAccessor _viewAccessor;
+    private FileStream _fileStream = null!;
+    private MemoryMappedFile _memoryMappedFile = null!;
+    private MemoryMappedViewAccessor _viewAccessor = null!;
 
     public FileBuffer(string fileName, FileOpenMode openMode)
     {
         FileName = fileName ?? throw new ArgumentNullException(fileName);
+        OpenMode = openMode;
 
-        _fileStream = OpenFileStream(fileName, openMode);
-
-        // Memory mapped file is used for finding byte sequences, especially useful for larger files
-        _memoryMappedFile = OpenMemoryMappedFile(_fileStream);
-        _viewAccessor = _memoryMappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-
+        InitializeFile();
         Initialize(CreateDefaultChunk());
     }
 
     public string FileName { get; }
+    public FileOpenMode OpenMode { get; }
 
-    public async ValueTask DisposeAsync()
+    private void InitializeFile()
+    {
+        _fileStream = OpenFileStream(FileName, OpenMode);
+
+        // Memory mapped file is used for finding byte sequences, especially useful for larger files
+        _memoryMappedFile = OpenMemoryMappedFile(_fileStream);
+        _viewAccessor = _memoryMappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+    }
+
+    private async Task CloseFileAsync()
     {
         _viewAccessor.Dispose();
         _memoryMappedFile.Dispose();
+
         await _fileStream.DisposeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await CloseFileAsync();
     }
 
     public void Dispose()
     {
-        _viewAccessor.Dispose();
-        _memoryMappedFile.Dispose();
-        _fileStream.Dispose();
+        DisposeAsync().GetAwaiter().GetResult();
     }
 
     protected sealed override IChunk CreateDefaultChunk() =>
@@ -80,21 +90,20 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
         var tempFileName = Path.GetTempFileName();
         try
         {
-            await using var tempStream = new FileStream(tempFileName, FileMode.Open, FileAccess.ReadWrite,
-                FileShare.Read, BUFFER_SIZE,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var tempStream = OpenFileStream(tempFileName, FileOpenMode.ReadWrite);
 
             var saved = await SaveToFileAsync(tempStream, cancellationToken);
             if (!saved)
             {
                 return false;
             }
+            
+            await CloseFileAsync();
+            await tempStream.DisposeAsync();
+            File.Move(tempFileName, FileName, true);
 
-            // Copy temporary file to actual file
-            tempStream.Seek(0, SeekOrigin.Begin);
-            _fileStream.Seek(0, SeekOrigin.Begin);
-            _fileStream.SetLength(tempStream.Length);
-            await tempStream.CopyToAsync(_fileStream, BUFFER_SIZE, cancellationToken);
+            InitializeFile();
+
         }
         finally
         {
@@ -111,14 +120,14 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
             IsReadOnly = openMode is FileOpenMode.ReadOnly;
             var fileAccess = IsReadOnly ? FileAccess.Read : FileAccess.ReadWrite;
             return new FileStream(fileName, FileMode.Open, fileAccess, FileShare.Read, BUFFER_SIZE,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
+                FileOptions.Asynchronous);
         }
         catch (UnauthorizedAccessException) when (openMode is FileOpenMode.ReadWrite)
         {
             // Could not open in read write mode, attempt to open in readonly mode
             IsReadOnly = true;
             return new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, BUFFER_SIZE,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
+                FileOptions.Asynchronous);
         }
     }
 

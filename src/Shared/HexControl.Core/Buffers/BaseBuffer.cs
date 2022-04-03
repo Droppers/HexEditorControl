@@ -6,6 +6,7 @@ using HexControl.Core.Buffers.History.Changes;
 using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Events;
 using JetBrains.Annotations;
+using System;
 
 namespace HexControl.Core.Buffers;
 
@@ -663,23 +664,49 @@ public abstract class BaseBuffer
 
     public async Task<bool> SaveToFileAsync(FileStream fileStream, CancellationToken cancellationToken = default)
     {
+        const int flushSize = 256 * 1024 * 1024;
+        const int chunkSize = 32 * 1024;
+
+        var readBuffer = new byte[chunkSize];
+
         fileStream.SetLength(Length);
 
-        var offset = 0L;
         foreach (var chunk in Chunks)
         {
-            fileStream.Seek(offset, SeekOrigin.Begin);
             if (chunk is MemoryChunk memory)
             {
                 await fileStream.WriteAsync(memory.Bytes, cancellationToken);
             }
             else
             {
-                var bytes = await chunk.ReadAsync(0, Length, cancellationToken);
-                await fileStream.WriteAsync(bytes, cancellationToken);
+                var notFlushedSize = 0L;
+                var currentOffset = 0L;
+                while (true)
+                {
+                    var bytesRead = await chunk.ReadAsync(readBuffer, currentOffset, chunkSize, cancellationToken);
+                    await fileStream.WriteAsync(readBuffer.AsMemory(0, (int)bytesRead), cancellationToken);
+
+                    if (bytesRead != chunkSize)
+                    {
+                        break;
+                    }
+
+                    notFlushedSize += bytesRead;
+
+                    if (notFlushedSize >= flushSize)
+                    {
+
+                        await fileStream.FlushAsync(cancellationToken);
+                        notFlushedSize = 0;
+                    }
+
+                    currentOffset += bytesRead;
+                }
+
+                await fileStream.FlushAsync(cancellationToken);
             }
 
-            offset += chunk.Length;
+            await fileStream.FlushAsync(cancellationToken);
         }
 
         return true;

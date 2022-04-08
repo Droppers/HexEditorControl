@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 using Avalonia.Media;
 using HexControl.SharedControl.Framework;
 using HexControl.SharedControl.Framework.Host.Typeface;
@@ -23,6 +25,70 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
     public Typeface RegularTypeface { get; }
     public override GlyphTypeface Typeface { get; }
 
+    private (double? capHeight, double? topOffset) GetSkiaCapHeight(double size)
+    {
+        // Hack to determine CapHeight for a Skia Typeface
+        // var skFont = {Typeface}.Typeface.ToFont()
+        // var oldSize = skFont.Size;
+        // skFont.Size = {size};
+        // skFont.GetFontMetrics(out SKFontMetrics metrics);
+        // var capHeight = metrics.CapHeight;
+        // skFont.Size = oldSize;
+
+        var impl = Typeface.PlatformImpl;
+        var type = impl.GetType();
+        var typefaceProperty = type
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .SingleOrDefault(s => s.Name == "Typeface");
+        
+        if (typefaceProperty is null)
+        {
+            return (null, null);
+        }
+
+        var typeface = typefaceProperty.GetValue(impl, null)!;
+        var typefaceMethods = typeface.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public);
+
+        var toFontMethod = typefaceMethods.Single(m => m.Name == "ToFont" && m.GetParameters().Length == 0);
+        var font = toFontMethod.Invoke(typeface, null)!;
+        var fontProperties = font.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        var fontMethods = font.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public);
+
+        var sizeProp = fontProperties.Single(s => s.Name == "Size");
+        var oldSize = sizeProp.GetValue(font, null);
+
+        try
+        {
+            sizeProp.SetValue(font, (float)size);
+
+            var getFontMetricsMethod = fontMethods.Single(m => m.Name == "GetFontMetrics");
+
+            var args = new object?[] { null };
+            getFontMetricsMethod.Invoke(font, args);
+            var metrics = args[0]!;
+            var metricProperties = metrics.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            var capHeightProperty = metricProperties.Single(m => m.Name == "CapHeight");
+
+            var topProperty = metricProperties.Single(m => m.Name == "Top");
+            var top = topProperty.GetValue(metrics, null)!;
+            var ascentProperty = metricProperties.Single(m => m.Name == "Ascent");
+            var ascent = ascentProperty.GetValue(metrics, null)!;
+
+            var topOffset = Math.Floor(((float)top - (float)ascent));
+
+            var allMetrics = metricProperties.Select(s => (s.Name, s.GetValue(metrics, null))).ToArray();
+
+            var capHeight = capHeightProperty.GetValue(metrics, null)!;
+            //Typeface.GetFontMetrics(out var metrics);
+            //return Math.Ceiling(metrics.CapHeight);
+            return (Math.Ceiling((float)capHeight), topOffset);
+        }
+        finally
+        {
+            sizeProp.SetValue(font, oldSize);
+        }
+    }
+
     public override double GetWidth(double size)
     {
         var scale = size / Typeface.DesignEmHeight;
@@ -31,6 +97,11 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
 
     public override double GetCapHeight(double size)
     {
+        var skiaCapHeight = GetSkiaCapHeight(size);
+        if (skiaCapHeight.capHeight.HasValue)
+        {
+            return skiaCapHeight.capHeight.Value;
+        }
         // TODO: This is as wrong as it can get, but I have no idea how to calculate or retrieve the cap height.
         var scale = size / Typeface.DesignEmHeight;
         return Math.Abs(Typeface.Ascent + Typeface.Descent) * scale + 1;
@@ -43,6 +114,11 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
             throw new NotSupportedException();
         }
 
+        var fontMetrics = GetSkiaCapHeight(size);
+        if (fontMetrics.topOffset.HasValue)
+        {
+            return fontMetrics.topOffset.Value;// -(skiaCapHeight.Value / 2);
+        }
 
         // TODO: Also wrong and does not make any sense
         var scale = size / Typeface.DesignEmHeight;

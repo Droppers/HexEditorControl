@@ -27,12 +27,20 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
 
     private (double? capHeight, double? topOffset) GetSkiaCapHeight(double size)
     {
+        // TODO
+        //  - Move to static class
+        //  - Cache information
+        //  - Don't use single, add extra null checks.
+        //  - Support for direct2d1 implementation in Avalonia(?)
+        //  - Verify if implementation is "Avalonia.Skia.GlyphTypefaceImpl"
+
         // Hack to determine CapHeight for a Skia Typeface
         // var skFont = {Typeface}.Typeface.ToFont()
         // var oldSize = skFont.Size;
         // skFont.Size = {size};
         // skFont.GetFontMetrics(out SKFontMetrics metrics);
-        // var capHeight = metrics.CapHeight;
+        // var fontOffset = Math.Floor(metrics.Top - metrics.Ascent);
+        // var capHeight = Math.Ceiling(metrics.CapHeight);
         // skFont.Size = oldSize;
 
         var impl = Typeface.PlatformImpl;

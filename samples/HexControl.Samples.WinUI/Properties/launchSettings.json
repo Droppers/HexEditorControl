@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "HexControl.Samples.WinUI2 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "HexControl.Samples.WinUI2 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

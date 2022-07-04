@@ -7,14 +7,14 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="28198274-2be2-4156-8cd3-875638bdb031"
-    Publisher="CN=Joery"
+    Name="240b1eef-93bc-47b8-a9cb-a7d445204357"
+    Publisher="CN=joery"
     Version="1.0.0.0" />
 
   <Properties>
-    <DisplayName>HexControl.Samples.WinUI (Package)</DisplayName>
-    <PublisherDisplayName>Joery</PublisherDisplayName>
-    <Logo>Images\StoreLogo.png</Logo>
+    <DisplayName>HexControl.Samples.WinUI2</DisplayName>
+    <PublisherDisplayName>joery</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
@@ -31,13 +31,13 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="HexControl.Samples.WinUI (Package)"
-        Description="HexControl.Samples.WinUI (Package)"
+        DisplayName="HexControl.Samples.WinUI2"
+        Description="HexControl.Samples.WinUI2"
         BackgroundColor="transparent"
-        Square150x150Logo="Images\Square150x150Logo.png"
-        Square44x44Logo="Images\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
-        <uap:SplashScreen Image="Images\SplashScreen.png" />
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
     </Application>
   </Applications>

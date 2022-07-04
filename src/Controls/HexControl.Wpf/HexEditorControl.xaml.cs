@@ -127,6 +127,6 @@ public partial class HexEditorControl : UserControl
         }
 #endif
 
-        await editor.Mapper.SetValue(e.Property.Name, value);
+        await editor.Mapper.SetValueAsync(e.Property.Name, value);
     }
 }

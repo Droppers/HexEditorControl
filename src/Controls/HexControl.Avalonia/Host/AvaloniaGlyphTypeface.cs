@@ -110,9 +110,8 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
         {
             return skiaCapHeight.capHeight.Value;
         }
-        // TODO: This is as wrong as it can get, but I have no idea how to calculate or retrieve the cap height.
-        var scale = size / Typeface.DesignEmHeight;
-        return Math.Abs(Typeface.Ascent + Typeface.Descent) * scale + 1;
+
+        throw new InvalidOperationException("Could not determine font metrics for Avalonia typeface.");
     }
 
     public override double GetGlyphOffsetY(TextAlignment alignment, double size)
@@ -128,9 +127,7 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
             return fontMetrics.topOffset.Value;// -(skiaCapHeight.Value / 2);
         }
 
-        // TODO: Also wrong and does not make any sense
-        var scale = size / Typeface.DesignEmHeight;
-        return -(Typeface.Descent * scale) + 1;
+        throw new InvalidOperationException("Could not determine font metrics for Avalonia typeface.");
     }
 
     public override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex) =>

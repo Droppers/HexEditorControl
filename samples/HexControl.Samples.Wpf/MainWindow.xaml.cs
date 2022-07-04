@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Windows;
 using HexControl.Core;
-using HexControl.PatternLanguage.Patterns;
+using HexControl.Core.Buffers;
 using HexControl.SharedControl.Control;
 using HexControl.SharedControl.Framework.Drawing;
 
@@ -79,11 +77,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
     }
 
     public Document Document { get; set; }
-    public List<PatternData>? Patterns { get; set; }
     public HexRenderApi Api { get; set; } = new TestApi();
 
     private void ButtonBase_OnClick(object sender, RoutedEventArgs e)

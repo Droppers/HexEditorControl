@@ -7,6 +7,7 @@ using HexControl.Avalonia.Host;
 using HexControl.Avalonia.Host.Controls;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
+using HexControl.SharedControl.Framework.Mapping;
 
 namespace HexControl.Avalonia;
 
@@ -18,11 +19,11 @@ public class HexEditorControl : UserControl
     public new static readonly StyledProperty<IBrush> ForegroundProperty =
         AvaloniaProperty.Register<HexEditorControl, IBrush>(nameof(Foreground));
 
-    public static readonly StyledProperty<IBrush> OddForegroundProperty =
-        AvaloniaProperty.Register<HexEditorControl, IBrush>(nameof(OddForeground));
+    public static readonly StyledProperty<IBrush> EvenForegroundProperty =
+        AvaloniaProperty.Register<HexEditorControl, IBrush>(nameof(EvenForeground));
 
     private readonly SharedHexControl _control;
-    private readonly HexControlPropertyMapper _mapper;
+    private readonly IPropertyMapper _mapper;
 
     private TextBox? _fakeTextBox;
     private Grid? _grid;
@@ -34,7 +35,7 @@ public class HexEditorControl : UserControl
     {
         DocumentProperty.Changed.AddClassHandler<HexEditorControl>(OnPropertyChanged);
         ForegroundProperty.Changed.AddClassHandler<HexEditorControl>(OnPropertyChanged);
-        OddForegroundProperty.Changed.AddClassHandler<HexEditorControl>(OnPropertyChanged);
+        EvenForegroundProperty.Changed.AddClassHandler<HexEditorControl>(OnPropertyChanged);
     }
 
     public HexEditorControl()
@@ -54,10 +55,10 @@ public class HexEditorControl : UserControl
         set => SetValue(DocumentProperty, value);
     }
 
-    public IBrush OddForeground
+    public IBrush EvenForeground
     {
-        get => _mapper.GetValue<IBrush>(GetValue(OddForegroundProperty));
-        set => SetValue(OddForegroundProperty, value);
+        get => _mapper.GetValue<IBrush>(GetValue(EvenForegroundProperty));
+        set => SetValue(EvenForegroundProperty, value);
     }
 
     public new IBrush Foreground
@@ -120,6 +121,6 @@ public class HexEditorControl : UserControl
         AvaloniaPropertyChangedEventArgs e)
     {
         var value = e.NewValue;
-        await element._mapper.SetValue(e.Property.Name, value);
+        await element._mapper.SetValueAsync(e.Property.Name, value);
     }
 }

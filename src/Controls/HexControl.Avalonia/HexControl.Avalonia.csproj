@@ -11,9 +11,6 @@
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<Compile Update="PatternControl.axaml.cs">
-			<DependentUpon>PatternControl.axaml</DependentUpon>
-		</Compile>
 		<Compile Update="HexEditorControl.axaml.cs">
 			<DependentUpon>HexEditorControl.axaml</DependentUpon>
 		</Compile>

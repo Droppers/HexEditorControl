@@ -13,11 +13,8 @@
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <!--<ColumnDefinition Width="1*" />-->
             </Grid.ColumnDefinitions>
-            <!--<wpf:NewInterop></wpf:NewInterop>-->
             <wpf:HexEditorControl Grid.Column="0" x:Name="EditorControl" Document="{Binding Document}" />
-            <!--<wpf:PatternControl Grid.Column="1" Patterns="{Binding Patterns}" />-->
         </Grid>
         <!-- RenderApi="{Binding Api}" -->
         <StackPanel Margin="0,0,17,0">

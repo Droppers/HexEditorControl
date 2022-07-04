@@ -63,7 +63,7 @@ public sealed partial class HexEditorControl : UserControl, ICursorChangeable
 
         if (propertyName is not null)
         {
-            await control._mapper.SetValue(propertyName, e.NewValue);
+            await control._mapper.SetValueAsync(propertyName, e.NewValue);
         }
     }
 }

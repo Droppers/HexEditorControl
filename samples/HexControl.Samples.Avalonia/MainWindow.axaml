@@ -8,8 +8,7 @@
         Title="Avalonia"
         Background="White"
         x:Name="Root">
-    <Grid ColumnDefinitions="*,*">
-        <avalonia:HexEditorControl Grid.Column="0" Document="{Binding Document}" />
-        <avalonia:PatternControl Grid.Column="1" Patterns="{Binding Patterns}" />
+    <Grid>
+        <avalonia:HexEditorControl Grid.Column="0" Document="{Binding Document}" Foreground="Red" />
     </Grid>
 </Window>

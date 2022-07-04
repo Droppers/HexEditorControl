@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.Core;
+using HexControl.Core.Buffers;
 using HexControl.PatternLanguage;
 using HexControl.PatternLanguage.Patterns;
 #if DEBUG
@@ -35,7 +36,7 @@ public class MainWindow : Window
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\pad00000.meta");
 
         var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
 
         var runner = new PatternRunner(Document);
         Patterns = runner.Run(code).ToList();

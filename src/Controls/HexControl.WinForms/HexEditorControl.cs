@@ -60,7 +60,7 @@ public partial class HexEditorControl : UserControl
             return;
         }
 
-        await _mapper.SetValue(e.PropertyName, e.Value);
+        await _mapper.SetValueAsync(e.PropertyName, e.Value);
     }
 
     private void OnPropertyChanged(object? value, [CallerMemberName] string? propertyName = null)

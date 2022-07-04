@@ -1,0 +1,58 @@
+mode: ContinuousDelivery
+
+assembly-versioning-scheme: MajorMinor
+assembly-file-versioning-scheme: MajorMinorPatch
+
+branches:
+  main:
+    tag: ''
+    increment: Patch
+  develop:
+    regex: dev(elop)?(ment)?$
+    tag: 'beta'
+    increment: None
+  release:
+    regex: release(s)?[/-]
+    tag: 'rc'
+    increment: None
+  feature:
+    mode: ContinuousDeployment
+    regex: ^(?!(main|develop|release)).*$
+    tag: 'feature'
+    increment: None
+
+  main:
+    regex: ^master$|^main$
+    mode: ContinuousDelivery
+    tag: ''
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+    source-branches: [ 'develop', 'release' ]
+  develop:
+    regex: ^dev(elop)?(ment)?$
+    mode: ContinuousDeployment
+    tag: beta
+    increment: None
+    prevent-increment-of-merged-branch-version: false
+    track-merge-target: true
+    source-branches: []
+    tracks-release-branches: true
+    pre-release-weight: 0
+  release:
+    regex: ^releases?[/-]
+    mode: ContinuousDelivery
+    tag: rc
+    increment: None
+    prevent-increment-of-merged-branch-version: true
+    source-branches: [ 'develop', 'main', 'release' ]
+    is-release-branch: true
+  feature:
+    regex: ^(?!(main|develop|release)).*$
+    mode: ContinuousDelivery
+    tag: useBranchName
+    increment: Inherit
+    prevent-increment-of-merged-branch-version: false
+    source-branches: [ 'develop', 'main', 'release', 'feature' ]
+
+ignore:
+  sha: []

@@ -1,31 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<Import Project="../../../control.props" />
 	<PropertyGroup>
-		<TargetFramework>net5.0-windows</TargetFramework>
-		<Nullable>enable</Nullable>
+		<TargetFramework>$(TargetFramework)-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
-		<LangVersion>10</LangVersion>
 	</PropertyGroup>
-
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<DefineConstants>$(DefineConstants)TRACE;</DefineConstants>
 	</PropertyGroup>
-
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<DefineConstants>$(DefineConstants)TRACE;</DefineConstants>
 	</PropertyGroup>
-
 	<ItemGroup>
-		<PackageReference Include="SharpDX.Direct2D1" Version="4.2.0" />
-		<PackageReference Include="SharpDX.Direct3D10" Version="4.2.0" />
-		<PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
-		<PackageReference Include="SharpDX.Direct3D9" Version="4.2.0" />
+		<PackageReference Include="SharpDX.Direct2D1" Version="$(SharpDXVersion)" />
+		<PackageReference Include="SharpDX.Direct3D10" Version="$(SharpDXVersion)" />
+		<PackageReference Include="SharpDX.Direct3D11" Version="$(SharpDXVersion)" />
+		<PackageReference Include="SharpDX.Direct3D9" Version="$(SharpDXVersion)" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
 		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Skia\HexControl.Renderer.Skia.csproj" />
 	</ItemGroup>
-
 </Project>

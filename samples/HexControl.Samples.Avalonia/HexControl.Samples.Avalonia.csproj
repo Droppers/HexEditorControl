@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../samples.props" />
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net5.0</TargetFramework>
-		<Nullable>enable</Nullable>
-		<LangVersion>10</LangVersion>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Remove=".gitignore" />
@@ -16,6 +14,5 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Controls\HexControl.Avalonia\HexControl.Avalonia.csproj" />
-		<ProjectReference Include="..\..\src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
 	</ItemGroup>
 </Project>

@@ -14,6 +14,7 @@ using Device = SharpDX.Direct3D11.Device;
 using Factory = SharpDX.Direct2D1.Factory;
 using Image = System.Windows.Controls.Image;
 using PixelFormat = SharpDX.Direct2D1.PixelFormat;
+using Timer = System.Timers.Timer;
 
 namespace HexControl.Wpf.D2D;
 
@@ -85,7 +86,7 @@ internal class D2DControl : Image, IRenderStateProvider
 
     public event EventHandler<RenderStateChangedEventArgs>? RenderStateChanged;
 
-    private void OnResizeFinished(object sender, ElapsedEventArgs e)
+    private void OnResizeFinished(object? sender, ElapsedEventArgs e)
     {
         if (ResizeMode is ResizeMode.Debounce)
         {

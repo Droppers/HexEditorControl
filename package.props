@@ -1,0 +1,18 @@
+<Project>
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+	</PropertyGroup>
+	<PropertyGroup>
+		<Authors>Joery Droppers</Authors>
+		<PackageDescription>
+			Placeholder description.
+		</PackageDescription>
+		<PackageProjectUrl>https://github.com/Droppers/HexEditorControl</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Droppers/HexEditorControl</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>hexeditor</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReleaseNotes>See https://github.com/Droppers/HexEditorControl/releases</PackageReleaseNotes>
+		<Copyright>Copyright Joery Droppers 2022</Copyright>
+	</PropertyGroup>
+</Project>

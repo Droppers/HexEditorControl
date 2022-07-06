@@ -1,16 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWPF>true</UseWPF>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Controls\HexControl.Wpf\HexControl.Wpf.csproj" />
-    <ProjectReference Include="..\..\src\Shared\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
-  </ItemGroup>
-
+	<Import Project="../../samples.props" />
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>$(TargetFramework)-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Controls\HexControl.Wpf\HexControl.Wpf.csproj" />
+	</ItemGroup>
 </Project>

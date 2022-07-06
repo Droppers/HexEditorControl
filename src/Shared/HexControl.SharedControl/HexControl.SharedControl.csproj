@@ -1,23 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<TargetFramework>net5.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<LangVersion>10</LangVersion>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<None Remove="Control\Fonts\DejaVuSansMono.ttf" />
-	</ItemGroup>
-
+	<Import Project="../../../shared.props" />
 	<ItemGroup>
 		<EmbeddedResource Include="Control\Fonts\DejaVuSansMono.ttf" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\HexControl.Core\HexControl.Core.csproj" />
-		<ProjectReference Include="..\HexControl.PatternLanguage\HexControl.PatternLanguage.csproj" />
 	</ItemGroup>
-
 </Project>

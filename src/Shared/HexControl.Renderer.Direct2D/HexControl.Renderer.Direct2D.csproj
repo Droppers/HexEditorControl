@@ -1,18 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<TargetFramework>net5.0</TargetFramework>
-		<Nullable>enable</Nullable>
-		<LangVersion>10</LangVersion>
-	</PropertyGroup>
-
+	<Import Project="../../../shared.props" />
 	<ItemGroup>
-		<PackageReference Include="SharpDX.Direct2D1" Version="4.2.0" />
-		<PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
+		<PackageReference Include="SharpDX.Direct2D1" Version="$(SharpDXVersion)" />
+		<PackageReference Include="SharpDX.Direct3D11" Version="$(SharpDXVersion)" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\HexControl.SharedControl\HexControl.SharedControl.csproj" />
 	</ItemGroup>
-
 </Project>

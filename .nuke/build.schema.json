@@ -8,6 +8,7 @@
       "properties": {
         "Configuration": {
           "type": "string",
+          "description": "Configuration to build - Default is 'Debug' (local) or 'Release' (server)",
           "enum": [
             "Debug",
             "Release"
@@ -41,10 +42,6 @@
             "VisualStudio",
             "VSCode"
           ]
-        },
-        "IgnoreFailedSources": {
-          "type": "boolean",
-          "description": "Ignore unreachable sources during Restore"
         },
         "NoLogo": {
           "type": "boolean",
@@ -82,10 +79,12 @@
           "items": {
             "type": "string",
             "enum": [
+              "Clean",
               "Compile",
               "Pack",
-              "Publish",
-              "Restore"
+              "Push",
+              "Restore",
+              "Test"
             ]
           }
         },
@@ -99,10 +98,12 @@
           "items": {
             "type": "string",
             "enum": [
+              "Clean",
               "Compile",
               "Pack",
-              "Publish",
-              "Restore"
+              "Push",
+              "Restore",
+              "Test"
             ]
           }
         },

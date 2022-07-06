@@ -1,21 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<Import Project="../../../shared.props" />
 	<PropertyGroup>
-		<TargetFramework>net5.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<LangVersion>10</LangVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<Compile Remove="Configuration\**" />
-		<EmbeddedResource Remove="Configuration\**" />
-		<None Remove="Configuration\**" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<PackageReference Include="JetBrains.Annotations" Version="10.3.0" />
-	</ItemGroup>
-
 </Project>

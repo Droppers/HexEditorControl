@@ -5,8 +5,6 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.Core;
 using HexControl.Core.Buffers;
-using HexControl.PatternLanguage;
-using HexControl.PatternLanguage.Patterns;
 #if DEBUG
 using Avalonia;
 #endif
@@ -25,8 +23,7 @@ public class MainWindow : Window
     }
 
     public Document? Document { get; set; }
-    public List<PatternData>? Patterns { get; set; }
-
+    
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
@@ -37,8 +34,5 @@ public class MainWindow : Window
 
         var code = File.ReadAllText(@"C:\Users\joery\Downloads\pe.hexpat");
         Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
-
-        var runner = new PatternRunner(Document);
-        Patterns = runner.Run(code).ToList();
     }
 }

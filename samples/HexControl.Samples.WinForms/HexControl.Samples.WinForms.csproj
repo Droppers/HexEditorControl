@@ -1,20 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<Import Project="../../samples.props" />
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net5.0-windows</TargetFramework>
-		<Nullable>enable</Nullable>
+		<TargetFramework>$(TargetFramework)-windows</TargetFramework>
 		<UseWindowsForms>true</UseWindowsForms>
-		<LangVersion>10</LangVersion>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
-	</ItemGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Controls\HexControl.WinForms\HexControl.WinForms.csproj" />
 	</ItemGroup>
-
 </Project>

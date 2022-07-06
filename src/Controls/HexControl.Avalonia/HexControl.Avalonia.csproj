@@ -1,9 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFramework>net5.0</TargetFramework>
-		<Nullable>enable</Nullable>
-		<LangVersion>10</LangVersion>
-	</PropertyGroup>
+	<Import Project="../../../control.props" />
 	<ItemGroup>
 		<PackageReference Include="Avalonia" Version="0.10.3" />
 	</ItemGroup>

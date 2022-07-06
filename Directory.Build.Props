@@ -1,0 +1,13 @@
+<Project>
+	<PropertyGroup>
+		<SharpDXVersion>4.2.0</SharpDXVersion>
+	</PropertyGroup>
+	<PropertyGroup>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="JetBrains.Annotations" Version="2022.1.0" />
+	</ItemGroup>
+</Project>

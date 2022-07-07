@@ -1,9 +1,8 @@
 ﻿using HexControl.Core;
-using Microsoft.UI.Xaml;
 
 namespace HexControl.Samples.WinUI;
 
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow
 {
     public MainWindow()
     {

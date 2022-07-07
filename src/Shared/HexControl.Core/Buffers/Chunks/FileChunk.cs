@@ -34,11 +34,11 @@ internal class FileChunk : Chunk, IImmutableChunk
             _accessor.SafeMemoryMappedViewHandle.ReleasePointer();
         }
     }
-
-    // TODO: cancellation support
+    
     protected override async Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
         CancellationToken cancellationToken = default)
     {
+        // TODO: Investigate
         _fileStream.Seek(sourceReadOffset, SeekOrigin.Begin);
         await _fileStream.ReadAsync(readBuffer.AsMemory(0, (int)readLength), cancellationToken);
     }

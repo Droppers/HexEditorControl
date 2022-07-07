@@ -1,16 +1,16 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
-
-// ReSharper disable MemberCanBePrivate.Global
+using JetBrains.Annotations;
 
 namespace HexControl.Core.Numerics;
 
+[PublicAPI]
 public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatable<Int128>
 {
     public const int Size = 16;
 
-    private UInt128 v;
+    private UInt128 _v;
 
     public static Int128 MinValue { get; } = (Int128)((UInt128)1 << 127);
 
@@ -43,49 +43,49 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
             return false;
         }
 
-        UInt128.Create(out result.v, a);
+        UInt128.Create(out result._v, a);
         return true;
     }
 
     public Int128(long value)
     {
-        UInt128.Create(out v, value);
+        UInt128.Create(out _v, value);
     }
 
     public Int128(long value1, long value2)
     {
-        UInt128.Create(out v, value1, value2);
+        UInt128.Create(out _v, value1, value2);
     }
 
     public Int128(ulong value)
     {
-        UInt128.Create(out v, value);
+        UInt128.Create(out _v, value);
     }
 
     public Int128(double value)
     {
-        UInt128.Create(out v, value);
+        UInt128.Create(out _v, value);
     }
 
     public Int128(decimal value)
     {
-        UInt128.Create(out v, value);
+        UInt128.Create(out _v, value);
     }
 
     public Int128(BigInteger value)
     {
-        UInt128.Create(out v, value);
+        UInt128.Create(out _v, value);
     }
 
-    public ulong S0 => v.s0;
-    public ulong S1 => v.s1;
+    public ulong S0 => _v.s0;
+    public ulong S1 => _v.s1;
 
-    public bool IsZero => v.IsZero;
-    public bool IsOne => v.IsOne;
-    public bool IsPowerOfTwo => v.IsPowerOfTwo;
-    public bool IsEven => v.IsEven;
-    public bool IsNegative => v.s1 > long.MaxValue;
-    public int Sign => IsNegative ? -1 : v.Sign;
+    public bool IsZero => _v.IsZero;
+    public bool IsOne => _v.IsOne;
+    public bool IsPowerOfTwo => _v.IsPowerOfTwo;
+    public bool IsEven => _v.IsEven;
+    public bool IsNegative => _v.s1 > long.MaxValue;
+    public int Sign => IsNegative ? -1 : _v.Sign;
 
     public override string ToString() => ((BigInteger)this).ToString();
 
@@ -98,196 +98,196 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     public static explicit operator Int128(double a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(sbyte a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(byte a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(short a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(ushort a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(int a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(uint a)
     {
         Int128 c;
-        UInt128.Create(out c.v, (ulong)a);
+        UInt128.Create(out c._v, (ulong)a);
         return c;
     }
 
     public static implicit operator Int128(long a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static implicit operator Int128(ulong a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static explicit operator Int128(decimal a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
     public static explicit operator Int128(UInt128 a)
     {
         Int128 c;
-        c.v = a;
+        c._v = a;
         return c;
     }
 
-    public static explicit operator UInt128(Int128 a) => a.v;
+    public static explicit operator UInt128(Int128 a) => a._v;
 
     public static explicit operator Int128(BigInteger a)
     {
         Int128 c;
-        UInt128.Create(out c.v, a);
+        UInt128.Create(out c._v, a);
         return c;
     }
 
-    public static explicit operator sbyte(Int128 a) => (sbyte)a.v.s0;
+    public static explicit operator sbyte(Int128 a) => (sbyte)a._v.s0;
 
-    public static explicit operator byte(Int128 a) => (byte)a.v.s0;
+    public static explicit operator byte(Int128 a) => (byte)a._v.s0;
 
-    public static explicit operator short(Int128 a) => (short)a.v.s0;
+    public static explicit operator short(Int128 a) => (short)a._v.s0;
 
-    public static explicit operator ushort(Int128 a) => (ushort)a.v.s0;
+    public static explicit operator ushort(Int128 a) => (ushort)a._v.s0;
 
-    public static explicit operator int(Int128 a) => (int)a.v.s0;
+    public static explicit operator int(Int128 a) => (int)a._v.s0;
 
-    public static explicit operator uint(Int128 a) => (uint)a.v.s0;
+    public static explicit operator uint(Int128 a) => (uint)a._v.s0;
 
-    public static explicit operator long(Int128 a) => (long)a.v.s0;
+    public static explicit operator long(Int128 a) => (long)a._v.s0;
 
-    public static explicit operator ulong(Int128 a) => a.v.s0;
+    public static explicit operator ulong(Int128 a) => a._v.s0;
 
     public static explicit operator decimal(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var c, ref a.v);
+            UInt128.Negate(out var c, ref a._v);
             return -(decimal)c;
         }
 
-        return (decimal)a.v;
+        return (decimal)a._v;
     }
 
     public static implicit operator BigInteger(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var c, ref a.v);
+            UInt128.Negate(out var c, ref a._v);
             return -(BigInteger)c;
         }
 
-        return a.v;
+        return a._v;
     }
 
     public static explicit operator float(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var c, ref a.v);
+            UInt128.Negate(out var c, ref a._v);
             return -UInt128.ConvertToFloat(ref c);
         }
 
-        return UInt128.ConvertToFloat(ref a.v);
+        return UInt128.ConvertToFloat(ref a._v);
     }
 
     public static explicit operator double(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var c, ref a.v);
+            UInt128.Negate(out var c, ref a._v);
             return -UInt128.ConvertToDouble(ref c);
         }
 
-        return UInt128.ConvertToDouble(ref a.v);
+        return UInt128.ConvertToDouble(ref a._v);
     }
 
     public static Int128 operator <<(Int128 a, int b)
     {
         Int128 c;
-        UInt128.LeftShift(out c.v, ref a.v, b);
+        UInt128.LeftShift(out c._v, ref a._v, b);
         return c;
     }
 
     public static Int128 operator >> (Int128 a, int b)
     {
         Int128 c;
-        UInt128.ArithmeticRightShift(out c.v, ref a.v, b);
+        UInt128.ArithmeticRightShift(out c._v, ref a._v, b);
         return c;
     }
 
     public static Int128 operator &(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.And(out c.v, ref a.v, ref b.v);
+        UInt128.And(out c._v, ref a._v, ref b._v);
         return c;
     }
 
-    public static int operator &(Int128 a, int b) => (int)(a.v & (uint)b);
+    public static int operator &(Int128 a, int b) => (int)(a._v & (uint)b);
 
-    public static int operator &(int a, Int128 b) => (int)(b.v & (uint)a);
+    public static int operator &(int a, Int128 b) => (int)(b._v & (uint)a);
 
-    public static long operator &(Int128 a, long b) => (long)(a.v & (ulong)b);
+    public static long operator &(Int128 a, long b) => (long)(a._v & (ulong)b);
 
-    public static long operator &(long a, Int128 b) => (long)(b.v & (ulong)a);
+    public static long operator &(long a, Int128 b) => (long)(b._v & (ulong)a);
 
     public static Int128 operator |(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.Or(out c.v, ref a.v, ref b.v);
+        UInt128.Or(out c._v, ref a._v, ref b._v);
         return c;
     }
 
     public static Int128 operator ^(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.ExclusiveOr(out c.v, ref a.v, ref b.v);
+        UInt128.ExclusiveOr(out c._v, ref a._v, ref b._v);
         return c;
     }
 
     public static Int128 operator ~(Int128 a)
     {
         Int128 c;
-        UInt128.Not(out c.v, ref a.v);
+        UInt128.Not(out c._v, ref a._v);
         return c;
     }
 
@@ -296,11 +296,11 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (b < 0)
         {
-            UInt128.Subtract(out c.v, ref a.v, (ulong)-b);
+            UInt128.Subtract(out c._v, ref a._v, (ulong)-b);
         }
         else
         {
-            UInt128.Add(out c.v, ref a.v, (ulong)b);
+            UInt128.Add(out c._v, ref a._v, (ulong)b);
         }
 
         return c;
@@ -311,11 +311,11 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (a < 0)
         {
-            UInt128.Subtract(out c.v, ref b.v, (ulong)-a);
+            UInt128.Subtract(out c._v, ref b._v, (ulong)-a);
         }
         else
         {
-            UInt128.Add(out c.v, ref b.v, (ulong)a);
+            UInt128.Add(out c._v, ref b._v, (ulong)a);
         }
 
         return c;
@@ -324,14 +324,14 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     public static Int128 operator +(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.Add(out c.v, ref a.v, ref b.v);
+        UInt128.Add(out c._v, ref a._v, ref b._v);
         return c;
     }
 
     public static Int128 operator ++(Int128 a)
     {
         Int128 c;
-        UInt128.Add(out c.v, ref a.v, 1);
+        UInt128.Add(out c._v, ref a._v, 1);
         return c;
     }
 
@@ -340,11 +340,11 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (b < 0)
         {
-            UInt128.Add(out c.v, ref a.v, (ulong)-b);
+            UInt128.Add(out c._v, ref a._v, (ulong)-b);
         }
         else
         {
-            UInt128.Subtract(out c.v, ref a.v, (ulong)b);
+            UInt128.Subtract(out c._v, ref a._v, (ulong)b);
         }
 
         return c;
@@ -353,7 +353,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     public static Int128 operator -(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.Subtract(out c.v, ref a.v, ref b.v);
+        UInt128.Subtract(out c._v, ref a._v, ref b._v);
         return c;
     }
 
@@ -362,14 +362,14 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     public static Int128 operator -(Int128 a)
     {
         Int128 c;
-        UInt128.Negate(out c.v, ref a.v);
+        UInt128.Negate(out c._v, ref a._v);
         return c;
     }
 
     public static Int128 operator --(Int128 a)
     {
         Int128 c;
-        UInt128.Subtract(out c.v, ref a.v, 1);
+        UInt128.Subtract(out c._v, ref a._v, 1);
         return c;
     }
 
@@ -475,95 +475,95 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
     public static bool operator <(UInt128 a, Int128 b) => b.CompareTo(a) > 0;
 
-    public static bool operator <(Int128 a, Int128 b) => LessThan(ref a.v, ref b.v);
+    public static bool operator <(Int128 a, Int128 b) => LessThan(ref a._v, ref b._v);
 
-    public static bool operator <(Int128 a, int b) => LessThan(ref a.v, b);
+    public static bool operator <(Int128 a, int b) => LessThan(ref a._v, b);
 
-    public static bool operator <(int a, Int128 b) => LessThan(a, ref b.v);
+    public static bool operator <(int a, Int128 b) => LessThan(a, ref b._v);
 
-    public static bool operator <(Int128 a, uint b) => LessThan(ref a.v, b);
+    public static bool operator <(Int128 a, uint b) => LessThan(ref a._v, b);
 
-    public static bool operator <(uint a, Int128 b) => LessThan(a, ref b.v);
+    public static bool operator <(uint a, Int128 b) => LessThan(a, ref b._v);
 
-    public static bool operator <(Int128 a, long b) => LessThan(ref a.v, b);
+    public static bool operator <(Int128 a, long b) => LessThan(ref a._v, b);
 
-    public static bool operator <(long a, Int128 b) => LessThan(a, ref b.v);
+    public static bool operator <(long a, Int128 b) => LessThan(a, ref b._v);
 
-    public static bool operator <(Int128 a, ulong b) => LessThan(ref a.v, b);
+    public static bool operator <(Int128 a, ulong b) => LessThan(ref a._v, b);
 
-    public static bool operator <(ulong a, Int128 b) => LessThan(a, ref b.v);
+    public static bool operator <(ulong a, Int128 b) => LessThan(a, ref b._v);
 
     public static bool operator <=(Int128 a, UInt128 b) => a.CompareTo(b) <= 0;
 
     public static bool operator <=(UInt128 a, Int128 b) => b.CompareTo(a) >= 0;
 
-    public static bool operator <=(Int128 a, Int128 b) => !LessThan(ref b.v, ref a.v);
+    public static bool operator <=(Int128 a, Int128 b) => !LessThan(ref b._v, ref a._v);
 
-    public static bool operator <=(Int128 a, int b) => !LessThan(b, ref a.v);
+    public static bool operator <=(Int128 a, int b) => !LessThan(b, ref a._v);
 
-    public static bool operator <=(int a, Int128 b) => !LessThan(ref b.v, a);
+    public static bool operator <=(int a, Int128 b) => !LessThan(ref b._v, a);
 
-    public static bool operator <=(Int128 a, uint b) => !LessThan(b, ref a.v);
+    public static bool operator <=(Int128 a, uint b) => !LessThan(b, ref a._v);
 
-    public static bool operator <=(uint a, Int128 b) => !LessThan(ref b.v, a);
+    public static bool operator <=(uint a, Int128 b) => !LessThan(ref b._v, a);
 
-    public static bool operator <=(Int128 a, long b) => !LessThan(b, ref a.v);
+    public static bool operator <=(Int128 a, long b) => !LessThan(b, ref a._v);
 
-    public static bool operator <=(long a, Int128 b) => !LessThan(ref b.v, a);
+    public static bool operator <=(long a, Int128 b) => !LessThan(ref b._v, a);
 
-    public static bool operator <=(Int128 a, ulong b) => !LessThan(b, ref a.v);
+    public static bool operator <=(Int128 a, ulong b) => !LessThan(b, ref a._v);
 
-    public static bool operator <=(ulong a, Int128 b) => !LessThan(ref b.v, a);
+    public static bool operator <=(ulong a, Int128 b) => !LessThan(ref b._v, a);
 
     public static bool operator >(Int128 a, UInt128 b) => a.CompareTo(b) > 0;
 
     public static bool operator >(UInt128 a, Int128 b) => b.CompareTo(a) < 0;
 
-    public static bool operator >(Int128 a, Int128 b) => LessThan(ref b.v, ref a.v);
+    public static bool operator >(Int128 a, Int128 b) => LessThan(ref b._v, ref a._v);
 
-    public static bool operator >(Int128 a, int b) => LessThan(b, ref a.v);
+    public static bool operator >(Int128 a, int b) => LessThan(b, ref a._v);
 
-    public static bool operator >(int a, Int128 b) => LessThan(ref b.v, a);
+    public static bool operator >(int a, Int128 b) => LessThan(ref b._v, a);
 
-    public static bool operator >(Int128 a, uint b) => LessThan(b, ref a.v);
+    public static bool operator >(Int128 a, uint b) => LessThan(b, ref a._v);
 
-    public static bool operator >(uint a, Int128 b) => LessThan(ref b.v, a);
+    public static bool operator >(uint a, Int128 b) => LessThan(ref b._v, a);
 
-    public static bool operator >(Int128 a, long b) => LessThan(b, ref a.v);
+    public static bool operator >(Int128 a, long b) => LessThan(b, ref a._v);
 
-    public static bool operator >(long a, Int128 b) => LessThan(ref b.v, a);
+    public static bool operator >(long a, Int128 b) => LessThan(ref b._v, a);
 
-    public static bool operator >(Int128 a, ulong b) => LessThan(b, ref a.v);
+    public static bool operator >(Int128 a, ulong b) => LessThan(b, ref a._v);
 
-    public static bool operator >(ulong a, Int128 b) => LessThan(ref b.v, a);
+    public static bool operator >(ulong a, Int128 b) => LessThan(ref b._v, a);
 
     public static bool operator >=(Int128 a, UInt128 b) => a.CompareTo(b) >= 0;
 
     public static bool operator >=(UInt128 a, Int128 b) => b.CompareTo(a) <= 0;
 
-    public static bool operator >=(Int128 a, Int128 b) => !LessThan(ref a.v, ref b.v);
+    public static bool operator >=(Int128 a, Int128 b) => !LessThan(ref a._v, ref b._v);
 
-    public static bool operator >=(Int128 a, int b) => !LessThan(ref a.v, b);
+    public static bool operator >=(Int128 a, int b) => !LessThan(ref a._v, b);
 
-    public static bool operator >=(int a, Int128 b) => !LessThan(a, ref b.v);
+    public static bool operator >=(int a, Int128 b) => !LessThan(a, ref b._v);
 
-    public static bool operator >=(Int128 a, uint b) => !LessThan(ref a.v, b);
+    public static bool operator >=(Int128 a, uint b) => !LessThan(ref a._v, b);
 
-    public static bool operator >=(uint a, Int128 b) => !LessThan(a, ref b.v);
+    public static bool operator >=(uint a, Int128 b) => !LessThan(a, ref b._v);
 
-    public static bool operator >=(Int128 a, long b) => !LessThan(ref a.v, b);
+    public static bool operator >=(Int128 a, long b) => !LessThan(ref a._v, b);
 
-    public static bool operator >=(long a, Int128 b) => !LessThan(a, ref b.v);
+    public static bool operator >=(long a, Int128 b) => !LessThan(a, ref b._v);
 
-    public static bool operator >=(Int128 a, ulong b) => !LessThan(ref a.v, b);
+    public static bool operator >=(Int128 a, ulong b) => !LessThan(ref a._v, b);
 
-    public static bool operator >=(ulong a, Int128 b) => !LessThan(a, ref b.v);
+    public static bool operator >=(ulong a, Int128 b) => !LessThan(a, ref b._v);
 
     public static bool operator ==(UInt128 a, Int128 b) => b.Equals(a);
 
     public static bool operator ==(Int128 a, UInt128 b) => a.Equals(b);
 
-    public static bool operator ==(Int128 a, Int128 b) => a.v.Equals(b.v);
+    public static bool operator ==(Int128 a, Int128 b) => a._v.Equals(b._v);
 
     public static bool operator ==(Int128 a, int b) => a.Equals(b);
 
@@ -585,7 +585,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
     public static bool operator !=(Int128 a, UInt128 b) => !a.Equals(b);
 
-    public static bool operator !=(Int128 a, Int128 b) => !a.v.Equals(b.v);
+    public static bool operator !=(Int128 a, Int128 b) => !a._v.Equals(b._v);
 
     public static bool operator !=(Int128 a, int b) => !a.Equals(b);
 
@@ -610,18 +610,18 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
             return -1;
         }
 
-        return v.CompareTo(other);
+        return _v.CompareTo(other);
     }
 
-    public int CompareTo(Int128 other) => SignedCompare(ref v, other.S0, other.S1);
+    public int CompareTo(Int128 other) => SignedCompare(ref _v, other.S0, other.S1);
 
-    public int CompareTo(int other) => SignedCompare(ref v, (ulong)other, (ulong)(other >> 31));
+    public int CompareTo(int other) => SignedCompare(ref _v, (ulong)other, (ulong)(other >> 31));
 
-    public int CompareTo(uint other) => SignedCompare(ref v, other, 0);
+    public int CompareTo(uint other) => SignedCompare(ref _v, other, 0);
 
-    public int CompareTo(long other) => SignedCompare(ref v, (ulong)other, (ulong)(other >> 63));
+    public int CompareTo(long other) => SignedCompare(ref _v, (ulong)other, (ulong)(other >> 63));
 
-    public int CompareTo(ulong other) => SignedCompare(ref v, other, 0);
+    public int CompareTo(ulong other) => SignedCompare(ref _v, other, 0);
 
     public int CompareTo(object? obj)
     {
@@ -707,63 +707,63 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         return a.s0.CompareTo(bs0);
     }
 
-    public bool Equals(UInt128 other) => !IsNegative && v.Equals(other);
+    public bool Equals(UInt128 other) => !IsNegative && _v.Equals(other);
 
-    public bool Equals(Int128 other) => v.Equals(other.v);
+    public bool Equals(Int128 other) => _v.Equals(other._v);
 
     public bool Equals(int other)
     {
         if (other < 0)
         {
-            return v.s1 == ulong.MaxValue && v.s0 == (uint)other;
+            return _v.s1 == ulong.MaxValue && _v.s0 == unchecked((uint)other);
         }
 
-        return v.s1 == 0 && v.s0 == (uint)other;
+        return _v.s1 == 0 && _v.s0 == (uint)other;
     }
 
-    public bool Equals(uint other) => v.s1 == 0 && v.s0 == other;
+    public bool Equals(uint other) => _v.s1 == 0 && _v.s0 == other;
 
     public bool Equals(long other)
     {
         if (other < 0)
         {
-            return v.s1 == ulong.MaxValue && v.s0 == (ulong)other;
+            return _v.s1 == ulong.MaxValue && _v.s0 == unchecked((ulong)other);
         }
 
-        return v.s1 == 0 && v.s0 == (ulong)other;
+        return _v.s1 == 0 && _v.s0 == (ulong)other;
     }
 
-    public bool Equals(ulong other) => v.s1 == 0 && v.s0 == other;
+    public bool Equals(ulong other) => _v.s1 == 0 && _v.s0 == other;
 
     public override bool Equals(object? obj) => obj is Int128 int128 && Equals(int128);
 
-    public override int GetHashCode() => v.GetHashCode();
+    public override int GetHashCode() => _v.GetHashCode();
 
     public static void Multiply(out Int128 c, ref Int128 a, int b)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref aneg, (uint)-b);
+                UInt128.Multiply(out c._v, ref aneg, (uint)-b);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref aneg, (uint)b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref aneg, (uint)b);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref a.v, (uint)-b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref a._v, (uint)-b);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref a.v, (uint)b);
+                UInt128.Multiply(out c._v, ref a._v, (uint)b);
             }
         }
 
@@ -774,13 +774,13 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Multiply(out c.v, ref aneg, b);
-            UInt128.Negate(ref c.v);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Multiply(out c._v, ref aneg, b);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Multiply(out c.v, ref a.v, b);
+            UInt128.Multiply(out c._v, ref a._v, b);
         }
 
         Debug.Assert(c == a * (BigInteger)b);
@@ -790,27 +790,27 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref aneg, (ulong)-b);
+                UInt128.Multiply(out c._v, ref aneg, (ulong)-b);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref aneg, (ulong)b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref aneg, (ulong)b);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref a.v, (ulong)-b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref a._v, (ulong)-b);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref a.v, (ulong)b);
+                UInt128.Multiply(out c._v, ref a._v, (ulong)b);
             }
         }
 
@@ -821,13 +821,13 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Multiply(out c.v, ref aneg, b);
-            UInt128.Negate(ref c.v);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Multiply(out c._v, ref aneg, b);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Multiply(out c.v, ref a.v, b);
+            UInt128.Multiply(out c._v, ref a._v, b);
         }
 
         Debug.Assert(c == a * (BigInteger)b);
@@ -837,29 +837,29 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Multiply(out c.v, ref aneg, ref bneg);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Multiply(out c._v, ref aneg, ref bneg);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref aneg, ref b.v);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref aneg, ref b._v);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Multiply(out c.v, ref a.v, ref bneg);
-                UInt128.Negate(ref c.v);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Multiply(out c._v, ref a._v, ref bneg);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref a.v, ref b.v);
+                UInt128.Multiply(out c._v, ref a._v, ref b._v);
             }
         }
 
@@ -870,27 +870,27 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref aneg, (uint)-b);
+                UInt128.Multiply(out c._v, ref aneg, (uint)-b);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref aneg, (uint)b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref aneg, (uint)b);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b < 0)
             {
-                UInt128.Multiply(out c.v, ref a.v, (uint)-b);
-                UInt128.Negate(ref c.v);
+                UInt128.Multiply(out c._v, ref a._v, (uint)-b);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Multiply(out c.v, ref a.v, (uint)b);
+                UInt128.Multiply(out c._v, ref a._v, (uint)b);
             }
         }
 
@@ -901,13 +901,13 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Divide(out c.v, ref aneg, b);
-            UInt128.Negate(ref c.v);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Divide(out c._v, ref aneg, b);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Divide(out c.v, ref a.v, b);
+            UInt128.Divide(out c._v, ref a._v, b);
         }
 
         Debug.Assert(c == a / (BigInteger)b);
@@ -917,27 +917,27 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
-                UInt128.Divide(out c.v, ref aneg, (ulong)-b);
+                UInt128.Divide(out c._v, ref aneg, (ulong)-b);
             }
             else
             {
-                UInt128.Divide(out c.v, ref aneg, (ulong)b);
-                UInt128.Negate(ref c.v);
+                UInt128.Divide(out c._v, ref aneg, (ulong)b);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b < 0)
             {
-                UInt128.Divide(out c.v, ref a.v, (ulong)-b);
-                UInt128.Negate(ref c.v);
+                UInt128.Divide(out c._v, ref a._v, (ulong)-b);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Divide(out c.v, ref a.v, (ulong)b);
+                UInt128.Divide(out c._v, ref a._v, (ulong)b);
             }
         }
 
@@ -948,13 +948,13 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Divide(out c.v, ref aneg, b);
-            UInt128.Negate(ref c.v);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Divide(out c._v, ref aneg, b);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Divide(out c.v, ref a.v, b);
+            UInt128.Divide(out c._v, ref a._v, b);
         }
 
         Debug.Assert(c == a / (BigInteger)b);
@@ -964,29 +964,29 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Divide(out c.v, ref aneg, ref bneg);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Divide(out c._v, ref aneg, ref bneg);
             }
             else
             {
-                UInt128.Divide(out c.v, ref aneg, ref b.v);
-                UInt128.Negate(ref c.v);
+                UInt128.Divide(out c._v, ref aneg, ref b._v);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Divide(out c.v, ref a.v, ref bneg);
-                UInt128.Negate(ref c.v);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Divide(out c._v, ref a._v, ref bneg);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Divide(out c.v, ref a.v, ref b.v);
+                UInt128.Divide(out c._v, ref a._v, ref b._v);
             }
         }
 
@@ -997,7 +997,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
                 return (int)UInt128.Remainder(ref aneg, (uint)-b);
@@ -1008,28 +1008,28 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
         if (b < 0)
         {
-            return -(int)UInt128.Remainder(ref a.v, (uint)-b);
+            return -(int)UInt128.Remainder(ref a._v, (uint)-b);
         }
 
-        return (int)UInt128.Remainder(ref a.v, (uint)b);
+        return (int)UInt128.Remainder(ref a._v, (uint)b);
     }
 
     public static int Remainder(ref Int128 a, uint b)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             return -(int)UInt128.Remainder(ref aneg, b);
         }
 
-        return (int)UInt128.Remainder(ref a.v, b);
+        return (int)UInt128.Remainder(ref a._v, b);
     }
 
     public static long Remainder(ref Int128 a, long b)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b < 0)
             {
                 return (long)UInt128.Remainder(ref aneg, (ulong)-b);
@@ -1040,50 +1040,50 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
         if (b < 0)
         {
-            return -(long)UInt128.Remainder(ref a.v, (ulong)-b);
+            return -(long)UInt128.Remainder(ref a._v, (ulong)-b);
         }
 
-        return (long)UInt128.Remainder(ref a.v, (ulong)b);
+        return (long)UInt128.Remainder(ref a._v, (ulong)b);
     }
 
     public static long Remainder(ref Int128 a, ulong b)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             return -(long)UInt128.Remainder(ref aneg, b);
         }
 
-        return (long)UInt128.Remainder(ref a.v, b);
+        return (long)UInt128.Remainder(ref a._v, b);
     }
 
     public static void Remainder(out Int128 c, ref Int128 a, ref Int128 b)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Remainder(out c.v, ref aneg, ref bneg);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Remainder(out c._v, ref aneg, ref bneg);
             }
             else
             {
-                UInt128.Remainder(out c.v, ref aneg, ref b.v);
-                UInt128.Negate(ref c.v);
+                UInt128.Remainder(out c._v, ref aneg, ref b._v);
+                UInt128.Negate(ref c._v);
             }
         }
         else
         {
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.Remainder(out c.v, ref a.v, ref bneg);
-                UInt128.Negate(ref c.v);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.Remainder(out c._v, ref a._v, ref bneg);
+                UInt128.Negate(ref c._v);
             }
             else
             {
-                UInt128.Remainder(out c.v, ref a.v, ref b.v);
+                UInt128.Remainder(out c._v, ref a._v, ref b._v);
             }
         }
 
@@ -1098,7 +1098,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         }
 
         Int128 c;
-        UInt128.Negate(out c.v, ref a.v);
+        UInt128.Negate(out c._v, ref a._v);
         return c;
     }
 
@@ -1110,7 +1110,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         }
 
         Int128 c;
-        UInt128.Square(out c.v, (ulong)a);
+        UInt128.Square(out c._v, (ulong)a);
         return c;
     }
 
@@ -1119,12 +1119,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Square(out c.v, ref aneg);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Square(out c._v, ref aneg);
         }
         else
         {
-            UInt128.Square(out c.v, ref a.v);
+            UInt128.Square(out c._v, ref a._v);
         }
 
         return c;
@@ -1135,12 +1135,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (a < 0)
         {
-            UInt128.Cube(out c.v, (ulong)-a);
-            UInt128.Negate(ref c.v);
+            UInt128.Cube(out c._v, (ulong)-a);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Cube(out c.v, (ulong)a);
+            UInt128.Cube(out c._v, (ulong)a);
         }
 
         return c;
@@ -1151,13 +1151,13 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         Int128 c;
         if (a < 0)
         {
-            UInt128.Negate(out var aneg, ref a.v);
-            UInt128.Cube(out c.v, ref aneg);
-            UInt128.Negate(ref c.v);
+            UInt128.Negate(out var aneg, ref a._v);
+            UInt128.Cube(out c._v, ref aneg);
+            UInt128.Negate(ref c._v);
         }
         else
         {
-            UInt128.Cube(out c.v, ref a.v);
+            UInt128.Cube(out c._v, ref a._v);
         }
 
         return c;
@@ -1167,44 +1167,44 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (b < 0)
         {
-            UInt128.Subtract(ref a.v, (ulong)-b);
+            UInt128.Subtract(ref a._v, (ulong)-b);
         }
         else
         {
-            UInt128.Add(ref a.v, (ulong)b);
+            UInt128.Add(ref a._v, (ulong)b);
         }
     }
 
     public static void Add(ref Int128 a, ref Int128 b)
     {
-        UInt128.Add(ref a.v, ref b.v);
+        UInt128.Add(ref a._v, ref b._v);
     }
 
     public static void Subtract(ref Int128 a, long b)
     {
         if (b < 0)
         {
-            UInt128.Add(ref a.v, (ulong)-b);
+            UInt128.Add(ref a._v, (ulong)-b);
         }
         else
         {
-            UInt128.Subtract(ref a.v, (ulong)b);
+            UInt128.Subtract(ref a._v, (ulong)b);
         }
     }
 
     public static void Subtract(ref Int128 a, ref Int128 b)
     {
-        UInt128.Subtract(ref a.v, ref b.v);
+        UInt128.Subtract(ref a._v, ref b._v);
     }
 
     public static void Add(ref Int128 a, Int128 b)
     {
-        UInt128.Add(ref a.v, ref b.v);
+        UInt128.Add(ref a._v, ref b._v);
     }
 
     public static void Subtract(ref Int128 a, Int128 b)
     {
-        UInt128.Subtract(ref a.v, ref b.v);
+        UInt128.Subtract(ref a._v, ref b._v);
     }
 
     public static void AddProduct(ref Int128 a, ref UInt128 b, int c)
@@ -1213,12 +1213,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         if (c < 0)
         {
             UInt128.Multiply(out product, ref b, (uint)-c);
-            UInt128.Subtract(ref a.v, ref product);
+            UInt128.Subtract(ref a._v, ref product);
         }
         else
         {
             UInt128.Multiply(out product, ref b, (uint)c);
-            UInt128.Add(ref a.v, ref product);
+            UInt128.Add(ref a._v, ref product);
         }
     }
 
@@ -1228,12 +1228,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         if (c < 0)
         {
             UInt128.Multiply(out product, ref b, (ulong)-c);
-            UInt128.Subtract(ref a.v, ref product);
+            UInt128.Subtract(ref a._v, ref product);
         }
         else
         {
             UInt128.Multiply(out product, ref b, (ulong)c);
-            UInt128.Add(ref a.v, ref product);
+            UInt128.Add(ref a._v, ref product);
         }
     }
 
@@ -1243,12 +1243,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         if (c < 0)
         {
             UInt128.Multiply(out d, ref b, (uint)-c);
-            UInt128.Add(ref a.v, ref d);
+            UInt128.Add(ref a._v, ref d);
         }
         else
         {
             UInt128.Multiply(out d, ref b, (uint)c);
-            UInt128.Subtract(ref a.v, ref d);
+            UInt128.Subtract(ref a._v, ref d);
         }
     }
 
@@ -1258,12 +1258,12 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
         if (c < 0)
         {
             UInt128.Multiply(out d, ref b, (ulong)-c);
-            UInt128.Add(ref a.v, ref d);
+            UInt128.Add(ref a._v, ref d);
         }
         else
         {
             UInt128.Multiply(out d, ref b, (ulong)c);
-            UInt128.Subtract(ref a.v, ref d);
+            UInt128.Subtract(ref a._v, ref d);
         }
     }
 
@@ -1296,20 +1296,20 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
         if (value.IsNegative)
         {
-            UInt128.Negate(out var valueneg, ref value.v);
+            UInt128.Negate(out var valueneg, ref value._v);
             if ((exponent & 1) == 0)
             {
-                UInt128.Pow(out result.v, ref valueneg, (uint)exponent);
+                UInt128.Pow(out result._v, ref valueneg, (uint)exponent);
             }
             else
             {
-                UInt128.Pow(out result.v, ref valueneg, (uint)exponent);
-                UInt128.Negate(ref result.v);
+                UInt128.Pow(out result._v, ref valueneg, (uint)exponent);
+                UInt128.Negate(ref result._v);
             }
         }
         else
         {
-            UInt128.Pow(out result.v, ref value.v, (uint)exponent);
+            UInt128.Pow(out result._v, ref value._v, (uint)exponent);
         }
     }
 
@@ -1326,7 +1326,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
             throw new ArgumentException("argument must not be negative");
         }
 
-        return UInt128.FloorSqrt(a.v);
+        return UInt128.FloorSqrt(a._v);
     }
 
     public static ulong CeilingSqrt(Int128 a)
@@ -1336,34 +1336,34 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
             throw new ArgumentException("argument must not be negative");
         }
 
-        return UInt128.CeilingSqrt(a.v);
+        return UInt128.CeilingSqrt(a._v);
     }
 
     public static long FloorCbrt(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             return -(long)UInt128.FloorCbrt(aneg);
         }
 
-        return (long)UInt128.FloorCbrt(a.v);
+        return (long)UInt128.FloorCbrt(a._v);
     }
 
     public static long CeilingCbrt(Int128 a)
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             return -(long)UInt128.CeilingCbrt(aneg);
         }
 
-        return (long)UInt128.CeilingCbrt(a.v);
+        return (long)UInt128.CeilingCbrt(a._v);
     }
 
     public static Int128 Min(Int128 a, Int128 b)
     {
-        if (LessThan(ref a.v, ref b.v))
+        if (LessThan(ref a._v, ref b._v))
         {
             return a;
         }
@@ -1373,7 +1373,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
 
     public static Int128 Max(Int128 a, Int128 b)
     {
-        if (LessThan(ref b.v, ref a.v))
+        if (LessThan(ref b._v, ref a._v))
         {
             return a;
         }
@@ -1392,20 +1392,20 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
             throw new ArgumentException("argument must be positive");
         }
 
-        return Math.Log(UInt128.ConvertToDouble(ref a.v), b);
+        return Math.Log(UInt128.ConvertToDouble(ref a._v), b);
     }
 
     public static Int128 Add(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.Add(out c.v, ref a.v, ref b.v);
+        UInt128.Add(out c._v, ref a._v, ref b._v);
         return c;
     }
 
     public static Int128 Subtract(Int128 a, Int128 b)
     {
         Int128 c;
-        UInt128.Subtract(out c.v, ref a.v, ref b.v);
+        UInt128.Subtract(out c._v, ref a._v, ref b._v);
         return c;
     }
 
@@ -1437,7 +1437,7 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     public static Int128 Negate(Int128 a)
     {
         Int128 c;
-        UInt128.Negate(out c.v, ref a.v);
+        UInt128.Negate(out c._v, ref a._v);
         return c;
     }
 
@@ -1451,93 +1451,93 @@ public struct Int128 : IFormattable, IComparable, IComparable<Int128>, IEquatabl
     {
         if (a.IsNegative)
         {
-            UInt128.Negate(out var aneg, ref a.v);
+            UInt128.Negate(out var aneg, ref a._v);
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.GreatestCommonDivisor(out c.v, ref aneg, ref bneg);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.GreatestCommonDivisor(out c._v, ref aneg, ref bneg);
             }
             else
             {
-                UInt128.GreatestCommonDivisor(out c.v, ref aneg, ref b.v);
+                UInt128.GreatestCommonDivisor(out c._v, ref aneg, ref b._v);
             }
         }
         else
         {
             if (b.IsNegative)
             {
-                UInt128.Negate(out var bneg, ref b.v);
-                UInt128.GreatestCommonDivisor(out c.v, ref a.v, ref bneg);
+                UInt128.Negate(out var bneg, ref b._v);
+                UInt128.GreatestCommonDivisor(out c._v, ref a._v, ref bneg);
             }
             else
             {
-                UInt128.GreatestCommonDivisor(out c.v, ref a.v, ref b.v);
+                UInt128.GreatestCommonDivisor(out c._v, ref a._v, ref b._v);
             }
         }
     }
 
     public static void LeftShift(ref Int128 c, int d)
     {
-        UInt128.LeftShift(ref c.v, d);
+        UInt128.LeftShift(ref c._v, d);
     }
 
     public static void LeftShift(ref Int128 c)
     {
-        UInt128.LeftShift(ref c.v);
+        UInt128.LeftShift(ref c._v);
     }
 
     public static void RightShift(ref Int128 c, int d)
     {
-        UInt128.ArithmeticRightShift(ref c.v, d);
+        UInt128.ArithmeticRightShift(ref c._v, d);
     }
 
     public static void RightShift(ref Int128 c)
     {
-        UInt128.ArithmeticRightShift(ref c.v);
+        UInt128.ArithmeticRightShift(ref c._v);
     }
 
     public static void Swap(ref Int128 a, ref Int128 b)
     {
-        UInt128.Swap(ref a.v, ref b.v);
+        UInt128.Swap(ref a._v, ref b._v);
     }
 
     public static int Compare(Int128 a, Int128 b) => a.CompareTo(b);
 
     public static void Shift(out Int128 c, ref Int128 a, int d)
     {
-        UInt128.ArithmeticShift(out c.v, ref a.v, d);
+        UInt128.ArithmeticShift(out c._v, ref a._v, d);
     }
 
     public static void Shift(ref Int128 c, int d)
     {
-        UInt128.ArithmeticShift(ref c.v, d);
+        UInt128.ArithmeticShift(ref c._v, d);
     }
 
     public static Int128 ModAdd(Int128 a, Int128 b, Int128 modulus)
     {
         Int128 c;
-        UInt128.ModAdd(out c.v, ref a.v, ref b.v, ref modulus.v);
+        UInt128.ModAdd(out c._v, ref a._v, ref b._v, ref modulus._v);
         return c;
     }
 
     public static Int128 ModSub(Int128 a, Int128 b, Int128 modulus)
     {
         Int128 c;
-        UInt128.ModSub(out c.v, ref a.v, ref b.v, ref modulus.v);
+        UInt128.ModSub(out c._v, ref a._v, ref b._v, ref modulus._v);
         return c;
     }
 
     public static Int128 ModMul(Int128 a, Int128 b, Int128 modulus)
     {
         Int128 c;
-        UInt128.ModMul(out c.v, ref a.v, ref b.v, ref modulus.v);
+        UInt128.ModMul(out c._v, ref a._v, ref b._v, ref modulus._v);
         return c;
     }
 
     public static Int128 ModPow(Int128 value, Int128 exponent, Int128 modulus)
     {
         Int128 result;
-        UInt128.ModPow(out result.v, ref value.v, ref exponent.v, ref modulus.v);
+        UInt128.ModPow(out result._v, ref value._v, ref exponent._v, ref modulus._v);
         return result;
     }
 }

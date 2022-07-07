@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using HexControl.Core.Buffers;
+﻿using HexControl.Core.Buffers;
 using Xunit;
 
 namespace HexControl.Core.Tests.Buffers;

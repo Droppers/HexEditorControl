@@ -26,8 +26,8 @@ public class Marker : IDocumentMarker
 
     public Guid Id { get; set; }
 
-    public virtual long Offset { get; set; }
-    public virtual long Length { get; set; }
+    public long Offset { get; set; }
+    public long Length { get; set; }
 
     public Color? Background { get; set; }
     public Color? Border { get; set; }

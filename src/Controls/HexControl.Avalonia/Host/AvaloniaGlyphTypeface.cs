@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using Avalonia.Media;
 using HexControl.SharedControl.Framework;
 using HexControl.SharedControl.Framework.Host.Typeface;
@@ -82,13 +80,9 @@ internal class AvaloniaGlyphTypeface : CachedGlyphTypeface<GlyphTypeface>
             var ascentProperty = metricProperties.Single(m => m.Name == "Ascent");
             var ascent = ascentProperty.GetValue(metrics, null)!;
 
-            var topOffset = Math.Floor(((float)top - (float)ascent));
-
-            var allMetrics = metricProperties.Select(s => (s.Name, s.GetValue(metrics, null))).ToArray();
-
+            var topOffset = Math.Floor((float)top - (float)ascent);
             var capHeight = capHeightProperty.GetValue(metrics, null)!;
-            //Typeface.GetFontMetrics(out var metrics);
-            //return Math.Ceiling(metrics.CapHeight);
+
             return (Math.Ceiling((float)capHeight), topOffset);
         }
         finally

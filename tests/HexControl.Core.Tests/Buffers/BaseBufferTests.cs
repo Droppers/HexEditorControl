@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using Xunit.Abstractions;
+﻿using Xunit.Abstractions;
 
 namespace HexControl.Core.Tests.Buffers;
 

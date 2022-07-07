@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using HexControl.Core;
+using HexControl.Core.Observable;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;
 using HexControl.SharedControl.Framework.Host.Controls;

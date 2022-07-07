@@ -1,5 +1,3 @@
-using System.IO;
-using System.Linq;
 using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Chunks;
 using HexControl.Core.Buffers.History.Changes;

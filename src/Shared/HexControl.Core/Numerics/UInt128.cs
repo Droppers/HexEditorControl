@@ -1,15 +1,16 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
-
-// ReSharper disable MemberCanBePrivate.Global
+using JetBrains.Annotations;
 
 namespace HexControl.Core.Numerics;
 
+[PublicAPI]
 public struct UInt128 : IFormattable, IComparable, IComparable<UInt128>, IEquatable<UInt128>
 {
     public const int Size = 16;
 
+    [PublicAPI]
     private struct UInt256
     {
         public ulong s0;
@@ -1483,6 +1484,7 @@ public struct UInt128 : IFormattable, IComparable, IComparable<UInt128>, IEquata
             if (r == (uint)r && v2 * qhat > ((r << 32) | u2))
             {
                 --qhat;
+                // ReSharper disable once RedundantAssignment
                 r += v1;
             }
         }

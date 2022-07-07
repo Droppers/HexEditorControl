@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using HexControl.Core;
 using HexControl.SharedControl.Control;
@@ -11,7 +10,7 @@ using HexControl.Wpf.Host.Controls;
 
 namespace HexControl.Wpf;
 
-public partial class HexEditorControl : UserControl
+public partial class HexEditorControl
 {
     public static readonly DependencyProperty ResizeModeProperty = DependencyProperty.Register(nameof(ResizeMode),
         typeof(ResizeMode), typeof(HexEditorControl), new PropertyMetadata(ResizeMode.Debounce, OnPropertyChanged));
@@ -25,9 +24,6 @@ public partial class HexEditorControl : UserControl
 
     public static readonly DependencyProperty RowHeightProperty = DependencyProperty.Register(nameof(RowHeight),
         typeof(int), typeof(HexEditorControl), new PropertyMetadata(15, OnPropertyChanged));
-
-    public static readonly DependencyProperty RenderApiProperty = DependencyProperty.Register(nameof(RenderApi),
-        typeof(HexRenderApi), typeof(HexEditorControl), new PropertyMetadata(null, OnPropertyChanged));
 
 #if SKIA_RENDER
     // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
@@ -90,12 +86,6 @@ public partial class HexEditorControl : UserControl
     {
         get => Mapper.GetValue<int>(GetValue(RowHeightProperty));
         set => SetValue(RowHeightProperty, value);
-    }
-
-    public HexRenderApi? RenderApi
-    {
-        get => Mapper.GetValueNullable<HexRenderApi>(GetValue(RenderApiProperty));
-        set => SetValue(RenderApiProperty, value);
     }
 
     private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)

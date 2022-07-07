@@ -36,17 +36,10 @@ internal class OffsetColumn : VisualElement
     }
 
     public long Offset { get; set; }
-    public DocumentConfiguration Configuration { get; set; } = new();
+    public DocumentConfiguration Configuration { get; set; } = DocumentConfiguration.Default;
 
     public ITextBuilder? TextBuilder { get; set; }
-
-    public HexRenderApi.OffsetDetails CreateApiDetails() =>
-        new()
-        {
-            Rectangle = new SharedRectangle(Left, Top, Width, Height),
-            TextRectangle = new SharedRectangle(0, 0, 0, 0)
-        };
-
+    
     protected override void Render(IRenderContext context)
     {
         if (TextBuilder == null)

@@ -1,6 +1,4 @@
-﻿using System.IO;
-using System.Windows.Forms;
-using HexControl.Core;
+﻿using HexControl.Core;
 using HexControl.Core.Buffers;
 
 namespace HexControl.Samples.WinForms;

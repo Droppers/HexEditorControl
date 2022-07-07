@@ -1,5 +1,4 @@
-﻿using System;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;

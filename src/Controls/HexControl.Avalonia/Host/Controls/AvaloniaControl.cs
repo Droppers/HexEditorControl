@@ -1,5 +1,4 @@
-﻿using System;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -30,8 +29,7 @@ internal class AvaloniaControl : HostControl
         _control.EffectiveViewportChanged += OnEffectiveViewportChanged;
 
         _control.AddHandler(InputElement.KeyDownEvent, ControlOnKeyDown, RoutingStrategies.Tunnel);
-        _control.KeyDown += ControlOnKeyDown;
-        _control.KeyUp += ControlOnKeyUp;
+        _control.AddHandler(InputElement.KeyUpEvent, ControlOnKeyUp, RoutingStrategies.Tunnel);
     }
 
     public override double Width => _control.Bounds.Width;

@@ -1,50 +1,15 @@
-﻿using System.Runtime.CompilerServices;
-using HexControl.Core.Characters;
+﻿using HexControl.Core.Characters;
+using HexControl.Core.Observable;
+using JetBrains.Annotations;
 
 namespace HexControl.Core;
 
-public enum Base
+[PublicAPI]
+public enum NumberBase
 {
     Hexadecimal = 16,
     Decimal = 10,
     Octal = 8
-}
-
-public class ConfigurationChangedEventArgs : EventArgs
-{
-    public ConfigurationChangedEventArgs() { }
-
-
-    public ConfigurationChangedEventArgs(string? property)
-    {
-        Property = property;
-    }
-
-    public string? Property { get; }
-}
-
-public abstract class ObservableObject
-{
-    public event EventHandler<ConfigurationChangedEventArgs>? ConfigurationChanged;
-
-    protected static TField Get<TField>(ref TField field) => field;
-
-    protected void Set<TField>(ref TField field, TField newValue, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<TField>.Default.Equals(field, newValue))
-        {
-            return;
-        }
-
-        field = newValue;
-
-        OnConfigurationChanged(new ConfigurationChangedEventArgs(propertyName));
-    }
-
-    protected virtual void OnConfigurationChanged(ConfigurationChangedEventArgs e)
-    {
-        ConfigurationChanged?.Invoke(this, e);
-    }
 }
 
 public enum VisibleColumns
@@ -56,13 +21,15 @@ public enum VisibleColumns
 
 public class DocumentConfiguration : ObservableObject
 {
+    public static readonly DocumentConfiguration Default = new();
+
     private static readonly int[] ValidBytesPerRowValues = {8, 16, 24, 32, 48, 64, 128, 256, 512, 1024};
     private int _bytesPerRow = 16;
     private VisibleColumns _columnsVisible = VisibleColumns.HexText;
     private int _groupSize = 4;
 
     private CharacterSet _leftCharacterSet = new HexCharacterSet();
-    private Base _offsetBase = Base.Decimal;
+    private NumberBase _offsetBase = NumberBase.Decimal;
     private CharacterSet _rightCharacterSet = new TextCharacterSet(CharacterEncoding.Windows);
 
 
@@ -80,7 +47,7 @@ public class DocumentConfiguration : ObservableObject
         set => Set(ref _columnsVisible, value);
     }
 
-    public Base OffsetBase
+    public NumberBase OffsetBase
     {
         get => Get(ref _offsetBase);
         set => Set(ref _offsetBase, value);

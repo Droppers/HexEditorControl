@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
@@ -59,6 +58,7 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         {
             ctx.LineTo(Convert(points[i]));
         }
+        ctx.EndFigure(true);
 
         Context.DrawGeometry(brush, pen, geometry);
     }
@@ -143,14 +143,19 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     public override void Pop()
     {
-        if (_states.TryPop(out var state))
+        if (!_states.TryPop(out var state))
         {
-            // TODO: remove temporary try catch
-            try
-            {
-                state.PushedState.Dispose();
-            }
-            catch { }
+            return;
+        }
+
+        // TODO: remove temporary try catch
+        try
+        {
+            state.PushedState.Dispose();
+        }
+        catch
+        {
+            // ignore
         }
     }
 

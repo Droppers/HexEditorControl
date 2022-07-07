@@ -1,5 +1,8 @@
-﻿namespace HexControl.SharedControl.Framework.Visual;
+﻿using JetBrains.Annotations;
 
+namespace HexControl.SharedControl.Framework.Visual;
+
+[PublicAPI]
 internal class StateManager
 {
     public enum ElementState
@@ -10,8 +13,7 @@ internal class StateManager
 
     private readonly Dictionary<ElementState, VisualElement?> _states = new();
 
-    public readonly EventHandler<StateOwnerChangedEventArgs>? StateOwnerChanged;
-
+    public event EventHandler<StateOwnerChangedEventArgs>? StateOwnerChanged;
 
     public VisualElement? CapturedElement => GetElement(ElementState.Captured);
     public VisualElement? FocusedElement => GetElement(ElementState.Focused);

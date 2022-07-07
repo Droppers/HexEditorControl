@@ -2,6 +2,7 @@
 using HexControl.Core;
 using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Events;
+using HexControl.Core.Observable;
 using HexControl.SharedControl.Control.Elements;
 using HexControl.SharedControl.Framework;
 using HexControl.SharedControl.Framework.Drawing;
@@ -33,43 +34,10 @@ internal class ScrollBarVisibilityChangedEventArgs : EventArgs
     public bool Visible { get; }
 }
 
-public abstract class HexRenderApi
-{
-    public virtual void BeforeRender(IRenderContextApi context, Details details) { }
-
-    public virtual void AfterRender(IRenderContextApi context, Details details) { }
-
-    public readonly record struct Details(ISharedHexControlApi Control, SharedSize Size, OffsetDetails? Offset,
-        EditorDetails Editor);
-
-    public readonly record struct OffsetDetails(SharedRectangle Rectangle, SharedRectangle TextRectangle);
-
-    public struct EditorDetails
-    {
-        public SharedRectangle Rectangle { get; set; }
-        public SharedRectangle LeftRectangle { get; set; }
-        public SharedRectangle? RightRectangle { get; set; }
-        public int LeftVisibleWidth { get; set; }
-        public int RightVisibleWidth { get; set; }
-    }
-}
-
-public interface ISharedHexControlApi
-{
-    public int HeaderHeight { get; }
-    public int RowHeight { get; }
-
-    public int CharacterWidth { get; }
-    public int CharacterHeight { get; }
-
-    public Document? Document { get; }
-    public DocumentConfiguration Configuration { get; }
-}
-
-// TODO: horizontal character offset in the editor column will be messed up if someone decides to change charactersets
+// TODO: horizontal character offset in the editor column will be messed up if someone decides to change character sets
 // TODO:  -> recalculate this offset when this happens
 // TODO:  -> also store this offset in the document, will be necessary when switching between documents and remaining state.
-internal class SharedHexControl : VisualElement, ISharedHexControlApi
+internal class SharedHexControl : VisualElement
 {
     public const string VerticalScrollBarName = "VerticalScrollBar";
     public const string HorizontalScrollBarName = "HorizontalScrollBar";
@@ -90,6 +58,8 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
     private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
 
+    private int _margin = 10;
+
     //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
     //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     //private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
@@ -99,7 +69,6 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
     //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
 
     private byte[] _readBuffer = Array.Empty<byte>();
-    private HexRenderApi? _renderApi;
     private IRenderContext? _renderContext;
 
     private bool _requireTypefaceUpdate = true;
@@ -169,40 +138,31 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         get => Get(ref _scrollWheelSkipRows);
         set => Set(ref _scrollWheelSkipRows, value);
     }
-
-    public HexRenderApi? RenderApi
+    
+    public int Margin
     {
-        get => Get(ref _renderApi);
-        set => Set(ref _renderApi, value);
+        get => Get(ref _margin);
+        set => Set(ref _margin, value);
     }
-
-    public int Margin { get; set; } = 10;
-
-    //public ISharedBrush Background { get; set; } = new ColorBrush(Color.FromArgb(255, 30, 30, 30));
-    //public ISharedBrush HeaderForeground { get; set; } = new ColorBrush(Color.FromArgb(0, 190, 255));
-    //public ISharedBrush OffsetForeground { get; set; } = new ColorBrush(Color.FromArgb(0, 190, 255));
-
-    //public ISharedBrush Foreground { get; set; } = new ColorBrush(Color.FromArgb(255, 255, 255));
-    //public ISharedBrush EvenForeground { get; set; } = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
 
     public string FontFamily
     {
-        get => _fontFamily;
+        get => Get(ref _fontFamily);
         set
         {
             if (_fontFamily == value)
             {
                 return;
             }
-
-            _fontFamily = value;
+            
+            Set(ref _fontFamily, value);
             _requireTypefaceUpdate = true;
         }
     }
 
     public int FontSize
     {
-        get => _fontSize;
+        get => Get(ref _fontSize);
         set
         {
             if (_fontSize == value)
@@ -211,7 +171,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             }
 
             _fontSize = value;
-            UpdateFontSize();
+            Set(ref _fontSize, value);
         }
     }
 
@@ -224,24 +184,16 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     public Document? Document { get; private set; }
 
-    public DocumentConfiguration Configuration =>
-        Document?.Configuration ?? new DocumentConfiguration(); // TODO: not very optimal
+    private DocumentConfiguration Configuration => Document?.Configuration ?? DocumentConfiguration.Default;
 
     public int HeaderHeight { get; internal set; }
     public int RowHeight { get; internal set; } = 16;
 
-    public int CharacterWidth { get; internal set; } = 8;
-    public int CharacterHeight { get; internal set; } = 8;
+    internal int CharacterWidth { get; private set; } = 8;
+    internal int CharacterHeight { get; private set; } = 8;
 
     public event EventHandler<ScrollBarVisibilityChangedEventArgs>? ScrollBarVisibilityChanged;
-
-    private HexRenderApi.Details CreateApiDetails()
-    {
-        HexRenderApi.OffsetDetails? offset = Configuration.OffsetsVisible ? _offsetColumn.CreateApiDetails() : null;
-        var editor = _editorColumn.CreateApiDetails();
-        return new HexRenderApi.Details(this, new SharedSize(Width, Height), offset, editor);
-    }
-
+    
     protected override void OnHostAttached(IHostControl attachHost)
     {
         _requireTypefaceUpdate = true;
@@ -424,19 +376,24 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
         if (e.ScrollToCaret)
         {
-            // We have not received this information about increased length yet, 'enqueue' scroll to caret instead
-            if (Document.Caret.Offset > _lastRefreshLength)
-            {
-                _scrollToCaret = true;
-            }
-            else
-            {
-                ScrollToCaret();
-            }
+            RequestScrollToCaret();
         }
 
         _editorColumn.AddCaretDirtyRect(e.NewCaret);
         Invalidate();
+    }
+
+    private void RequestScrollToCaret()
+    {
+        // We have not received this information about increased length yet, 'enqueue' scroll to caret instead
+        if (Document?.Caret.Offset > _lastRefreshLength)
+        {
+            _scrollToCaret = true;
+        }
+        else
+        {
+            ScrollToCaret();
+        }
     }
 
     private void ScrollToCaret()
@@ -461,7 +418,16 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private async void BufferOnModified(object? sender, ModifiedEventArgs e)
     {
-        // TODO: this should only be refreshed if the changes are actually visible on screen
+        if (Document is null)
+        {
+            return;
+        }
+
+        if (e.Modification.Offset + e.Modification.Length < Document.Offset || e.Modification.Offset > Document.Offset + _editorColumn.MaxVisibleOffset)
+        {
+            return;
+        }
+
         await RefreshDocument();
     }
 
@@ -554,7 +520,17 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
             : new GlyphRunBuilder(Typeface, FontSize, CharacterWidth);
     }
 
-    private async void DocumentOnConfigurationChanged(object? sender, ConfigurationChangedEventArgs e)
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        switch (e.Property)
+        {
+            case nameof(FontFamily):
+                UpdateFontSize();
+                break;
+        }
+    }
+
+    private async void DocumentOnConfigurationChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.Property)
         {
@@ -592,10 +568,15 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
 
     private void DocumentOnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (e.RequestCenter)
-        {
-            // TODO: should be implemented in OnCaretChanged instead.
-        }
+        // TODO: how does request center differ from scrolling to caret?
+        //if (!e.RequestCenter)
+        //{
+        //    // TODO: should be implemented in OnCaretChanged instead.
+        //}
+        //else
+        //{
+        RequestScrollToCaret();
+        //}
 
         Invalidate();
     }
@@ -716,14 +697,7 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         {
             context.Clear(Background);
         }
-
-        // Invoke the user-specified render API, this allows the user to manually draw things like backgrounds, separation lines, etc.
-        if (_renderApi is not null)
-        {
-            var details = CreateApiDetails();
-            _renderApi.BeforeRender(context, details);
-        }
-
+        
         // Display a blank screen when the document is null
         if (Document is null)
         {
@@ -731,17 +705,6 @@ internal class SharedHexControl : VisualElement, ISharedHexControlApi
         }
 
         base.Render(context);
-    }
-
-    protected override void RenderAfter(IRenderContext context)
-    {
-        base.RenderAfter(context);
-
-        if (_renderApi is not null)
-        {
-            var details = CreateApiDetails();
-            _renderApi.AfterRender(context, details);
-        }
     }
 
     private void UpdateChildDimensions()

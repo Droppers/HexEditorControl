@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using HexControl.Core.Buffers;
+﻿using HexControl.Core.Buffers;
 using HexControl.Core.Buffers.Chunks;
 using Xunit;
 using Xunit.Abstractions;
@@ -18,12 +15,9 @@ public class ValidatingBuffer : MemoryBuffer
 
     public ValidatingBuffer(byte[] bytes, ITestOutputHelper output) : base(bytes)
     {
-        Bytes = bytes;
         _output = output;
         _previousChunks = new Stack<List<IChunk>>();
     }
-
-    public byte[] Bytes { get; }
 
     public void ValidateWrite(long writeOffset, byte value, ExpectsDelegate? expects = null)
     {

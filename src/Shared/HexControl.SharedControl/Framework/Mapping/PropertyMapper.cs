@@ -118,9 +118,7 @@ internal class PropertyMapper<TControl> : IPropertyMapper
         ValueConverter? toShared = null, ValueConverter? toNative = null)
     {
         var accessor =
-            new PropertyAccessor(
-                typeof(TShared),
-                value => setter(value is TShared cast ? cast : default),
+            new PropertyAccessor(value => setter(value is TShared cast ? cast : default),
                 () => getter(),
                 toShared,
                 toNative);
@@ -157,6 +155,6 @@ internal class PropertyMapper<TControl> : IPropertyMapper
         );
     }
 
-    private record struct PropertyAccessor(Type Type, Func<object?, Task> Setter, Func<object?> Getter,
+    private record struct PropertyAccessor(Func<object?, Task> Setter, Func<object?> Getter,
         ValueConverter? ToShared = null, ValueConverter? ToNative = null);
 }

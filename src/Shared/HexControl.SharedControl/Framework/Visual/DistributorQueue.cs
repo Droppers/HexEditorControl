@@ -6,12 +6,9 @@ namespace HexControl.SharedControl.Framework.Visual;
 internal class DistributorQueue
 {
     private readonly VisualElement _element;
-    private readonly TaskFactory _factory;
     private readonly SemaphoreSlim _lock;
     private readonly Stopwatch _sw;
-
-    private readonly SynchronizationContext _syncContext;
-
+    
     private bool _isDoingIo;
     private IRenderContext _latestContext = null!;
     private long _previousTicks;
@@ -22,10 +19,6 @@ internal class DistributorQueue
         _element = element;
         _sw = Stopwatch.StartNew();
         _lock = new SemaphoreSlim(1, 1);
-        _syncContext = SynchronizationContext.Current ?? throw new Exception();
-
-        var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
-        _factory = new TaskFactory(scheduler);
     }
 
     public async Task<bool> StartIOTaskAsync()

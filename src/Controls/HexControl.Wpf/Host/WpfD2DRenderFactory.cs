@@ -1,5 +1,4 @@
 ﻿#if !SKIA_RENDER
-using System;
 using System.Windows.Media;
 using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;

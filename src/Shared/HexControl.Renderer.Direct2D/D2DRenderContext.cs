@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using HexControl.Core.Helpers;
+﻿using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
 using SharpDX.Direct2D1;

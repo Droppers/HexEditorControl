@@ -4,11 +4,10 @@ using HexControl.WinUI.Host;
 using HexControl.WinUI.Host.Controls;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace HexControl.WinUI;
 
-public sealed partial class HexEditorControl : UserControl, ICursorChangeable
+public sealed partial class HexEditorControl : ICursorChangeable
 {
     private static readonly DependencyProperty DocumentProperty =
         DependencyProperty.Register(nameof(Document),

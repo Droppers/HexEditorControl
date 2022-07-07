@@ -1,5 +1,4 @@
-﻿using System;
-using HexControl.SharedControl.Framework.Drawing;
+﻿using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 
 namespace HexControl.Renderer.Direct2D;

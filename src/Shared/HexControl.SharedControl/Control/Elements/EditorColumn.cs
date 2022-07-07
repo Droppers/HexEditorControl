@@ -3,6 +3,7 @@ using HexControl.Core;
 using HexControl.Core.Buffers;
 using HexControl.Core.Characters;
 using HexControl.Core.Helpers;
+using HexControl.Core.Observable;
 using HexControl.SharedControl.Control.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
@@ -35,7 +36,7 @@ internal class EditorColumn : VisualElement
 
     private Timer? _caretTimer;
     private bool _caretUpdated;
-    private DocumentConfiguration _configuration = null!; // TODO: make nullable and add null checks
+    private DocumentConfiguration _configuration = DocumentConfiguration.Default;
 
     private Document? _document;
     private int _horizontalCharacterOffset;
@@ -99,33 +100,19 @@ internal class EditorColumn : VisualElement
         get => _configuration;
         set
         {
-            if (_configuration is not null)
-            {
-                _configuration.ConfigurationChanged -= OnConfigurationChanged;
-            }
-
+            _configuration.PropertyChanged -= OnPropertyChanged;
             _configuration = value;
-            _configuration.ConfigurationChanged += OnConfigurationChanged;
+            _configuration.PropertyChanged += OnPropertyChanged;
 
             OnConfigurationChanged();
         }
     }
 
-    public int TotalWidth
-    {
-        get
-        {
-            if (_configuration is null)
-            {
-                return 0;
-            }
-
-            return GetColumnCharacterCount(ColumnSide.Left) +
-                   (Configuration.ColumnsVisible is VisibleColumns.HexText
-                       ? GetColumnCharacterCount(ColumnSide.Right) + SPACING_BETWEEN_COLUMNS
-                       : 0);
-        }
-    }
+    public int TotalWidth =>
+        GetColumnCharacterCount(ColumnSide.Left) +
+        (Configuration.ColumnsVisible is VisibleColumns.HexText
+            ? GetColumnCharacterCount(ColumnSide.Right) + SPACING_BETWEEN_COLUMNS
+            : 0);
 
     public long Offset { get; set; }
     public byte[] Bytes { get; set; }
@@ -147,38 +134,6 @@ internal class EditorColumn : VisualElement
 
     private int RowHeight => _parent.RowHeight;
     private int CharacterWidth => _parent.CharacterWidth;
-
-    public HexRenderApi.EditorDetails CreateApiDetails()
-    {
-        var rowCount = Bytes.Length / Configuration.BytesPerRow;
-        var columnHeight = Math.Min(Height, rowCount * _parent.RowHeight);
-
-        var leftWidth = GetColumnCharacterCount(ColumnSide.Left) * _parent.CharacterWidth;
-        var leftVisibleWidth = GetVisibleColumnWidth(ColumnSide.Left);
-
-        var rightVisibleWidth = 0;
-        var leftRectangle =
-            new SharedRectangle(leftVisibleWidth - leftWidth, _parent.HeaderHeight, leftWidth, columnHeight);
-        SharedRectangle? rightRectangle = null;
-        if (Configuration.ColumnsVisible is VisibleColumns.HexText)
-        {
-            var rightWidth = GetColumnCharacterCount(ColumnSide.Right) * _parent.CharacterWidth;
-            rightVisibleWidth = GetVisibleColumnWidth(ColumnSide.Right);
-
-            var spacing = leftVisibleWidth > 0 ? SPACING_BETWEEN_COLUMNS * _parent.CharacterWidth : 0;
-            rightRectangle = new SharedRectangle(leftVisibleWidth + spacing + (rightVisibleWidth - rightWidth),
-                _parent.HeaderHeight, rightWidth, columnHeight);
-        }
-
-        return new HexRenderApi.EditorDetails
-        {
-            Rectangle = new SharedRectangle(Left, Top, Width, Height),
-            LeftRectangle = leftRectangle,
-            RightRectangle = rightRectangle,
-            LeftVisibleWidth = leftVisibleWidth,
-            RightVisibleWidth = rightVisibleWidth
-        };
-    }
 
     protected override void OnHostAttached(IHostControl attachHost)
     {
@@ -248,7 +203,7 @@ internal class EditorColumn : VisualElement
         UpdateCharacterSets();
     }
 
-    private void OnConfigurationChanged(object? sender, ConfigurationChangedEventArgs e)
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.Property is nameof(DocumentConfiguration.ColumnsVisible) or nameof(DocumentConfiguration.LeftCharacterSet)
             or nameof(DocumentConfiguration.RightCharacterSet))
@@ -1185,8 +1140,8 @@ internal class EditorColumn : VisualElement
         var isFinalRow = Offset == Document?.Offset && Document?.Length % Configuration.BytesPerRow is 0;
 
         // TODO: will break at start and end of document
-        var maxRow = Bytes.Length / Configuration.BytesPerRow -
-                     (Bytes.Length % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
+        var _ = Bytes.Length / Configuration.BytesPerRow -
+                (Bytes.Length % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var clampedRow = byteRow; //Math.Max(0, Math.Min(maxRow, byteRow));

@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using HexControl.Core.Helpers;
+using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Framework.Visual;
 
@@ -10,6 +11,7 @@ public enum EventStrategy
     Tunnel
 }
 
+[PublicAPI]
 internal class EventManager
 {
     private static readonly ObjectPool<Queue<VisualElement>> QueuePool = new(20);
@@ -67,7 +69,7 @@ internal class EventManager
             return;
         }
 
-        if (!_elementEventHandlers.TryGetValue(element, out var dict) || !dict.TryGetValue(name, out var handlers)) { }
+        if (!_elementEventHandlers.TryGetValue(element, out var dict) || !dict.TryGetValue(name, out _)) { }
 
         // TODO: Implement removal of event handlers, not possible with current way of storing them. Not important for now.
         //handlers.Remove(removeHandler);

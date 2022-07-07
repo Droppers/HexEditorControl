@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using HexControl.SharedControl.Framework.Host.Typeface;
 using SharpDX.DirectWrite;
 using TextAlignment = HexControl.SharedControl.Framework.Drawing.Text.TextAlignment;
@@ -71,7 +70,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
     // TODO: Implement
     public override double GetWidth(double size)
     {
-        var metrics = Typeface.GetDesignGlyphMetrics(new[] { (short)'W' }, false)[0];
+        var metrics = Typeface.GetDesignGlyphMetrics(new[] {(short)'W'}, false)[0];
         var metrics2 = Typeface.Metrics;
         var ratio = size / metrics2.DesignUnitsPerEm;
         return Math.Ceiling(metrics.AdvanceWidth * ratio);
@@ -96,11 +95,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
 
         var metrics = Typeface.Metrics;
         var ratio = size / metrics.DesignUnitsPerEm;
-        var height = metrics.CapHeight * ratio;
-        var top = metrics.Ascent * ratio;
-        var ascent = metrics.Ascent * ratio;
         var descent = metrics.Descent * ratio;
-        //return -(height - descent);
         return -descent;
     }
 

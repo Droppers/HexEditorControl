@@ -20,10 +20,10 @@ internal class D2DControl : Control, IRenderStateProvider
     private RenderTarget? _d2dRenderTarget;
 
     private HwndRenderTargetProperties _hwndRenderTargetProperties;
+    private bool _initialRender = true;
     private RenderTargetProperties _renderTargetProperties;
 
     private WindowRenderTarget? _windowRenderTarget;
-    private bool initialRender = true;
 
     public bool CanRender
     {
@@ -110,10 +110,10 @@ internal class D2DControl : Control, IRenderStateProvider
 
         lock (_drawLock)
         {
-            Render?.Invoke(_d2dFactory, _d2dRenderTarget, initialRender);
+            Render?.Invoke(_d2dFactory, _d2dRenderTarget, _initialRender);
         }
 
-        initialRender = false;
+        _initialRender = false;
     }
 
     protected override void OnPaint(PaintEventArgs e)

@@ -1,5 +1,4 @@
 ﻿#if !SKIA_RENDER
-using System;
 using System.Windows;
 using System.Windows.Interop;
 using HexControl.Core.Helpers;
@@ -132,17 +131,6 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
         Disposer.SafeDispose(ref _d3dDevice);
         Disposer.SafeDispose(ref _d3dContext);
-    }
-
-    private void ResetD3D()
-    {
-        if (_activeClients is 0)
-        {
-            return;
-        }
-
-        var presentParams = GetPresentParameters();
-        _d3dDevice?.ResetEx(ref presentParams);
     }
 
     private static PresentParameters GetPresentParameters() =>

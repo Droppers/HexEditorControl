@@ -6,7 +6,6 @@ using HexControl.Core.Buffers.History.Changes;
 using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Events;
 using JetBrains.Annotations;
-using System;
 
 namespace HexControl.Core.Buffers;
 
@@ -227,10 +226,10 @@ public abstract class BaseBuffer
         }
 
         var bytesToDelete = deleteLength;
-        while (bytesToDelete > 0 && node != null)
+        while (bytesToDelete > 0 && node is not null)
         {
             var nextNode = node.Next;
-            var chunk = node.Value;
+            var chunk = node.Value!;
             var chunkLength = chunk.Length;
 
             var relativeOffset = deleteOffset + (deleteLength - bytesToDelete) - currentOffset;
@@ -695,7 +694,6 @@ public abstract class BaseBuffer
 
                     if (notFlushedSize >= flushSize)
                     {
-
                         await fileStream.FlushAsync(cancellationToken);
                         notFlushedSize = 0;
                     }

@@ -2,6 +2,7 @@
 using HexControl.Core.Buffers.Modifications;
 using HexControl.Core.Characters;
 using HexControl.Core.Events;
+using HexControl.Core.Observable;
 using JetBrains.Annotations;
 
 namespace HexControl.Core;
@@ -91,10 +92,10 @@ public class Document
         get => _configuration;
         set
         {
-            _configuration.ConfigurationChanged -= OnPropertyChanged;
+            _configuration.PropertyChanged -= OnPropertyChanged;
             _configuration = value ?? throw new ArgumentNullException(nameof(value));
-            _configuration.ConfigurationChanged += OnPropertyChanged;
-            OnPropertyChanged(this, new ConfigurationChangedEventArgs());
+            _configuration.PropertyChanged += OnPropertyChanged;
+            OnPropertyChanged(this, new PropertyChangedEventArgs());
         }
     }
 
@@ -129,7 +130,7 @@ public class Document
     // Maximum possible offset taking into account 'Configuration.BytesPerRow'
     public long MaximumOffset => FloorOffsetToNearestRow(Length);
 
-    public event EventHandler<ConfigurationChangedEventArgs>? ConfigurationChanged;
+    public event EventHandler<PropertyChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
     public event EventHandler<CaretChangedEventArgs>? CaretChanged;
     public event EventHandler<OffsetChangedEventArgs>? OffsetChanged;
@@ -211,7 +212,7 @@ public class Document
             (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow) - bytesPerRow);
     }
 
-    protected void OnPropertyChanged(object? sender, ConfigurationChangedEventArgs e)
+    protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Reset the horizontal offset (scroll) when changing the columns or character sets
         if (e.Property is nameof(Configuration.ColumnsVisible) or nameof(Configuration.LeftCharacterSet)
@@ -342,7 +343,7 @@ public class Document
         }
 
         // Old buffer is null when called from the constructor
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (oldBuffer is not null)
         {
             if (newBuffer.Length != Buffer.Length)

@@ -1,5 +1,4 @@
 ﻿#if !SKIA_RENDER
-using System;
 using System.Runtime.InteropServices;
 
 namespace HexControl.Wpf.D2D;

@@ -1,5 +1,4 @@
-﻿using System;
-using HexControl.SharedControl.Framework;
+﻿using HexControl.SharedControl.Framework;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;
 using HexControl.SharedControl.Framework.Host.Typeface;
@@ -11,7 +10,7 @@ namespace HexControl.Renderer.Direct2D;
 internal abstract class D2DRenderFactory : RenderFactory<SolidColorBrush, D2DPen>
 {
     private readonly RenderTarget _renderTarget;
-    
+
     protected D2DRenderFactory(RenderTarget renderTarget)
     {
         _renderTarget = renderTarget;

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Windows.Controls.Primitives;
+﻿using System.Windows.Controls.Primitives;
 using HexControl.SharedControl.Framework.Host.Controls;
 
 namespace HexControl.Wpf.Host.Controls;

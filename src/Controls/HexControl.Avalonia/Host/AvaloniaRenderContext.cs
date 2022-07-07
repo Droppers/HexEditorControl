@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using HexControl.SharedControl.Framework.Drawing;
@@ -11,8 +11,6 @@ namespace HexControl.Avalonia.Host;
 
 internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 {
-    private readonly ClearDrawingOperation _clearDrawingOperation;
-
     private readonly Stack<State> _states;
 
     public AvaloniaRenderContext(DrawingContext context) : base(new AvaloniaRenderFactory())
@@ -21,8 +19,6 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         Context = context;
         _states = new Stack<State>();
-
-        _clearDrawingOperation = new ClearDrawingOperation();
     }
 
     public override bool RequiresClear => true;
@@ -31,7 +27,13 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     protected override void Clear(IBrush? brush)
     {
-        Context.Custom(_clearDrawingOperation);
+        var clearColor = brush switch
+        {
+            ImmutableSolidColorBrush color => color.Color,
+            SolidColorBrush color => color.Color,
+            _ => Colors.Transparent
+        };
+        Context.Custom(new ClearDrawingOperation(clearColor));
     }
 
     protected override void DrawRectangle(IBrush? brush, IPen? pen, SharedRectangle rectangle)
@@ -59,6 +61,8 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         {
             ctx.LineTo(Convert(points[i]));
         }
+
+        ctx.EndFigure(true);
 
         Context.DrawGeometry(brush, pen, geometry);
     }
@@ -143,26 +147,38 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     public override void Pop()
     {
-        if (_states.TryPop(out var state))
+        if (!_states.TryPop(out var state))
         {
-            // TODO: remove temporary try catch
-            try
-            {
-                state.PushedState.Dispose();
-            }
-            catch { }
+            return;
+        }
+
+        // TODO: remove temporary try catch
+        try
+        {
+            state.PushedState.Dispose();
+        }
+        catch
+        {
+            // ignore
         }
     }
 
-    private class ClearDrawingOperation : ICustomDrawOperation
+    private readonly struct ClearDrawingOperation : ICustomDrawOperation
     {
+        private readonly Color _color;
+
+        public ClearDrawingOperation(Color color)
+        {
+            _color = color;
+        }
+
         public void Dispose() { }
 
         public bool HitTest(Point p) => true;
 
         public void Render(IDrawingContextImpl context)
         {
-            context.Clear(Colors.Transparent);
+            context.Clear(_color);
         }
 
         public Rect Bounds { get; } = new(0, 0, int.MaxValue, int.MaxValue);

@@ -1,5 +1,4 @@
-﻿using System;
-using Avalonia.Media;
+﻿using Avalonia.Media;
 using HexControl.SharedControl.Framework;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Host;

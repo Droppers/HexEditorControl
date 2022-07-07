@@ -32,6 +32,16 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
     public string FileName { get; }
     public FileOpenMode OpenMode { get; }
 
+    public async ValueTask DisposeAsync()
+    {
+        await CloseFileAsync();
+    }
+
+    public void Dispose()
+    {
+        DisposeAsync().GetAwaiter().GetResult();
+    }
+
     private void InitializeFile()
     {
         _fileStream = OpenFileStream(FileName, OpenMode);
@@ -47,16 +57,6 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
         _memoryMappedFile.Dispose();
 
         await _fileStream.DisposeAsync();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await CloseFileAsync();
-    }
-
-    public void Dispose()
-    {
-        DisposeAsync().GetAwaiter().GetResult();
     }
 
     protected sealed override IChunk CreateDefaultChunk() =>
@@ -97,13 +97,12 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
             {
                 return false;
             }
-            
+
             await CloseFileAsync();
             await tempStream.DisposeAsync();
             File.Move(tempFileName, FileName, true);
 
             InitializeFile();
-
         }
         finally
         {

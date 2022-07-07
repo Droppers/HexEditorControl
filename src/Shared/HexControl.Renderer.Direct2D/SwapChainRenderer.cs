@@ -1,5 +1,4 @@
-﻿using System;
-using HexControl.Core.Helpers;
+﻿using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using SharpDX.Direct3D;
 using SharpDX.DXGI;

@@ -4,7 +4,7 @@ namespace HexControl.SharedControl.Control.Helpers;
 
 internal static class BaseConverter
 {
-    public static int Convert(long number, Base numberBase, bool capitalization, IList<char> characters)
+    public static int Convert(long number, NumberBase numberBase, bool capitalization, IList<char> characters)
     {
         const int numericOffset = 48;
 

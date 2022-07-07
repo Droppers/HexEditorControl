@@ -1,5 +1,4 @@
 ﻿#if !SKIA_RENDER
-using System;
 using System.Windows.Media;
 using HexControl.Renderer.Direct2D;
 using HexControl.SharedControl.Framework.Drawing;
@@ -13,7 +12,7 @@ namespace HexControl.Wpf.Host;
 internal class WpfD2DRenderFactory : D2DRenderFactory
 {
     private readonly RenderTarget? _target;
-    
+
     public WpfD2DRenderFactory(RenderTarget target) : base(target)
     {
         _target = target;

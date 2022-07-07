@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using HexControl.Core.Helpers;
+﻿using HexControl.Core.Helpers;
 using HexControl.SharedControl.Framework.Drawing;
 using HexControl.SharedControl.Framework.Drawing.Text;
 using SharpDX.Direct2D1;
@@ -88,7 +87,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     public override void PushClip(SharedRectangle rectangle)
     {
-        _context.PushAxisAlignedClip(Convert(rectangle),AntialiasMode.Aliased);
+        _context.PushAxisAlignedClip(Convert(rectangle), AntialiasMode.Aliased);
         _pushedTypes.Push(PushedType.Clip);
     }
 

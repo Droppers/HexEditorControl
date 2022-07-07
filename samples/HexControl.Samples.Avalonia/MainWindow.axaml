@@ -9,6 +9,6 @@
         Background="White"
         x:Name="Root">
     <Grid>
-        <avalonia:HexEditorControl Grid.Column="0" Document="{Binding Document}" Foreground="Orange" Background="Brown" />
+        <avalonia:HexEditorControl Grid.Column="0" Document="{Binding Document}" />
     </Grid>
 </Window>

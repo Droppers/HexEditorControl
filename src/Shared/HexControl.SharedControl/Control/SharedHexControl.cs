@@ -75,35 +75,35 @@ internal class SharedHexControl : VisualElement
     }
 
 #region Mapped properties
-    private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
+    private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
     public ISharedBrush Background
     {
         get => Get(ref _background);
         set => Set(ref _background, value);
     }
 
-    private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
+    private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     public ISharedBrush HeaderForeground
     {
         get => Get(ref _headerForeground);
         set => Set(ref _headerForeground, value);
     }
 
-    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
+    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
     public ISharedBrush OffsetForeground
     {
         get => Get(ref _offsetForeground);
         set => Set(ref _offsetForeground, value);
     }
 
-    private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
+    private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(0, 0, 0));
     public ISharedBrush Foreground
     {
         get => Get(ref _foreground);
         set => Set(ref _foreground, value);
     }
 
-    private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
+    private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
     public ISharedBrush EvenForeground
     {
         get => Get(ref _evenForeground);
@@ -117,7 +117,7 @@ internal class SharedHexControl : VisualElement
         set => Set(ref _modifiedForeground, value);
     }
 
-    private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
+    private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
     public ISharedBrush CaretBackground
     {
         get => Get(ref _caretBackground);

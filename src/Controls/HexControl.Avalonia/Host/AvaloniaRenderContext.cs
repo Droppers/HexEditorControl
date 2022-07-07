@@ -27,7 +27,13 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     protected override void Clear(IBrush? brush)
     {
-        Context.Custom(new ClearDrawingOperation(brush));
+        var clearColor = brush switch
+        {
+            ImmutableSolidColorBrush color => color.Color,
+            SolidColorBrush color => color.Color,
+            _ => Colors.Transparent
+        };
+        Context.Custom(new ClearDrawingOperation(clearColor));
     }
 
     protected override void DrawRectangle(IBrush? brush, IPen? pen, SharedRectangle rectangle)
@@ -159,11 +165,11 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     private readonly struct ClearDrawingOperation : ICustomDrawOperation
     {
-        private readonly IBrush? _brush;
+        private readonly Color _color;
 
-        public ClearDrawingOperation(IBrush? brush)
+        public ClearDrawingOperation(Color color)
         {
-            _brush = brush;
+            _color = color;
         }
 
         public void Dispose() { }
@@ -172,12 +178,7 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         public void Render(IDrawingContextImpl context)
         {
-            var clearColor = _brush switch
-            {
-                ISolidColorBrush color => color.Color,
-                _ => Colors.Transparent
-            };
-            context.Clear(clearColor);
+            context.Clear(_color);
         }
 
         public Rect Bounds { get; } = new(0, 0, int.MaxValue, int.MaxValue);

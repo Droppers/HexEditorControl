@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using HexControl.SharedControl.Framework.Drawing;
@@ -10,8 +11,6 @@ namespace HexControl.Avalonia.Host;
 
 internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 {
-    private readonly ClearDrawingOperation _clearDrawingOperation;
-
     private readonly Stack<State> _states;
 
     public AvaloniaRenderContext(DrawingContext context) : base(new AvaloniaRenderFactory())
@@ -20,8 +19,6 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
         Context = context;
         _states = new Stack<State>();
-
-        _clearDrawingOperation = new ClearDrawingOperation();
     }
 
     public override bool RequiresClear => true;
@@ -30,7 +27,7 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
 
     protected override void Clear(IBrush? brush)
     {
-        Context.Custom(_clearDrawingOperation);
+        Context.Custom(new ClearDrawingOperation(brush));
     }
 
     protected override void DrawRectangle(IBrush? brush, IPen? pen, SharedRectangle rectangle)
@@ -160,15 +157,27 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         }
     }
 
-    private class ClearDrawingOperation : ICustomDrawOperation
+    private readonly struct ClearDrawingOperation : ICustomDrawOperation
     {
+        private readonly IBrush? _brush;
+
+        public ClearDrawingOperation(IBrush? brush)
+        {
+            _brush = brush;
+        }
+
         public void Dispose() { }
 
         public bool HitTest(Point p) => true;
 
         public void Render(IDrawingContextImpl context)
         {
-            context.Clear(Colors.Transparent);
+            var clearColor = _brush switch
+            {
+                ISolidColorBrush color => color.Color,
+                _ => Colors.Transparent
+            };
+            context.Clear(clearColor);
         }
 
         public Rect Bounds { get; } = new(0, 0, int.MaxValue, int.MaxValue);

@@ -9,12 +9,19 @@ internal class HexControlPropertyMapper : PropertyMapper<SharedHexControl>
     {
         AddAsyncNullable(nameof(control.Document), async value => await control.SetDocumentAsync(value),
             () => control.Document);
+        Add(nameof(control.Background), value => control.Background = value, () => control.Background,
+            MappingType.Brush);
+        Add(nameof(control.HeaderForeground), value => control.HeaderForeground = value, () => control.HeaderForeground,
+            MappingType.Brush);
+        Add(nameof(control.OffsetForeground), value => control.OffsetForeground = value, () => control.OffsetForeground,
+            MappingType.Brush);
         Add(nameof(control.Foreground), value => control.Foreground = value, () => control.Foreground,
             MappingType.Brush);
         Add(nameof(control.EvenForeground), value => control.EvenForeground = value, () => control.EvenForeground,
             MappingType.Brush);
         Add(nameof(control.ScrollWheelSkipRows), value => control.ScrollWheelSkipRows = value,
             () => control.ScrollWheelSkipRows);
-        Add(nameof(control.RowHeight), value => control.RowHeight = value, () => control.RowHeight);
+        Add(nameof(control.Margin), value => control.Margin = value,
+            () => control.Margin);
     }
 }

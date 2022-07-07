@@ -42,23 +42,14 @@ internal class SharedHexControl : VisualElement
     public const string VerticalScrollBarName = "VerticalScrollBar";
     public const string HorizontalScrollBarName = "HorizontalScrollBar";
     public const string FakeTextBoxName = "FakeTextBox";
+
     private readonly EditorColumn _editorColumn;
     private readonly OffsetColumn _offsetColumn;
-
-    private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
-    private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
-    private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
-
-    private string _fontFamily = "Default";
-    private int _fontSize = 13;
-    private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
-    private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
-
     private long _lastRefreshLength;
-
-    private int _margin = 10;
-    private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
-    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
+    private byte[] _readBuffer = Array.Empty<byte>();
+    private IRenderContext? _renderContext;
+    private bool _requireTypefaceUpdate = true;
+    private bool _scrollToCaret;
 
     //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
     //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
@@ -67,14 +58,6 @@ internal class SharedHexControl : VisualElement
     //private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
     //private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
     //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
-
-    private byte[] _readBuffer = Array.Empty<byte>();
-    private IRenderContext? _renderContext;
-
-    private bool _requireTypefaceUpdate = true;
-    private bool _scrollToCaret;
-
-    private int _scrollWheelSkipRows = 3;
 
     public SharedHexControl() : base(true)
     {
@@ -91,60 +74,71 @@ internal class SharedHexControl : VisualElement
         AddChild(_editorColumn);
     }
 
+#region Mapped properties
+    private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 24, 27, 32));
     public ISharedBrush Background
     {
         get => Get(ref _background);
         set => Set(ref _background, value);
     }
 
+    private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
     public ISharedBrush HeaderForeground
     {
         get => Get(ref _headerForeground);
         set => Set(ref _headerForeground, value);
     }
 
+    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
     public ISharedBrush OffsetForeground
     {
         get => Get(ref _offsetForeground);
         set => Set(ref _offsetForeground, value);
     }
 
+    private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(255, 255, 255));
     public ISharedBrush Foreground
     {
         get => Get(ref _foreground);
         set => Set(ref _foreground, value);
     }
 
+    private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 255, 255, 255));
     public ISharedBrush EvenForeground
     {
         get => Get(ref _evenForeground);
         set => Set(ref _evenForeground, value);
     }
 
+    private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
     public ISharedBrush ModifiedForeground
     {
         get => Get(ref _modifiedForeground);
         set => Set(ref _modifiedForeground, value);
     }
 
+    private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(255, 255, 255));
     public ISharedBrush CaretBackground
     {
         get => Get(ref _caretBackground);
         set => Set(ref _caretBackground, value);
     }
 
+    private int _scrollWheelSkipRows = 3;
     public int ScrollWheelSkipRows
     {
         get => Get(ref _scrollWheelSkipRows);
         set => Set(ref _scrollWheelSkipRows, value);
     }
 
+    private int _margin = 10;
     public int Margin
     {
         get => Get(ref _margin);
         set => Set(ref _margin, value);
     }
 
+    private string _fontFamily = "Default";
     public string FontFamily
     {
         get => Get(ref _fontFamily);
@@ -160,6 +154,7 @@ internal class SharedHexControl : VisualElement
         }
     }
 
+    private int _fontSize = 13;
     public int FontSize
     {
         get => Get(ref _fontSize);
@@ -175,6 +170,8 @@ internal class SharedHexControl : VisualElement
         }
     }
 
+#endregion
+
     public IGlyphTypeface? Typeface { get; private set; }
 
     private int BytesToRead => Configuration.BytesPerRow * (int)Math.Round(Height / RowHeight);
@@ -186,8 +183,8 @@ internal class SharedHexControl : VisualElement
 
     private DocumentConfiguration Configuration => Document?.Configuration ?? DocumentConfiguration.Default;
 
-    public int HeaderHeight { get; internal set; }
-    public int RowHeight { get; internal set; } = 16;
+    internal int HeaderHeight { get; private set; }
+    internal int RowHeight { get; private set; } = 16;
 
     internal int CharacterWidth { get; private set; } = 8;
     internal int CharacterHeight { get; private set; } = 8;
@@ -569,16 +566,8 @@ internal class SharedHexControl : VisualElement
 
     private void DocumentOnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // TODO: how does request center differ from scrolling to caret?
-        //if (!e.RequestCenter)
-        //{
-        //    // TODO: should be implemented in OnCaretChanged instead.
-        //}
-        //else
-        //{
+        // TODO: handle e.RequestCenter
         RequestScrollToCaret();
-        //}
-
         Invalidate();
     }
 

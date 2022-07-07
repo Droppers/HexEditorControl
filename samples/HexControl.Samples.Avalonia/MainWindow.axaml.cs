@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using HexControl.Core;
-using HexControl.Core.Buffers;
+using HexControl.SharedControl.Documents;
+using HexControl.Buffers;
 #if DEBUG
 using Avalonia;
 #endif

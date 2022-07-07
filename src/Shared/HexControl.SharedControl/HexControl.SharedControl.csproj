@@ -4,6 +4,7 @@
 		<EmbeddedResource Include="Control\Fonts\DejaVuSansMono.ttf" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\HexControl.Core\HexControl.Core.csproj" />
+		<ProjectReference Include="..\HexControl.Buffers\HexControl.Buffers.csproj" />
+		<ProjectReference Include="..\HexControl.Framework.\HexControl.Framework.csproj" />
 	</ItemGroup>
 </Project>

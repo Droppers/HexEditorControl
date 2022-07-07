@@ -1,6 +1,6 @@
-﻿using HexControl.Core.Helpers;
+﻿using HexControl.Framework;
 using HexControl.Renderer.Direct2D;
-using HexControl.SharedControl.Framework.Drawing;
+using HexControl.Framework.Drawing;
 using HexControl.WinUI.Host.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

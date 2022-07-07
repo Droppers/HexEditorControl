@@ -1,5 +1,5 @@
 ﻿using Avalonia.Controls.Primitives;
-using HexControl.SharedControl.Framework.Host.Controls;
+using HexControl.Framework.Host.Controls;
 
 namespace HexControl.Avalonia.Host.Controls;
 

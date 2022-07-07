@@ -1,18 +1,26 @@
 ﻿using System.Drawing;
-using HexControl.Core;
-using HexControl.Core.Buffers;
-using HexControl.Core.Characters;
-using HexControl.Core.Helpers;
-using HexControl.Core.Observable;
+using HexControl.Framework.Observable;
 using HexControl.SharedControl.Control.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Host.Controls;
-using HexControl.SharedControl.Framework.Host.EventArgs;
-using HexControl.SharedControl.Framework.Host.Typeface;
-using HexControl.SharedControl.Framework.Visual;
+using HexControl.SharedControl.Documents.Helpers;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Drawing.Text;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
+using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Visual;
+using HexControl.SharedControl.Characters;
+using Caret = HexControl.SharedControl.Documents.Caret;
+using ColumnSide = HexControl.SharedControl.Documents.ColumnSide;
+using Document = HexControl.SharedControl.Documents.Document;
+using DocumentConfiguration = HexControl.SharedControl.Documents.DocumentConfiguration;
+using IDocumentMarker = HexControl.SharedControl.Documents.IDocumentMarker;
+using Marker = HexControl.SharedControl.Documents.Marker;
+using NewCaretLocation = HexControl.SharedControl.Documents.NewCaretLocation;
 using Timer = System.Timers.Timer;
+using VisibleColumns = HexControl.SharedControl.Documents.VisibleColumns;
+using HexControl.Buffers;
+using HexControl.Framework.Host.Events;
+using HexControl.Framework.Optimizations;
 
 namespace HexControl.SharedControl.Control.Elements;
 

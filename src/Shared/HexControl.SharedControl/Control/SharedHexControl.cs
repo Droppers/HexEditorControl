@@ -1,16 +1,17 @@
 ﻿using System.Drawing;
-using HexControl.Core;
-using HexControl.Core.Buffers.Modifications;
-using HexControl.Core.Events;
-using HexControl.Core.Observable;
+using HexControl.Buffers.Events;
+using HexControl.Buffers.Modifications;
 using HexControl.SharedControl.Control.Elements;
-using HexControl.SharedControl.Framework;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Host.Controls;
-using HexControl.SharedControl.Framework.Host.EventArgs;
-using HexControl.SharedControl.Framework.Host.Typeface;
-using HexControl.SharedControl.Framework.Visual;
+using HexControl.SharedControl.Documents.Events;
+using HexControl.Framework;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Drawing.Text;
+using HexControl.Framework.Host.Controls;
+using HexControl.Framework.Host.Events;
+using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Observable;
+using HexControl.Framework.Visual;
+using HexControl.SharedControl.Documents;
 
 // ReSharper disable MemberCanBePrivate.Global
 

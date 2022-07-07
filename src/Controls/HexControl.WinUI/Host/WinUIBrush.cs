@@ -1,4 +1,4 @@
-﻿using HexControl.SharedControl.Framework.Drawing;
+﻿using HexControl.Framework.Drawing;
 using Microsoft.UI.Xaml.Media;
 
 namespace HexControl.WinUI.Host;

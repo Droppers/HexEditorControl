@@ -3,8 +3,8 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Drawing.Text;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Drawing.Text;
 using TextAlignment = Avalonia.Media.TextAlignment;
 
 namespace HexControl.Avalonia.Host;

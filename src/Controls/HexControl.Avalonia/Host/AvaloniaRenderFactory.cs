@@ -1,8 +1,8 @@
 ﻿using Avalonia.Media;
-using HexControl.SharedControl.Framework;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Host.Typeface;
+using HexControl.Framework;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Typeface;
 
 namespace HexControl.Avalonia.Host;
 

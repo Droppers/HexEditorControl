@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
-using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Host.Controls;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
 
 namespace HexControl.Avalonia.Host.Controls;
 

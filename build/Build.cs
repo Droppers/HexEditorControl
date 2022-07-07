@@ -36,10 +36,11 @@ class Build : NukeBuild
     IEnumerable<Project> PackProjects => new[]
     {
         // Shared
-        Solution.Sources.Shared.HexControl_Core,
+        Solution.Sources.Shared.HexControl_Buffers,
+        Solution.Sources.Shared.HexControl_Framework,
         Solution.Sources.Shared.HexControl_SharedControl,
-        Solution.Sources.Shared.HexControl_Renderer_Direct2D,
-        Solution.Sources.Shared.HexControl_Renderer_Skia,
+        Solution.Sources.Renderers.HexControl_Renderer_Direct2D,
+        Solution.Sources.Renderers.HexControl_Renderer_Skia,
 
         // Controls
         Solution.Sources.Controls.HexControl_Avalonia,

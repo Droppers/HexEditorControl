@@ -1,8 +1,8 @@
-﻿using HexControl.Core;
-using HexControl.SharedControl.Control.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Visual;
+﻿using HexControl.SharedControl.Control.Helpers;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Drawing.Text;
+using HexControl.Framework.Visual;
+using DocumentConfiguration = HexControl.SharedControl.Documents.DocumentConfiguration;
 
 namespace HexControl.SharedControl.Control.Elements;
 

@@ -51,6 +51,13 @@
           "type": "string",
           "default": "Secrets must be entered via 'nuke :secrets [profile]'"
         },
+        "NuGetDevApiKey": {
+          "type": "string",
+          "default": "Secrets must be entered via 'nuke :secrets [profile]'"
+        },
+        "NuGetDevSource": {
+          "type": "string"
+        },
         "NuGetSource": {
           "type": "string"
         },

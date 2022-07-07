@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using HexControl.Core;
 using HexControl.SharedControl.Control;
+using HexControl.SharedControl.Documents;
 using HexControl.WinForms.Host;
 using HexControl.WinForms.Host.Controls;
 

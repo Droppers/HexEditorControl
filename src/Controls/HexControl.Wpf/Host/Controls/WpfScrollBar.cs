@@ -1,5 +1,5 @@
 ﻿using System.Windows.Controls.Primitives;
-using HexControl.SharedControl.Framework.Host.Controls;
+using HexControl.Framework.Host.Controls;
 
 namespace HexControl.Wpf.Host.Controls;
 

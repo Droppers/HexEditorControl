@@ -1,4 +1,4 @@
-﻿using HexControl.Core;
+﻿using NumberBase = HexControl.SharedControl.Documents.NumberBase;
 
 namespace HexControl.SharedControl.Control.Helpers;
 

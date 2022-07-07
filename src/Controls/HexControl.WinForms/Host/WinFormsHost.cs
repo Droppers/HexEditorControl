@@ -1,4 +1,4 @@
-﻿using HexControl.Core.Helpers;
+﻿using HexControl.Framework;
 using HexControl.Renderer.Direct2D;
 using HexControl.WinForms.Host.Controls;
 using SharpDX.Direct2D1;

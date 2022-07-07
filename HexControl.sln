@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31815.197
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Core", "src\Shared\HexControl.Core\HexControl.Core.csproj", "{76DF9FC3-6BF1-4303-AC5F-76AF45341942}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Buffers", "src\Shared\HexControl.Buffers\HexControl.Buffers.csproj", "{76DF9FC3-6BF1-4303-AC5F-76AF45341942}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.SharedControl", "src\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj", "{3FE3C19E-CED2-433A-9611-FAEC807346F9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Avalonia", "src\Controls\HexControl.Avalonia\HexControl.Avalonia.csproj", "{C79BB2BD-3064-451E-BB79-DC82D76CFE73}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Core.Tests", "tests\HexControl.Core.Tests\HexControl.Core.Tests.csproj", "{619632FE-5293-4A32-8F8E-A27FCDD2522D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Buffers.Tests", "tests\HexControl.Buffers.Tests\HexControl.Buffers.Tests.csproj", "{619632FE-5293-4A32-8F8E-A27FCDD2522D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{D324FCF2-D9A2-44D9-8F33-8B76ED27ACBF}"
 EndProject
@@ -21,9 +21,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.Avalonia
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.WinUI", "src\Controls\HexControl.WinUI\HexControl.WinUI.csproj", "{12BABC1C-2A9B-49DF-BBAD-58F19FCC3509}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Skia", "src\Shared\HexControl.Renderer.Skia\HexControl.Renderer.Skia.csproj", "{F0375A6D-5C18-4982-867A-DE60138476AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Skia", "src\Renderers\HexControl.Renderer.Skia\HexControl.Renderer.Skia.csproj", "{F0375A6D-5C18-4982-867A-DE60138476AB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Direct2D", "src\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj", "{937DE1B7-DFCE-4EA3-A5D5-901F7E6E4AA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Renderer.Direct2D", "src\Renderers\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj", "{937DE1B7-DFCE-4EA3-A5D5-901F7E6E4AA2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HexControl.Samples.WinForms", "samples\HexControl.Samples.WinForms\HexControl.Samples.WinForms.csproj", "{9B46702C-D4D2-41BA-BADD-76ACEE185CE6}"
 EndProject
@@ -51,6 +51,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Props", "Props", "{0167E8A7
 		samples.props = samples.props
 		shared.props = shared.props
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexControl.Framework", "src\shared\HexControl.Framework\HexControl.Framework.csproj", "{F216C04E-81B1-41DD-96AA-0A6F1168E644}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Renderers", "Renderers", "{577FA323-F383-49F6-8CAD-7E58979BB52E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -288,6 +292,22 @@ Global
 		{9B61C7D4-3214-422D-842E-67DB29698726}.Release|x86.ActiveCfg = Release|x86
 		{9B61C7D4-3214-422D-842E-67DB29698726}.Release|x86.Build.0 = Release|x86
 		{9B61C7D4-3214-422D-842E-67DB29698726}.Release|x86.Deploy.0 = Release|x86
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|arm64.ActiveCfg = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|arm64.Build.0 = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|x64.Build.0 = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Debug|x86.Build.0 = Debug|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|arm64.ActiveCfg = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|arm64.Build.0 = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|x64.ActiveCfg = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|x64.Build.0 = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|x86.ActiveCfg = Release|Any CPU
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -301,14 +321,16 @@ Global
 		{A0963ADB-64D4-428B-B484-A983F339F6ED} = {D324FCF2-D9A2-44D9-8F33-8B76ED27ACBF}
 		{F9DF50A3-835F-496E-83A3-A8BDA0B7DAE2} = {D324FCF2-D9A2-44D9-8F33-8B76ED27ACBF}
 		{12BABC1C-2A9B-49DF-BBAD-58F19FCC3509} = {4B298E79-CC0D-4D62-9EEB-DAFC154E2709}
-		{F0375A6D-5C18-4982-867A-DE60138476AB} = {20C9E993-FB9A-43D5-9BD7-25A5F72691C2}
-		{937DE1B7-DFCE-4EA3-A5D5-901F7E6E4AA2} = {20C9E993-FB9A-43D5-9BD7-25A5F72691C2}
+		{F0375A6D-5C18-4982-867A-DE60138476AB} = {577FA323-F383-49F6-8CAD-7E58979BB52E}
+		{937DE1B7-DFCE-4EA3-A5D5-901F7E6E4AA2} = {577FA323-F383-49F6-8CAD-7E58979BB52E}
 		{9B46702C-D4D2-41BA-BADD-76ACEE185CE6} = {D324FCF2-D9A2-44D9-8F33-8B76ED27ACBF}
 		{20C9E993-FB9A-43D5-9BD7-25A5F72691C2} = {1330C398-0812-4933-8CC0-E479BEDEA5D6}
 		{DDA61A10-049E-410C-B807-898358A3915C} = {4B298E79-CC0D-4D62-9EEB-DAFC154E2709}
 		{4B298E79-CC0D-4D62-9EEB-DAFC154E2709} = {1330C398-0812-4933-8CC0-E479BEDEA5D6}
 		{228FE4BD-E5D9-45C5-8171-25EEABA4CBE5} = {4AB76848-4943-4976-87A3-03BC757191A5}
 		{9B61C7D4-3214-422D-842E-67DB29698726} = {D324FCF2-D9A2-44D9-8F33-8B76ED27ACBF}
+		{F216C04E-81B1-41DD-96AA-0A6F1168E644} = {20C9E993-FB9A-43D5-9BD7-25A5F72691C2}
+		{577FA323-F383-49F6-8CAD-7E58979BB52E} = {1330C398-0812-4933-8CC0-E479BEDEA5D6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85ACC0CA-608F-4E0D-95F2-A53A1DEFC4FA}

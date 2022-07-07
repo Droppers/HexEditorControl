@@ -1,5 +1,5 @@
-﻿using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Mapping;
+﻿using HexControl.Framework.Host;
+using HexControl.Framework.Mapping;
 
 namespace HexControl.SharedControl.Control;
 

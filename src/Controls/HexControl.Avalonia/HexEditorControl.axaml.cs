@@ -5,9 +5,9 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using HexControl.Avalonia.Host;
 using HexControl.Avalonia.Host.Controls;
-using HexControl.Core;
 using HexControl.SharedControl.Control;
-using HexControl.SharedControl.Framework.Mapping;
+using HexControl.Framework.Mapping;
+using HexControl.SharedControl.Documents;
 using JetBrains.Annotations;
 
 namespace HexControl.Avalonia;

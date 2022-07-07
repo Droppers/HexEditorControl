@@ -1,7 +1,7 @@
 ﻿#if !SKIA_RENDER
 using System.Windows.Media;
 using HexControl.Renderer.Direct2D;
-using HexControl.SharedControl.Framework.Drawing;
+using HexControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.Mathematics.Interop;
 using DashStyle = System.Windows.Media.DashStyle;

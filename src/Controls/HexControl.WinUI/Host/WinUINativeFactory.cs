@@ -1,6 +1,6 @@
 ﻿using Windows.UI;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
 using Microsoft.UI.Xaml.Media;
 
 namespace HexControl.WinUI.Host;

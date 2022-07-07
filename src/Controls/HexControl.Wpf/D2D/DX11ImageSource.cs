@@ -1,8 +1,8 @@
 ﻿#if !SKIA_RENDER
 using System.Windows;
 using System.Windows.Interop;
-using HexControl.Core.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
+using HexControl.Framework;
+using HexControl.Framework.Drawing;
 using SharpDX.Direct3D11;
 using SharpDX.Direct3D9;
 using Resource = SharpDX.DXGI.Resource;

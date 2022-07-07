@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../shared.props" />
+	<ItemGroup>
+		<PackageReference Include="SkiaSharp" Version="2.80.3" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\shared\HexControl.Framework\HexControl.Framework.csproj" />
+	</ItemGroup>
+</Project>

@@ -13,10 +13,10 @@ internal class StateManager
 
     private readonly Dictionary<ElementState, VisualElement?> _states = new();
 
-    public event EventHandler<StateOwnerChangedEventArgs>? StateOwnerChanged;
-
     public VisualElement? CapturedElement => GetElement(ElementState.Captured);
     public VisualElement? FocusedElement => GetElement(ElementState.Focused);
+
+    public event EventHandler<StateOwnerChangedEventArgs>? StateOwnerChanged;
 
     private bool IsOwner(ElementState state, VisualElement element) =>
         _states.TryGetValue(state, out var capturedElement) && ReferenceEquals(element, capturedElement);

@@ -15,6 +15,8 @@ internal class WpfD2DHost : WpfControl
 {
     private readonly D2DControl _d2dControl;
     private readonly Grid _hostContainer;
+
+    private float _dpi = 1;
     private D2DRenderFactory? _factory;
     private WpfD2DRenderContext? _renderContext;
 
@@ -30,8 +32,6 @@ internal class WpfD2DHost : WpfControl
 
         hostContainer.Children.Add(_d2dControl);
     }
-
-    private float _dpi = 1;
 
     public ResizeMode ResizeMode
     {

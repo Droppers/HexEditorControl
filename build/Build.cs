@@ -18,17 +18,15 @@ class Build : NukeBuild
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-    [Parameter, Secret] readonly string NuGetApiKey;
-    [Parameter] readonly string NuGetSource = "https://api.nuget.org/v3/index.json";
+    [GitRepository] [Required] readonly GitRepository GitRepository;
+    [GitVersion(Framework = "net5.0")] [Required] readonly GitVersion GitVersion;
 
-    [Parameter, Secret] readonly string NuGetDevApiKey;
+    [Parameter] [Secret] readonly string NuGetApiKey;
+
+    [Parameter] [Secret] readonly string NuGetDevApiKey;
     [Parameter] readonly string NuGetDevSource = "https://api.nuget.org/v3/index.json";
-
-    [GitRepository, Required] readonly GitRepository GitRepository;
-    [Solution(SuppressBuildProjectCheck = true, GenerateProjects = true), Required] readonly Solution Solution;
-    [GitVersion(Framework = "net5.0"), Required] readonly GitVersion GitVersion;
-
-    public static int Main() => Execute<Build>(x => x.Test);
+    [Parameter] readonly string NuGetSource = "https://api.nuget.org/v3/index.json";
+    [Solution(SuppressBuildProjectCheck = true, GenerateProjects = true)] [Required] readonly Solution Solution;
 
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath TestResultDirectory => RootDirectory / "test-results";
@@ -114,7 +112,7 @@ class Build : NukeBuild
     Target Push => _ => _
         .DependsOn(Pack)
         .OnlyWhenDynamic(() =>
-            (IsTaggedBuild && (GitRepository.IsOnMainOrMasterBranch() || GitRepository.IsOnReleaseBranch()))
+            IsTaggedBuild && (GitRepository.IsOnMainOrMasterBranch() || GitRepository.IsOnReleaseBranch())
             || GitRepository.IsOnDevelopBranch())
         .Executes(() =>
         {
@@ -144,4 +142,6 @@ class Build : NukeBuild
                         (v, path) => v.SetTargetPath(path)));
             }
         });
+
+    public static int Main() => Execute<Build>(x => x.Test);
 }

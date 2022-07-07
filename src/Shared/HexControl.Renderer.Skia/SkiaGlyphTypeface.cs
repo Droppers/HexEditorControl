@@ -40,7 +40,7 @@ internal sealed class SkiaGlyphTypeface : CachedGlyphTypeface<SKFont>
     }
 
     public override double GetGlyphOffsetY(TextAlignment alignment, double size) => GetCapHeight(size);
-    
+
     public override double GetTextOffsetY(TextAlignment alignment, double size)
     {
         if (alignment is not TextAlignment.Top)

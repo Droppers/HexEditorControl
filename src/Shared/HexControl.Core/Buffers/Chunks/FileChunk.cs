@@ -34,7 +34,7 @@ internal class FileChunk : Chunk, IImmutableChunk
             _accessor.SafeMemoryMappedViewHandle.ReleasePointer();
         }
     }
-    
+
     protected override async Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
         CancellationToken cancellationToken = default)
     {

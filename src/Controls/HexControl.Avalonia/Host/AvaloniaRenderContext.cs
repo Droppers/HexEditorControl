@@ -58,6 +58,7 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         {
             ctx.LineTo(Convert(points[i]));
         }
+
         ctx.EndFigure(true);
 
         Context.DrawGeometry(brush, pen, geometry);

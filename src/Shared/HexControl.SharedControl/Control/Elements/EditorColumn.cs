@@ -134,7 +134,7 @@ internal class EditorColumn : VisualElement
 
     private int RowHeight => _parent.RowHeight;
     private int CharacterWidth => _parent.CharacterWidth;
-    
+
     protected override void OnHostAttached(IHostControl attachHost)
     {
         InitCaretTimer();
@@ -1141,7 +1141,7 @@ internal class EditorColumn : VisualElement
 
         // TODO: will break at start and end of document
         var _ = Bytes.Length / Configuration.BytesPerRow -
-                     (Bytes.Length % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
+                (Bytes.Length % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var clampedRow = byteRow; //Math.Max(0, Math.Min(maxRow, byteRow));

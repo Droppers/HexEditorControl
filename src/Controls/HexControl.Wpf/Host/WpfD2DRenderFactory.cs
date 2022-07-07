@@ -12,7 +12,7 @@ namespace HexControl.Wpf.Host;
 internal class WpfD2DRenderFactory : D2DRenderFactory
 {
     private readonly RenderTarget? _target;
-    
+
     public WpfD2DRenderFactory(RenderTarget target) : base(target)
     {
         _target = target;

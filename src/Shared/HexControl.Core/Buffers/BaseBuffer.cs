@@ -694,7 +694,6 @@ public abstract class BaseBuffer
 
                     if (notFlushedSize >= flushSize)
                     {
-
                         await fileStream.FlushAsync(cancellationToken);
                         notFlushedSize = 0;
                     }

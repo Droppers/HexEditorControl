@@ -20,7 +20,7 @@ public class MainWindow : Window
     }
 
     public Document? Document { get; set; }
-    
+
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);

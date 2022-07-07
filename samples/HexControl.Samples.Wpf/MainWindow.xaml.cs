@@ -10,7 +10,7 @@ public partial class MainWindow
     {
         InitializeComponent();
         DataContext = this;
-        
+
         Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
     }
 

@@ -10,7 +10,7 @@ namespace HexControl.Renderer.Direct2D;
 internal abstract class D2DRenderFactory : RenderFactory<SolidColorBrush, D2DPen>
 {
     private readonly RenderTarget _renderTarget;
-    
+
     protected D2DRenderFactory(RenderTarget renderTarget)
     {
         _renderTarget = renderTarget;

@@ -37,13 +37,11 @@ internal abstract class SkiaRenderFactory : RenderFactory<SKPaint, SKPaint>
             paint.PathEffect = Convert(sharedPen.Style);
             return paint;
         }
+
         throw new NotSupportedException($"Shared pen of type {pen.GetType().Name} has not yet been implemented.");
     }
 
-    private static SKColor Convert(Color color)
-    {
-        return new SKColor(color.R, color.G, color.B, color.A);
-    }
+    private static SKColor Convert(Color color) => new SKColor(color.R, color.G, color.B, color.A);
 
     private static SKPathEffect? Convert(PenStyle style)
     {

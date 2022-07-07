@@ -20,10 +20,10 @@ internal class D2DControl : Control, IRenderStateProvider
     private RenderTarget? _d2dRenderTarget;
 
     private HwndRenderTargetProperties _hwndRenderTargetProperties;
+    private bool _initialRender = true;
     private RenderTargetProperties _renderTargetProperties;
 
     private WindowRenderTarget? _windowRenderTarget;
-    private bool _initialRender = true;
 
     public bool CanRender
     {

@@ -55,10 +55,10 @@ internal class SharedHexControl : VisualElement
     private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
 
     private long _lastRefreshLength;
-    private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
-    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
 
     private int _margin = 10;
+    private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
+    private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 174, 255));
 
     //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
     //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
@@ -138,7 +138,7 @@ internal class SharedHexControl : VisualElement
         get => Get(ref _scrollWheelSkipRows);
         set => Set(ref _scrollWheelSkipRows, value);
     }
-    
+
     public int Margin
     {
         get => Get(ref _margin);
@@ -154,7 +154,7 @@ internal class SharedHexControl : VisualElement
             {
                 return;
             }
-            
+
             Set(ref _fontFamily, value);
             _requireTypefaceUpdate = true;
         }
@@ -193,7 +193,7 @@ internal class SharedHexControl : VisualElement
     internal int CharacterHeight { get; private set; } = 8;
 
     public event EventHandler<ScrollBarVisibilityChangedEventArgs>? ScrollBarVisibilityChanged;
-    
+
     protected override void OnHostAttached(IHostControl attachHost)
     {
         _requireTypefaceUpdate = true;
@@ -423,7 +423,8 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        if (e.Modification.Offset + e.Modification.Length < Document.Offset || e.Modification.Offset > Document.Offset + _editorColumn.MaxVisibleOffset)
+        if (e.Modification.Offset + e.Modification.Length < Document.Offset ||
+            e.Modification.Offset > Document.Offset + _editorColumn.MaxVisibleOffset)
         {
             return;
         }
@@ -697,7 +698,7 @@ internal class SharedHexControl : VisualElement
         {
             context.Clear(Background);
         }
-        
+
         // Display a blank screen when the document is null
         if (Document is null)
         {

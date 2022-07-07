@@ -4,7 +4,6 @@ using HexControl.WinUI.Host;
 using HexControl.WinUI.Host.Controls;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace HexControl.WinUI;
 

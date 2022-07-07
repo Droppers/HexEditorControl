@@ -8,7 +8,7 @@ internal class DistributorQueue
     private readonly VisualElement _element;
     private readonly SemaphoreSlim _lock;
     private readonly Stopwatch _sw;
-    
+
     private bool _isDoingIo;
     private IRenderContext _latestContext = null!;
     private long _previousTicks;

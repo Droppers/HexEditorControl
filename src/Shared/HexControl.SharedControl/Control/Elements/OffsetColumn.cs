@@ -39,7 +39,7 @@ internal class OffsetColumn : VisualElement
     public DocumentConfiguration Configuration { get; set; } = DocumentConfiguration.Default;
 
     public ITextBuilder? TextBuilder { get; set; }
-    
+
     protected override void Render(IRenderContext context)
     {
         if (TextBuilder == null)

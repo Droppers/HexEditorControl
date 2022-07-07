@@ -70,7 +70,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
     // TODO: Implement
     public override double GetWidth(double size)
     {
-        var metrics = Typeface.GetDesignGlyphMetrics(new[] { (short)'W' }, false)[0];
+        var metrics = Typeface.GetDesignGlyphMetrics(new[] {(short)'W'}, false)[0];
         var metrics2 = Typeface.Metrics;
         var ratio = size / metrics2.DesignUnitsPerEm;
         return Math.Ceiling(metrics.AdvanceWidth * ratio);

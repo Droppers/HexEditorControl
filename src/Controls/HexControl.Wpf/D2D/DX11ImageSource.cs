@@ -132,7 +132,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         Disposer.SafeDispose(ref _d3dDevice);
         Disposer.SafeDispose(ref _d3dContext);
     }
-    
+
     private static PresentParameters GetPresentParameters() =>
         new()
         {

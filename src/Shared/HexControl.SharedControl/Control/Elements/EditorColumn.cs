@@ -1447,7 +1447,7 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        if (appendToDocument)
+        if (appendToDocument || Configuration.WriteInsert)
         {
             await Document.Buffer.InsertAsync(caret.Offset, newByte);
         }

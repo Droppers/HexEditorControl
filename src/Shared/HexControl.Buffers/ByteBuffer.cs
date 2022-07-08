@@ -312,7 +312,7 @@ public abstract class ByteBuffer
         else if (currentOffset == insertOffset && node.Previous?.Value is MemoryChunk previousChunk)
         {
             changes.SetStartAtPrevious();
-            changes.Add(new InsertToMemoryChange(relativeOffset, insertBytes).Apply(this, node, previousChunk));
+            changes.Add(new InsertToMemoryChange(relativeOffset + previousChunk.Length, insertBytes).Apply(this, node, previousChunk));
         }
         else if (insertOffset == 0)
         {

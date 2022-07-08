@@ -13,7 +13,7 @@ internal class RemoveFromImmutableChange : IChunkChange<IImmutableChunk>
         _removeLength = removeLength;
     }
 
-    public IChunkChange<IImmutableChunk> Apply(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
+    public IChunkChange<IImmutableChunk> Apply(ByteBuffer buffer, LinkedListNode<IChunk> contextNode,
         IImmutableChunk chunk)
     {
         if (_removeOffset > 0)
@@ -30,7 +30,7 @@ internal class RemoveFromImmutableChange : IChunkChange<IImmutableChunk>
         return this;
     }
 
-    public IChunkChange<IImmutableChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode,
+    public IChunkChange<IImmutableChunk> Revert(ByteBuffer buffer, LinkedListNode<IChunk> contextNode,
         IImmutableChunk chunk)
     {
         if (_removeOffset > 0)

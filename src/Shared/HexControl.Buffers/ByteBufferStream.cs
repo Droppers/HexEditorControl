@@ -4,17 +4,17 @@ namespace HexControl.Buffers;
 
 // See the following link for implementation instructions: https://docs.microsoft.com/en-us/dotnet/api/system.io.stream#notes-to-implementers
 [PublicAPI]
-public class BufferStream : Stream
+public class ByteBufferStream : Stream
 {
-    private readonly BaseBuffer _buffer;
+    private readonly ByteBuffer _buffer;
 
-    private readonly byte[] _byteBuffer;
+    private readonly byte[] _readBuffer;
     private long _position;
 
-    public BufferStream(BaseBuffer buffer)
+    public ByteBufferStream(ByteBuffer buffer)
     {
         _buffer = buffer;
-        _byteBuffer = new byte[1];
+        _readBuffer = new byte[1];
     }
 
     public override bool CanRead => true;
@@ -39,13 +39,13 @@ public class BufferStream : Stream
 
     public override int ReadByte()
     {
-        var readLength = Read(_byteBuffer, 0, 1);
+        var readLength = Read(_readBuffer, 0, 1);
         if (readLength <= 0)
         {
             throw new InvalidOperationException("Could not read byte.");
         }
 
-        return _byteBuffer[0];
+        return _readBuffer[0];
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -86,7 +86,7 @@ public class BufferStream : Stream
 
     public override void SetLength(long value)
     {
-        throw new NotSupportedException("BufferStream length cannot be changed yet.");
+        throw new NotSupportedException("ByteBufferStream length cannot be changed yet.");
     }
 
     public override void Write(byte[] buffer, int offset, int count)

@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Host;
 using HexControl.Framework.Optimizations;
 
 namespace HexControl.Framework.Drawing.Text;

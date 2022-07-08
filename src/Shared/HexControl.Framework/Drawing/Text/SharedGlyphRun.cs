@@ -1,4 +1,4 @@
-﻿using HexControl.Framework.Host.Typeface;
+﻿using HexControl.Framework.Host;
 
 namespace HexControl.Framework.Drawing.Text;
 

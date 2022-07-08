@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Host;
 using SharpDX.DirectWrite;
 using TextAlignment = HexControl.Framework.Drawing.Text.TextAlignment;
 

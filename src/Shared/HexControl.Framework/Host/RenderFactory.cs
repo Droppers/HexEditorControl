@@ -1,5 +1,4 @@
 ﻿using HexControl.Framework.Drawing;
-using HexControl.Framework.Host.Typeface;
 
 namespace HexControl.Framework.Host;
 

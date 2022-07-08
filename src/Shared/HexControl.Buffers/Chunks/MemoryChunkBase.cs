@@ -2,7 +2,7 @@
 
 internal abstract class MemoryChunkBase : Chunk
 {
-    protected MemoryChunkBase(BaseBuffer buffer, byte[] bytes) : base(buffer)
+    protected MemoryChunkBase(ByteBuffer buffer, byte[] bytes) : base(buffer)
     {
         Bytes = bytes;
         SourceOffset = 0;

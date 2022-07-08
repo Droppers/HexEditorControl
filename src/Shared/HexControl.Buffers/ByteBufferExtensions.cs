@@ -5,9 +5,17 @@ using JetBrains.Annotations;
 namespace HexControl.Buffers;
 
 [PublicAPI]
-public static class BaseBufferExtensions
+public enum Endianess
 {
-    public static Int128 ReadInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    Native,
+    Big,
+    Little
+}
+
+[PublicAPI]
+public static class ByteBufferExtensions
+{
+    public static Int128 ReadInt128(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + Int128.Size > buffer.Length)
         {
@@ -31,7 +39,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static UInt128 ReadUInt128(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static UInt128 ReadUInt128(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + UInt128.Size > buffer.Length)
         {
@@ -55,7 +63,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static long ReadInt64(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static long ReadInt64(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(long) > buffer.Length)
         {
@@ -74,7 +82,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static ulong ReadUInt64(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static ulong ReadUInt64(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(ulong) > buffer.Length)
         {
@@ -93,7 +101,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static int ReadInt32(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static int ReadInt32(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(int) > buffer.Length)
         {
@@ -112,7 +120,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static uint ReadUInt32(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static uint ReadUInt32(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(uint) > buffer.Length)
         {
@@ -132,7 +140,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static short ReadInt16(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static short ReadInt16(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(short) > buffer.Length)
         {
@@ -151,7 +159,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static ushort ReadUInt16(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static ushort ReadUInt16(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(ushort) > buffer.Length)
         {
@@ -170,7 +178,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static char ReadChar(this BaseBuffer buffer, long offset, Endianess endianess = Endianess.Native)
+    public static char ReadChar(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(short) > buffer.Length)
         {
@@ -189,7 +197,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static sbyte ReadUInt8(this BaseBuffer buffer, long offset)
+    public static sbyte ReadUInt8(this ByteBuffer buffer, long offset)
     {
         if (offset + sizeof(byte) > buffer.Length)
         {
@@ -208,7 +216,7 @@ public static class BaseBufferExtensions
         }
     }
 
-    public static byte ReadInt8(this BaseBuffer buffer, long offset)
+    public static byte ReadInt8(this ByteBuffer buffer, long offset)
     {
         if (offset + sizeof(byte) > buffer.Length)
         {
@@ -224,6 +232,42 @@ public static class BaseBufferExtensions
         finally
         {
             ExactArrayPool<byte>.Shared.Return(bytes);
+        }
+    }
+
+    public static IEnumerable<long> FindAll(this ByteBuffer buffer, long startOffset, long maxLength,
+        bool backward, byte[] pattern, CancellationToken cancellationToken = default)
+    {
+        var lastOffset = startOffset;
+        var searchedLength = 0L;
+
+        while (maxLength - searchedLength > 0)
+        {
+            var offset = buffer.Find(lastOffset, maxLength - searchedLength, backward, pattern, cancellationToken);
+            if (offset is -1)
+            {
+                yield break;
+            }
+
+            yield return offset;
+
+            long newLastOffset;
+            if (backward)
+            {
+                newLastOffset = offset - pattern.Length <= 0 ? buffer.Length - 1 : offset - pattern.Length;
+                searchedLength += newLastOffset > lastOffset
+                    ? lastOffset + 1
+                    : lastOffset - newLastOffset;
+            }
+            else
+            {
+                newLastOffset = offset + pattern.Length;
+                searchedLength += newLastOffset < lastOffset
+                    ? newLastOffset + ((buffer.Length) - lastOffset)
+                    : newLastOffset - lastOffset;
+            }
+
+            lastOffset = newLastOffset;
         }
     }
 

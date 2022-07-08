@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
-using System.Collections;
 using HexControl.Buffers.Chunks;
 using HexControl.Buffers.Events;
+using HexControl.Buffers.Find;
 using HexControl.Buffers.History;
 using HexControl.Buffers.History.Changes;
 using HexControl.Buffers.Modifications;
@@ -10,11 +10,11 @@ using JetBrains.Annotations;
 namespace HexControl.Buffers;
 
 [PublicAPI]
-public abstract class BaseBuffer
+public abstract class ByteBuffer
 {
     private readonly ChangeTracker _changes;
 
-    protected BaseBuffer()
+    protected ByteBuffer()
     {
         Chunks = new LinkedList<IChunk>();
         _changes = new ChangeTracker(this);
@@ -31,6 +31,9 @@ public abstract class BaseBuffer
     public bool IsReadOnly { get; protected set; }
 
     public long OriginalLength { get; private set; } = -1;
+
+    public bool CanUndo => _changes.CanUndo;
+    public bool CanRedo => _changes.CanRedo;
 
     public event EventHandler<LengthChangedEventArgs>? LengthChanged;
     public event EventHandler<ModifiedEventArgs>? Modified;
@@ -115,7 +118,7 @@ public abstract class BaseBuffer
         return buffer;
     }
 
-    // TODO: fill gaps with zeros, e.g. writing at offset 300 when document is completely empty, or writing past the length.
+    // TODO: fill gaps with zeros, e.g. writing at startOffset 300 when document is completely empty, or writing past the maxLength.
     public void Write(long writeOffset, byte[] writeBytes)
     {
         GuardAgainstReadOnly();
@@ -329,81 +332,72 @@ public abstract class BaseBuffer
         Insert(insertOffset, new[] { insertByte });
     }
 
-    public FindQuery Query(byte[] pattern, FindOptions options)
+    public long Find(long startOffset, bool backward, byte[] pattern,
+        CancellationToken cancellationToken = default)
     {
-        var strategy = new KmpFindStrategy(pattern);
-        return new FindQuery(this, pattern, strategy, options);
+        return Find(startOffset, null, backward, pattern, cancellationToken);
     }
 
-    private bool FindInternal(FindQuery query, CancellationToken cancellationToken = default)
+    public long Find(long startOffset, long? maxLength, bool backward, byte[] pattern,
+        CancellationToken cancellationToken = default)
     {
-        var options = query.Options;
-        var dontWrap = !options.Backward && options.StartOffset is 0 ||
-                       options.Backward && options.StartOffset == Length - 1;
+        var strategy = new KmpFindStrategy(pattern);
+        
+        var currentStartOffset = startOffset;
+        var didWrap = false;
+
+        var remainingMaxLength = maxLength ?? long.MaxValue;
 
         while (true)
         {
-            var initialOffset = query.NextStartOffset ?? options.StartOffset;
-
-            var findOffset = initialOffset;
+            var findOffset = currentStartOffset;
             long findLength;
-            if (options.Backward)
+            if (backward)
             {
-                findLength = query.DidWrap
-                    ? initialOffset - options.StartOffset + (query.Pattern.Length - 1)
-                    : options.StartOffset - (options.StartOffset - initialOffset) + 1;
-                findOffset = initialOffset;
+                findLength = didWrap
+                    ? currentStartOffset - startOffset + (pattern.Length - 1)
+                    : startOffset - (startOffset - currentStartOffset) + 1;
             }
             else
             {
-                findLength = query.DidWrap
-                    ? options.StartOffset - findOffset + query.Pattern.Length
+                findLength = didWrap
+                    ? startOffset - findOffset + pattern.Length
                     : Length - findOffset;
+            }
+
+            if (maxLength is not null)
+            {
+                findLength = Math.Min(findLength, remainingMaxLength);
+                remainingMaxLength -= findLength;
             }
 
             // Find without overhead when the buffer is not modified.
             var foundOffset = IsModified
-                ? FindInMemory(query.Strategy, findOffset, findLength, options, cancellationToken)
-                : FindInImmutable(query.Strategy, findOffset, findLength, options, cancellationToken);
+                ? FindInMemory(strategy, findOffset, findLength, backward, cancellationToken)
+                : FindInImmutable(strategy, findOffset, findLength, backward, cancellationToken);
             if (foundOffset is not -1)
             {
-                query.CurrentOffset = foundOffset;
-                query.NextStartOffset = foundOffset + (options.Backward ? -1 : query.Pattern.Length);
-
-                if (!dontWrap && (options.Backward && foundOffset is 0 ||
-                                  !options.Backward && foundOffset == Length - query.Pattern.Length))
-                {
-                    query.DidWrap = true;
-                    query.NextStartOffset = options.Backward ? Length : 0;
-                }
-
-                return true;
+                return foundOffset;
             }
 
-            if (!query.DidWrap && !dontWrap)
+            if (!didWrap)
             {
-                if (options.WrapAround)
-                {
-                    query.DidWrap = true;
-                    query.NextStartOffset = options.Backward ? Length : 0;
-                }
-                else
-                {
-                    return false;
-                }
+                didWrap = true;
+                currentStartOffset = backward ? Length : 0;
+
             }
             else
             {
-                return false;
+                return -1;
             }
         }
     }
 
-    private long FindInMemory(IFindStrategy strategy, long offset, long length, FindOptions options,
+    private long FindInMemory(IFindStrategy strategy, long offset, long length, bool backward,
         CancellationToken cancellationToken) =>
-        strategy.SearchInBuffer(this, offset, length, options.Backward);
+        strategy.FindInBuffer(this, offset, length, backward, cancellationToken);
 
-    protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
+    protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
         CancellationToken cancellationToken);
 
     protected abstract IChunk CreateDefaultChunk();
@@ -629,7 +623,7 @@ public abstract class BaseBuffer
         return (null, 0);
     }
 
-    public BufferStream AsStream() => new(this);
+    public ByteBufferStream AsStream() => new(this);
 
     public async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
@@ -727,106 +721,4 @@ public abstract class BaseBuffer
             throw new InvalidOperationException("Document is readonly. Modifications are not permitted.");
         }
     }
-
-    [PublicAPI]
-    public class FindQuery : IEnumerable<long>
-    {
-        private readonly BaseBuffer _buffer;
-
-        internal FindQuery(BaseBuffer buffer, byte[] pattern, IFindStrategy strategy, FindOptions options)
-        {
-            _buffer = buffer;
-            Pattern = pattern;
-            Strategy = strategy;
-            Options = options;
-
-            BufferVersion = _buffer.Version;
-        }
-
-        public bool DidWrap { get; set; }
-
-        public byte[] Pattern { get; }
-        public IFindStrategy Strategy { get; }
-        public FindOptions Options { get; }
-
-        public int BufferVersion { get; }
-        public bool IsModifiedSince => _buffer.Version != BufferVersion;
-
-        public long? CurrentOffset { get; internal set; }
-        public long? NextStartOffset { get; internal set; }
-
-        public IEnumerator<long> GetEnumerator() => new FindIterator(this);
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public long? Next()
-        {
-            if (_buffer.FindInternal(this, CancellationToken.None))
-            {
-                return CurrentOffset;
-            }
-
-            CurrentOffset = null;
-            NextStartOffset = null;
-            return null;
-        }
-
-        public void Reset()
-        {
-            DidWrap = false;
-            CurrentOffset = null;
-        }
-
-        private readonly struct FindIterator : IEnumerator<long>
-        {
-            private readonly FindQuery _query;
-
-            public FindIterator(FindQuery query)
-            {
-                _query = query;
-            }
-
-            public bool MoveNext()
-            {
-                var next = _query.Next();
-                return next is not null;
-            }
-
-            public void Reset()
-            {
-                _query.Reset();
-            }
-
-            public long Current => _query.CurrentOffset ?? -1;
-
-            object IEnumerator.Current => Current;
-
-            public void Dispose()
-            {
-                // ignore
-            }
-        }
-    }
-
-    [PublicAPI]
-    public readonly struct FindOptions
-    {
-        public long StartOffset { get; init; }
-        public bool Backward { get; init; }
-        public bool WrapAround { get; init; }
-    }
-}
-
-[PublicAPI]
-public readonly struct ModifiedRange
-{
-    public ModifiedRange(long startOffset, long endOffset)
-    {
-        StartOffset = startOffset;
-        EndOffset = endOffset;
-    }
-
-    public long StartOffset { get; }
-    public long EndOffset { get; }
-    public long Length => EndOffset - StartOffset;
 }

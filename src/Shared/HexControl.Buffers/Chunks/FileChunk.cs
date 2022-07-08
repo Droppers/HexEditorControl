@@ -8,7 +8,7 @@ internal class FileChunk : Chunk, IImmutableChunk
     private readonly MemoryMappedViewAccessor _accessor;
     private readonly FileStream _fileStream;
 
-    public FileChunk(BaseBuffer buffer, FileStream fileStream, MemoryMappedViewAccessor accessor) : base(buffer)
+    public FileChunk(ByteBuffer buffer, FileStream fileStream, MemoryMappedViewAccessor accessor) : base(buffer)
     {
         _fileStream = fileStream;
         _accessor = accessor;

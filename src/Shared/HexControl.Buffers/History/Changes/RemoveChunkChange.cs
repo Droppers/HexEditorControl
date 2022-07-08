@@ -12,7 +12,7 @@ internal class RemoveChunkChange : IBufferChange
         _atStart = atStart;
     }
 
-    public IBufferChange Apply(BaseBuffer buffer, LinkedListNode<IChunk>? contextNode)
+    public IBufferChange Apply(ByteBuffer buffer, LinkedListNode<IChunk>? contextNode)
     {
         if (contextNode is null)
         {
@@ -26,7 +26,7 @@ internal class RemoveChunkChange : IBufferChange
         return this;
     }
 
-    public IBufferChange Revert(BaseBuffer buffer, LinkedListNode<IChunk>? contextNode)
+    public IBufferChange Revert(ByteBuffer buffer, LinkedListNode<IChunk>? contextNode)
     {
         if (contextNode is null)
         {

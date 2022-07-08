@@ -1,5 +1,6 @@
 ﻿using System.IO.MemoryMappedFiles;
 using HexControl.Buffers.Chunks;
+using HexControl.Buffers.Find;
 using JetBrains.Annotations;
 
 namespace HexControl.Buffers;
@@ -12,7 +13,7 @@ public enum FileOpenMode
 }
 
 [PublicAPI]
-public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
+public class FileBuffer : ByteBuffer, IDisposable, IAsyncDisposable
 {
     private const int BUFFER_SIZE = 8192;
 
@@ -45,8 +46,6 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
     private void InitializeFile()
     {
         _fileStream = OpenFileStream(FileName, OpenMode);
-
-        // Memory mapped file is used for finding byte sequences, especially useful for larger files
         _memoryMappedFile = OpenMemoryMappedFile(_fileStream);
         _viewAccessor = _memoryMappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
     }
@@ -134,7 +133,7 @@ public class FileBuffer : BaseBuffer, IDisposable, IAsyncDisposable
         MemoryMappedFile.CreateFromFile(fileStream, null, 0, MemoryMappedFileAccess.Read,
             HandleInheritability.Inheritable, true);
 
-    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
+    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
         CancellationToken cancellationToken) =>
-        strategy.SearchInFile(_viewAccessor, offset, length, options.Backward);
+        strategy.FindInFile(_viewAccessor, offset, length, backward, cancellationToken);
 }

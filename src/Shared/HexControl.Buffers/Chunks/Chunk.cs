@@ -5,9 +5,9 @@ namespace HexControl.Buffers.Chunks;
 [PublicAPI]
 public abstract class Chunk : IChunk
 {
-    protected readonly BaseBuffer buffer;
+    protected readonly ByteBuffer buffer;
 
-    protected Chunk(BaseBuffer buffer)
+    protected Chunk(ByteBuffer buffer)
     {
         this.buffer = buffer;
     }

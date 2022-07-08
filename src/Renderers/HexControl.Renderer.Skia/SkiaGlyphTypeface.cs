@@ -1,5 +1,5 @@
 ﻿using HexControl.Framework.Drawing.Text;
-using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Host;
 using SkiaSharp;
 
 namespace HexControl.Renderer.Skia;

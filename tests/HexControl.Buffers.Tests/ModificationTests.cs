@@ -6,7 +6,7 @@ namespace HexControl.Buffers.Tests;
 
 public class ModificationTests
 {
-    private readonly BaseBuffer _buffer;
+    private readonly ByteBuffer _buffer;
 
     public ModificationTests()
     {

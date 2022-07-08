@@ -71,7 +71,7 @@ public class Document
 
     private long _offset;
 
-    public Document(BaseBuffer buffer, DocumentConfiguration? configuration = null)
+    public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
         Buffer = ReplaceBuffer(buffer);
 
@@ -100,7 +100,7 @@ public class Document
         }
     }
 
-    public BaseBuffer Buffer { get; private set; }
+    public ByteBuffer Buffer { get; private set; }
 
     public IReadOnlyList<IDocumentMarker> Markers => _markers;
 
@@ -334,7 +334,7 @@ public class Document
         Select(null);
     }
 
-    public BaseBuffer ReplaceBuffer(BaseBuffer newBuffer)
+    public ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
     {
         var oldBuffer = Buffer;
 

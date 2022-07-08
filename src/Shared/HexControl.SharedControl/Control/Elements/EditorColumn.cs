@@ -6,7 +6,6 @@ using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;
 using HexControl.Framework.Host.Controls;
-using HexControl.Framework.Host.Typeface;
 using HexControl.Framework.Visual;
 using HexControl.SharedControl.Characters;
 using Caret = HexControl.SharedControl.Documents.Caret;

@@ -2,7 +2,6 @@
 using HexControl.Framework;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Host;
-using HexControl.Framework.Host.Typeface;
 
 namespace HexControl.Avalonia.Host;
 

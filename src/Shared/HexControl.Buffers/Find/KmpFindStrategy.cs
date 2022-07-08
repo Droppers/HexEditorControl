@@ -1,18 +1,6 @@
 ﻿using System.IO.MemoryMappedFiles;
 
-namespace HexControl.Buffers;
-
-public interface IFindStrategy
-{
-    long SearchInFile(
-        MemoryMappedViewAccessor accessor,
-        long startOffset,
-        long maxSearchLength,
-        bool backward);
-
-    long SearchInBuffer(byte[] buffer, long startOffset, long maxSearchLength, bool backward);
-    long SearchInBuffer(BaseBuffer buffer, long startOffset, long maxSearchLength, bool backward);
-}
+namespace HexControl.Buffers.Find;
 
 internal class KmpFindStrategy : IFindStrategy
 {
@@ -27,36 +15,37 @@ internal class KmpFindStrategy : IFindStrategy
         _readBuffer = new byte[4096];
     }
 
-    public unsafe long SearchInFile(
+    public unsafe long FindInFile(
         MemoryMappedViewAccessor accessor,
         long startOffset,
         long maxSearchLength,
-        bool backward)
+        bool backward,
+        CancellationToken cancellationToken)
     {
         var safeBuffer = accessor.SafeMemoryMappedViewHandle;
         var bytes = (byte*)safeBuffer.DangerousGetHandle();
         return backward
-            ? LastIndexOf(bytes, startOffset, maxSearchLength)
-            : FirstIndexOf(bytes, (long)safeBuffer.ByteLength, startOffset, maxSearchLength);
+            ? LastIndexOf(bytes, startOffset, maxSearchLength, cancellationToken)
+            : FirstIndexOf(bytes, (long)safeBuffer.ByteLength, startOffset, maxSearchLength, cancellationToken);
     }
 
-    public unsafe long SearchInBuffer(byte[] buffer, long startOffset, long maxSearchLength, bool backward)
+    public unsafe long FindInBuffer(byte[] buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken)
     {
         fixed (byte* bytes = buffer)
         {
             return backward
-                ? LastIndexOf(bytes, startOffset, maxSearchLength)
-                : FirstIndexOf(bytes, buffer.LongLength, startOffset, maxSearchLength);
+                ? LastIndexOf(bytes, startOffset, maxSearchLength, cancellationToken)
+                : FirstIndexOf(bytes, buffer.LongLength, startOffset, maxSearchLength, cancellationToken);
         }
     }
 
-    public long SearchInBuffer(BaseBuffer buffer, long startOffset, long maxSearchLength, bool backward)
+    public long FindInBuffer(ByteBuffer buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken)
     {
         var provider = new BufferByteProvider(buffer, _readBuffer);
 
         return backward
-            ? LastIndexOfInProvider(provider, startOffset, maxSearchLength)
-            : FirstIndexOfInProvider(provider, startOffset, maxSearchLength);
+            ? LastIndexOfInProvider(provider, startOffset, maxSearchLength, cancellationToken)
+            : FirstIndexOfInProvider(provider, startOffset, maxSearchLength, cancellationToken);
     }
 
     // See: https://en.wikipedia.org/wiki/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm
@@ -97,10 +86,11 @@ internal class KmpFindStrategy : IFindStrategy
         return table;
     }
 
-    private unsafe long FirstIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength)
+    private unsafe long FirstIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength, CancellationToken cancellationToken)
     {
         var currentIndex = startIndex;
         long i = 0;
+        long iterations = 0;
 
         var patternLength = _pattern.Length;
         fixed (byte* pattern = _pattern)
@@ -108,6 +98,12 @@ internal class KmpFindStrategy : IFindStrategy
         {
             while (currentIndex + i < provider.Length && currentIndex - startIndex + i < maxSearchLength)
             {
+                if (iterations % 100 == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                iterations++;
+
                 if (pattern[i] == provider.ReadByte(currentIndex + i))
                 {
                     if (i == patternLength - 1)
@@ -136,10 +132,11 @@ internal class KmpFindStrategy : IFindStrategy
         return -1;
     }
 
-    private unsafe long LastIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength)
+    private unsafe long LastIndexOfInProvider(BufferByteProvider provider, long startIndex, long maxSearchLength, CancellationToken cancellationToken)
     {
         var currentIndex = startIndex;
         long i = 0;
+        long iterations = 0;
 
         var patternLength = _pattern.Length;
         fixed (byte* pattern = _pattern)
@@ -147,6 +144,12 @@ internal class KmpFindStrategy : IFindStrategy
         {
             while (currentIndex - i >= 0 && startIndex - currentIndex + i < maxSearchLength)
             {
+                if (iterations % 100 == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                iterations++;
+
                 if (pattern[patternLength - i - 1] == provider.ReadByte(currentIndex - i))
                 {
                     if (i == patternLength - 1)
@@ -175,10 +178,11 @@ internal class KmpFindStrategy : IFindStrategy
         return -1;
     }
 
-    private unsafe long FirstIndexOf(byte* bytes, long length, long startIndex, long maxSearchLength)
+    private unsafe long FirstIndexOf(byte* bytes, long length, long startIndex, long maxSearchLength, CancellationToken cancellationToken)
     {
         var currentIndex = startIndex;
         long i = 0;
+        long iterations = 0;
 
         var patternLength = _pattern.Length;
         fixed (byte* pattern = _pattern)
@@ -186,6 +190,12 @@ internal class KmpFindStrategy : IFindStrategy
         {
             while (currentIndex + i < length && currentIndex - startIndex + i < maxSearchLength)
             {
+                if (iterations % 100 == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                iterations++;
+
                 if (pattern[i] == bytes[currentIndex + i])
                 {
                     if (i == patternLength - 1)
@@ -214,10 +224,11 @@ internal class KmpFindStrategy : IFindStrategy
         return -1;
     }
 
-    private unsafe long LastIndexOf(byte* bytes, long startIndex, long maxSearchLength)
+    private unsafe long LastIndexOf(byte* bytes, long startIndex, long maxSearchLength, CancellationToken cancellationToken)
     {
         var currentIndex = startIndex;
         long i = 0;
+        long iterations = 0;
 
         var patternLength = _pattern.Length;
         fixed (byte* pattern = _pattern)
@@ -225,6 +236,12 @@ internal class KmpFindStrategy : IFindStrategy
         {
             while (currentIndex - i >= 0 && startIndex - currentIndex + i < maxSearchLength)
             {
+                if (iterations % 100 == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                iterations++;
+
                 if (pattern[patternLength - i - 1] == bytes[currentIndex - i])
                 {
                     if (i == patternLength - 1)
@@ -255,11 +272,11 @@ internal class KmpFindStrategy : IFindStrategy
 
     private ref struct BufferByteProvider
     {
-        private readonly BaseBuffer _buffer;
+        private readonly ByteBuffer _buffer;
         private readonly byte[] _readBuffer;
         private long _currentOffset = -1;
 
-        public BufferByteProvider(BaseBuffer buffer, byte[] readBuffer)
+        public BufferByteProvider(ByteBuffer buffer, byte[] readBuffer)
         {
             _buffer = buffer;
             _readBuffer = readBuffer;

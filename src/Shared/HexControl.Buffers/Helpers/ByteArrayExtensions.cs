@@ -1,6 +1,6 @@
-﻿namespace HexControl.Buffers;
+﻿namespace HexControl.Buffers.Helpers;
 
-internal static class BufferExtensions
+internal static class ByteArrayExtensions
 {
     public static byte[] Copy(this byte[] buffer, long offset, long length)
     {

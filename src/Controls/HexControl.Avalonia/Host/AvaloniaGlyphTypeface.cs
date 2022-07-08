@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using Avalonia.Media;
 using HexControl.Framework;
-using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Host;
 using TextAlignment = HexControl.Framework.Drawing.Text.TextAlignment;
 
 namespace HexControl.Avalonia.Host;

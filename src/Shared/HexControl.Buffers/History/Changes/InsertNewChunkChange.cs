@@ -13,7 +13,7 @@ public class InsertNewChunkChange : IBufferChange
         _before = before;
     }
 
-    public IBufferChange Apply(BaseBuffer buffer, LinkedListNode<IChunk>? contextNode)
+    public IBufferChange Apply(ByteBuffer buffer, LinkedListNode<IChunk>? contextNode)
     {
         // Cloning is important, otherwise the chunk that will be reverted can be modified which results in an invalid state.
         var chunk = _chunk.Clone();
@@ -35,7 +35,7 @@ public class InsertNewChunkChange : IBufferChange
         return this;
     }
 
-    public IBufferChange Revert(BaseBuffer buffer, LinkedListNode<IChunk>? contextNode)
+    public IBufferChange Revert(ByteBuffer buffer, LinkedListNode<IChunk>? contextNode)
     {
         _ = contextNode ?? throw new ArgumentNullException(nameof(contextNode));
 

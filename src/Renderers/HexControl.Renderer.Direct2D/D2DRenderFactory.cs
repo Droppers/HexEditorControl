@@ -1,7 +1,6 @@
 ﻿using HexControl.Framework;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Host;
-using HexControl.Framework.Host.Typeface;
 using SharpDX.Direct2D1;
 using SharpDX.Mathematics.Interop;
 

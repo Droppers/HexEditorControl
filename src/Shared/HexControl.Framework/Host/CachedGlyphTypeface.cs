@@ -1,6 +1,6 @@
 ﻿using HexControl.Framework.Drawing.Text;
 
-namespace HexControl.Framework.Host.Typeface;
+namespace HexControl.Framework.Host;
 
 internal abstract class CachedGlyphTypeface<TTypeface> : IGlyphTypeface
 {

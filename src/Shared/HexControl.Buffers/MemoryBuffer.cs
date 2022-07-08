@@ -1,10 +1,11 @@
 ﻿using HexControl.Buffers.Chunks;
+using HexControl.Buffers.Find;
 using JetBrains.Annotations;
 
 namespace HexControl.Buffers;
 
 [PublicAPI]
-public class MemoryBuffer : BaseBuffer
+public class MemoryBuffer : ByteBuffer
 {
     public MemoryBuffer(byte[] bytes, bool readOnly = false)
     {
@@ -28,6 +29,6 @@ public class MemoryBuffer : BaseBuffer
         return true;
     }
 
-    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
-        CancellationToken cancellationToken) => strategy.SearchInBuffer(Bytes, offset, length, options.Backward);
+    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
+        CancellationToken cancellationToken) => strategy.FindInBuffer(Bytes, offset, length, backward, cancellationToken);
 }

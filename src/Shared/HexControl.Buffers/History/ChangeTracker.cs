@@ -7,12 +7,12 @@ namespace HexControl.Buffers.History;
 
 internal class ChangeTracker
 {
-    private readonly BaseBuffer _buffer;
+    private readonly ByteBuffer _buffer;
     private readonly Stack<ChangeCollection> _redoStack;
     private readonly Stack<ChangeCollection> _undoStack;
 
 
-    public ChangeTracker(BaseBuffer buffer)
+    public ChangeTracker(ByteBuffer buffer)
     {
         _buffer = buffer;
         _undoStack = new Stack<ChangeCollection>();
@@ -20,6 +20,7 @@ internal class ChangeTracker
     }
 
     public IReadOnlyCollection<ChangeCollection> UndoStack => _undoStack;
+
     public IReadOnlyCollection<ChangeCollection> RedoStack => _redoStack;
 
     public bool CanUndo => _undoStack.Count > 0;

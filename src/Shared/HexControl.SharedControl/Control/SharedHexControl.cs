@@ -8,7 +8,7 @@ using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host.Controls;
 using HexControl.Framework.Host.Events;
-using HexControl.Framework.Host.Typeface;
+using HexControl.Framework.Host;
 using HexControl.Framework.Observable;
 using HexControl.Framework.Visual;
 using HexControl.SharedControl.Documents;

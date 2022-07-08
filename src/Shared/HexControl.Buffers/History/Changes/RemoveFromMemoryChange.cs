@@ -16,7 +16,7 @@ internal class RemoveFromMemoryChange : IChunkChange<MemoryChunk>
     }
 
     public IChunkChange<MemoryChunk> Apply(
-        BaseBuffer buffer,
+        ByteBuffer buffer,
         LinkedListNode<IChunk> contextNode,
         MemoryChunk chunk)
     {
@@ -50,7 +50,7 @@ internal class RemoveFromMemoryChange : IChunkChange<MemoryChunk>
     }
 
     public IChunkChange<MemoryChunk> Revert(
-        BaseBuffer buffer,
+        ByteBuffer buffer,
         LinkedListNode<IChunk> contextNode,
         MemoryChunk chunk)
     {

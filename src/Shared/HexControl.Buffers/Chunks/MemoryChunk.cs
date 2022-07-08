@@ -2,7 +2,7 @@
 
 internal class MemoryChunk : MemoryChunkBase
 {
-    public MemoryChunk(BaseBuffer buffer, byte[] bytes) : base(buffer, bytes) { }
+    public MemoryChunk(ByteBuffer buffer, byte[] bytes) : base(buffer, bytes) { }
 
     public override IChunk Clone()
     {

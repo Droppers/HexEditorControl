@@ -1,4 +1,5 @@
 ﻿using HexControl.Buffers.Chunks;
+using HexControl.Buffers.Helpers;
 
 namespace HexControl.Buffers.History.Changes;
 
@@ -15,7 +16,7 @@ internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
 
     public RevertData Data { get; private set; } = null!;
 
-    public IChunkChange<MemoryChunk> Apply(BaseBuffer buffer, LinkedListNode<IChunk> contextNode, MemoryChunk chunk)
+    public IChunkChange<MemoryChunk> Apply(ByteBuffer buffer, LinkedListNode<IChunk> contextNode, MemoryChunk chunk)
     {
         var growStart = _writeOffset < 0 ? Math.Abs(_writeOffset) : 0;
         var growEnd = Math.Max(0, _writeOffset + _writeBuffer.Length - chunk.Length);
@@ -60,7 +61,7 @@ internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
         return this;
     }
 
-    public IChunkChange<MemoryChunk> Revert(BaseBuffer buffer, LinkedListNode<IChunk> contextNode, MemoryChunk chunk)
+    public IChunkChange<MemoryChunk> Revert(ByteBuffer buffer, LinkedListNode<IChunk> contextNode, MemoryChunk chunk)
     {
         if (Data == null)
         {

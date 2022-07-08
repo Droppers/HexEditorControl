@@ -2,7 +2,7 @@
 
 namespace HexControl.Buffers.Tests;
 
-public partial class BaseBufferTests
+public partial class ByteBufferTests
 {
     [Fact]
     public void Insert_InVirtualChunk()

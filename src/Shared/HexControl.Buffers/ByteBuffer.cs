@@ -9,15 +9,86 @@ using JetBrains.Annotations;
 
 namespace HexControl.Buffers;
 
+public static class SemaphoreSlimExtensions
+{
+    public static async Task<TReturn> RunAsync<TReturn>(this SemaphoreSlim semaphore, Func<Task<TReturn>> body)
+    {
+        await semaphore.WaitAsync();
+        try
+        {
+            return await body();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    public static async Task<TResult> RunAsync<TResult>(this SemaphoreSlim semaphore, Func<TResult> body)
+    {
+        await semaphore.WaitAsync();
+        try
+        {
+            return body();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    public static async Task RunAsync(this SemaphoreSlim semaphore, Action body)
+    {
+        await semaphore.WaitAsync();
+        try
+        {
+            body();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    public static TReturn Run<TReturn>(this SemaphoreSlim semaphore, Func<TReturn> body)
+    {
+        semaphore.Wait();
+        try
+        {
+            return body();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    public static void Run(this SemaphoreSlim semaphore, Action body)
+    {
+        semaphore.Wait();
+        try
+        {
+            body();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+}
+
 [PublicAPI]
 public abstract class ByteBuffer
 {
     private readonly ChangeTracker _changes;
+    private readonly SemaphoreSlim _lock;
 
-    protected ByteBuffer()
+    protected ByteBuffer(ChangeTracking changeTracking)
     {
+        ChangeTracking = changeTracking;
         Chunks = new LinkedList<IChunk>();
         _changes = new ChangeTracker(this);
+        _lock = new SemaphoreSlim(1, 1);
     }
 
     internal LinkedList<IChunk> Chunks { get; }
@@ -32,17 +103,14 @@ public abstract class ByteBuffer
 
     public long OriginalLength { get; private set; } = -1;
 
+    public ChangeTracking ChangeTracking { get; }
+
     public bool CanUndo => _changes.CanUndo;
     public bool CanRedo => _changes.CanRedo;
 
     public event EventHandler<LengthChangedEventArgs>? LengthChanged;
     public event EventHandler<ModifiedEventArgs>? Modified;
     public event EventHandler<EventArgs>? Saved;
-
-    public void Write(long writeOffset, byte value)
-    {
-        Write(writeOffset, new[] { value });
-    }
 
     public Task<long> ReadAsync(
         long offset,
@@ -52,6 +120,15 @@ public abstract class ByteBuffer
         ReadAsync(buffer, offset, buffer.LongLength, modifications, cancellationToken);
 
     public async Task<long> ReadAsync(byte[] buffer,
+        long offset,
+        long count,
+        List<ModifiedRange>? modifications = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await _lock.RunAsync(async () => await InternalReadAsync(buffer, offset, count, modifications, cancellationToken));
+    }
+
+    private async Task<long> InternalReadAsync(byte[] buffer,
         long offset,
         long count,
         List<ModifiedRange>? modifications = null,
@@ -118,8 +195,28 @@ public abstract class ByteBuffer
         return buffer;
     }
 
-    // TODO: fill gaps with zeros, e.g. writing at startOffset 300 when document is completely empty, or writing past the maxLength.
+    public async Task WriteAsync(long writeOffset, byte value)
+    {
+        await WriteAsync(writeOffset, new[] { value });
+    }
+
+    public async Task WriteAsync(long writeOffset, byte[] writeBytes)
+    {
+        await _lock.RunAsync(() => InternalWrite(writeOffset, writeBytes));
+    }
+
+    public void Write(long writeOffset, byte value)
+    {
+        Write(writeOffset, new[] { value });
+    }
+
     public void Write(long writeOffset, byte[] writeBytes)
+    {
+        _lock.Run(() => InternalWrite(writeOffset, writeBytes));
+    }
+
+    // TODO: fill gaps with zeros, e.g. writing at startOffset 300 when document is completely empty, or writing past the maxLength.
+    private void InternalWrite(long writeOffset, byte[] writeBytes)
     {
         GuardAgainstReadOnly();
 
@@ -170,7 +267,29 @@ public abstract class ByteBuffer
         PushChanges(changes, oldLength);
     }
 
+    // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
+    public async Task InsertAsync(long insertOffset, byte insertByte)
+    {
+        await InsertAsync(insertOffset, new[] { insertByte });
+    }
+
+    public async Task InsertAsync(long insertOffset, byte[] insertBytes)
+    {
+        await _lock.RunAsync(() => InternalInsert(insertOffset, insertBytes));
+    }
+
+    // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
+    public void Insert(long insertOffset, byte insertByte)
+    {
+        Insert(insertOffset, new[] { insertByte });
+    }
+
     public void Insert(long insertOffset, byte[] insertBytes)
+    {
+        _lock.Run(() => InternalInsert(insertOffset, insertBytes));
+    }
+
+    private void InternalInsert(long insertOffset, byte[] insertBytes)
     {
         GuardAgainstReadOnly();
 
@@ -211,7 +330,17 @@ public abstract class ByteBuffer
         PushChanges(changes, oldLength);
     }
 
+    public async Task DeleteAsync(long deleteOffset, long deleteLength)
+    {
+        await _lock.RunAsync(() => InternalDelete(deleteOffset, deleteLength));
+    }
+
     public void Delete(long deleteOffset, long deleteLength)
+    {
+        _lock.Run(() => InternalDelete(deleteOffset, deleteLength));
+    }
+
+    private void InternalDelete(long deleteOffset, long deleteLength)
     {
         GuardAgainstReadOnly();
 
@@ -252,15 +381,27 @@ public abstract class ByteBuffer
         PushChanges(changes, oldLength);
     }
 
+    public async Task UndoAsync()
+    {
+        var modification = await _lock.RunAsync(() => _changes.Undo());
+        OnModified(modification, ModificationSource.Undo);
+    }
+
+    public async Task RedoAsync()
+    {
+        var modification = await _lock.RunAsync(() => _changes.Redo());
+        OnModified(modification, ModificationSource.Redo);
+    }
+
     public void Undo()
     {
-        var modification = _changes.Undo();
+        var modification = _lock.Run(() => _changes.Undo());
         OnModified(modification, ModificationSource.Undo);
     }
 
     public void Redo()
     {
-        var modification = _changes.Redo();
+        var modification = _lock.Run(() => _changes.Redo());
         OnModified(modification, ModificationSource.Redo);
     }
 
@@ -270,6 +411,14 @@ public abstract class ByteBuffer
         Read(buffer, offset, buffer.LongLength, modifications);
 
     public long Read(byte[] buffer,
+        long offset,
+        long count,
+        List<ModifiedRange>? modifications = null)
+    {
+        return _lock.Run(() => InternalRead(buffer, offset, count, modifications));
+    }
+
+    private long InternalRead(byte[] buffer,
         long offset,
         long count,
         List<ModifiedRange>? modifications = null)
@@ -324,12 +473,6 @@ public abstract class ByteBuffer
         }
 
         return actualRead;
-    }
-
-    // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
-    public void Insert(long insertOffset, byte insertByte)
-    {
-        Insert(insertOffset, new[] { insertByte });
     }
 
     public long Find(long startOffset, bool backward, byte[] pattern,
@@ -718,7 +861,7 @@ public abstract class ByteBuffer
     {
         if (IsReadOnly)
         {
-            throw new InvalidOperationException("Document is readonly. Modifications are not permitted.");
+            throw new InvalidOperationException("Modifications are not permitted, buffer is opened in readonly mode.");
         }
     }
 }

@@ -7,7 +7,7 @@ namespace HexControl.Buffers;
 [PublicAPI]
 public class MemoryBuffer : ByteBuffer
 {
-    public MemoryBuffer(byte[] bytes, bool readOnly = false)
+    public MemoryBuffer(byte[] bytes, bool readOnly = false, ChangeTracking changeTracking = ChangeTracking.UndoRedo) : base(changeTracking)
     {
         IsReadOnly = readOnly;
         Bytes = bytes;

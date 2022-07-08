@@ -23,13 +23,22 @@ internal class ChangeTracker
 
     public IReadOnlyCollection<ChangeCollection> RedoStack => _redoStack;
 
-    public bool CanUndo => _undoStack.Count > 0;
-    public bool CanRedo => _redoStack.Count > 0;
+    public bool CanUndo => _undoStack.Count > 0 && _buffer.ChangeTracking is not ChangeTracking.None;
+    public bool CanRedo => _redoStack.Count > 0 && _buffer.ChangeTracking is ChangeTracking.UndoRedo;
 
     internal void Push(ChangeCollection changes)
     {
+        if (_buffer.ChangeTracking is ChangeTracking.None)
+        {
+            return;
+        }
+
         _undoStack.Push(changes);
-        _redoStack.Clear();
+
+        if (_buffer.ChangeTracking is ChangeTracking.UndoRedo)
+        {
+            _redoStack.Clear();
+        }
     }
 
     public BufferModification Undo()
@@ -61,7 +70,11 @@ internal class ChangeTracker
 
         var pop = _undoStack.Pop();
         ApplyChanges(pop, true);
-        _redoStack.Push(pop);
+
+        if (_buffer.ChangeTracking is ChangeTracking.UndoRedo)
+        {
+            _redoStack.Push(pop);
+        }
 
         return pop.Modification;
     }

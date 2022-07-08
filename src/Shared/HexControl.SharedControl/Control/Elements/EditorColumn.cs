@@ -1325,7 +1325,7 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private void TextBoxOnKeyDown(object? sender, HostKeyEventArgs e)
+    private async void TextBoxOnKeyDown(object? sender, HostKeyEventArgs e)
     {
         if (Document is null)
         {
@@ -1350,13 +1350,13 @@ internal class EditorColumn : VisualElement
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z && !IsReadOnly)
+        else if (ctrlPressed && e.Key is HostKey.Z && !IsReadOnly && Document.Buffer.CanUndo)
         {
-            Document.Buffer.Undo();
+            await Document.Buffer.UndoAsync();
         }
-        else if (ctrlPressed && e.Key is HostKey.Y && !IsReadOnly)
+        else if (ctrlPressed && e.Key is HostKey.Y && !IsReadOnly && Document.Buffer.CanRedo)
         {
-            Document.Buffer.Redo();
+            await Document.Buffer.RedoAsync();
         }
         else if (e.Key is HostKey.Shift)
         {
@@ -1368,7 +1368,7 @@ internal class EditorColumn : VisualElement
         }
         else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete && !IsReadOnly)
         {
-            Document.Buffer.Delete(selection.Start, selection.End - selection.Start);
+            await Document.Buffer.DeleteAsync(selection.Start, selection.End - selection.Start);
             SetCaretOffset(selection.Start);
             Deselect();
         }
@@ -1377,11 +1377,11 @@ internal class EditorColumn : VisualElement
             switch (e.Key)
             {
                 case HostKey.Back:
-                    Document.Buffer.Delete(caret.Offset - 1, 1);
+                    await Document.Buffer.DeleteAsync(caret.Offset - 1, 1);
                     SetCaretOffset(caret.Offset - 1);
                     break;
                 case HostKey.Delete:
-                    Document.Buffer.Delete(caret.Offset, 1);
+                    await Document.Buffer.DeleteAsync(caret.Offset, 1);
                     break;
             }
         }
@@ -1449,11 +1449,11 @@ internal class EditorColumn : VisualElement
 
         if (appendToDocument)
         {
-            Document.Buffer.Insert(caret.Offset, newByte);
+            await Document.Buffer.InsertAsync(caret.Offset, newByte);
         }
         else
         {
-            Document.Buffer.Write(caret.Offset, newByte);
+            await Document.Buffer.WriteAsync(caret.Offset, newByte);
         }
 
         HandleArrowKeys(Document, HostKey.Right);

@@ -9,58 +9,6 @@ using JetBrains.Annotations;
 namespace HexControl.SharedControl.Documents;
 
 [PublicAPI]
-public enum NewCaretLocation
-{
-    Current,
-    SelectionEnd,
-    SelectionStart
-}
-
-[PublicAPI]
-public class Caret : IEquatable<Caret>
-{
-    public Caret(long offset, int nibble, ColumnSide column)
-    {
-        Offset = offset;
-        Nibble = nibble;
-        Column = column;
-    }
-
-    public long Offset { get; }
-    public int Nibble { get; }
-    public ColumnSide Column { get; }
-
-    public bool Equals(Caret? other) => other is not null && other.Offset == Offset && other.Nibble == Nibble &&
-                                        other.Column == Column;
-
-    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Caret other && Equals(other);
-
-    public override int GetHashCode() => HashCode.Combine(Offset, Nibble, Column);
-}
-
-[PublicAPI]
-public class CaretChangedEventArgs : EventArgs
-{
-    internal CaretChangedEventArgs(Caret oldCaret, Caret newCaret, bool scrollToCaret)
-    {
-        OldCaret = oldCaret;
-        NewCaret = newCaret;
-        ScrollToCaret = scrollToCaret;
-    }
-
-    public Caret OldCaret { get; }
-    public Caret NewCaret { get; }
-    public bool ScrollToCaret { get; }
-}
-
-internal record MarkerState(IDocumentMarker Marker, long Offset, long Length);
-
-internal record DocumentState(
-    IReadOnlyList<MarkerState> MarkerStates,
-    Selection? SelectionState = null,
-    Caret? CaretState = null);
-
-[PublicAPI]
 public class Document
 {
     private readonly List<IDocumentMarker> _markers;
@@ -200,6 +148,11 @@ public class Document
             }
         }
 
+        if (state.SelectionState is not null)
+        {
+            Selection = state.SelectionState;
+        }
+
         if (state.CaretState is not null)
         {
             Caret = state.CaretState;
@@ -226,12 +179,13 @@ public class Document
     }
 
     public static Document FromFile(string fileName, FileOpenMode openMode = FileOpenMode.ReadWrite,
-        DocumentConfiguration? configuration = null) =>
-        new(new FileBuffer(fileName, openMode), configuration);
+        ChangeTracking changeTracking = ChangeTracking.UndoRedo, DocumentConfiguration? configuration = null) =>
+        new(new FileBuffer(fileName, openMode, changeTracking), configuration);
 
     public static Document FromBytes(byte[] bytes, bool readOnly = false,
+        ChangeTracking changeTracking = ChangeTracking.UndoRedo,
         DocumentConfiguration? configuration = null) =>
-        new(new MemoryBuffer(bytes, readOnly), configuration);
+        new(new MemoryBuffer(bytes, readOnly, changeTracking), configuration);
 
     public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {
@@ -398,43 +352,10 @@ public class Document
     {
         var markerStates = new List<MarkerState>();
 
-        var deleteEnd = deleteOffset + deleteLength;
         for (var i = 0; i < _markers.Count; i++)
         {
             var marker = _markers[i];
-            var markerOffset = marker.Offset;
-            var markerEnd = marker.Offset + marker.Length;
-
-            var newOffset = marker.Offset;
-            var newLength = marker.Length;
-
-            if (deleteOffset < markerOffset && deleteEnd > markerEnd)
-            {
-                newOffset -= markerOffset - deleteOffset;
-                newLength = 0;
-            }
-
-            if (deleteOffset < markerOffset && deleteEnd < markerOffset)
-            {
-                newOffset -= deleteLength;
-            }
-
-            if (deleteEnd > markerOffset && deleteEnd <= markerEnd && deleteOffset <= markerOffset)
-            {
-                newOffset = deleteOffset;
-                newLength -= deleteLength - (markerOffset - deleteOffset);
-            }
-
-            if (deleteEnd > markerEnd && deleteOffset >= markerOffset && deleteOffset < markerEnd)
-            {
-                newLength -= newLength - (deleteOffset - markerOffset);
-            }
-
-            if (deleteOffset > markerOffset && deleteEnd < markerEnd)
-            {
-                newLength -= deleteLength;
-            }
-
+            var (newOffset, newLength) = DeleteFromRange(marker.Offset, marker.Length, deleteOffset, deleteLength);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
                 markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
@@ -450,7 +371,21 @@ public class Document
 
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
         Caret = new Caret(Caret.Offset, 0, Caret.Column);
-        return new DocumentState(markerStates, CaretState: caretState);
+
+        Selection? selectionState = null;
+        if (Selection is not null)
+        {
+            var (newOffset, newLength) =
+                DeleteFromRange(Selection.Start, Selection.Length, deleteOffset, deleteLength);
+            selectionState = Selection;
+            Selection = Selection with
+            {
+                Start = newOffset,
+                Length = newLength
+            };
+        }
+
+        return new DocumentState(markerStates, selectionState, caretState);
     }
 
     private DocumentState ApplyInsertModification(long insertOffset, byte[] insertBytes)
@@ -460,20 +395,8 @@ public class Document
         for (var i = 0; i < _markers.Count; i++)
         {
             var marker = _markers[i];
-            var markerOffset = marker.Offset;
-            var markerEnd = marker.Offset + marker.Length;
-            var newOffset = marker.Offset;
-            var newLength = marker.Length;
 
-            if (insertOffset < markerOffset)
-            {
-                newOffset += insertBytes.Length;
-            }
-            else if (insertOffset >= markerOffset && insertOffset < markerEnd)
-            {
-                newLength += insertBytes.Length;
-            }
-
+            var (newOffset, newLength) = InsertIntoRange(marker.Offset, marker.Length, insertOffset, insertBytes.Length);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
                 markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
@@ -490,12 +413,80 @@ public class Document
             Caret = new Caret(insertOffset + insertBytes.Length, 0, Caret.Column);
         }
 
-        return new DocumentState(markerStates, CaretState: caretState);
+        Selection? selectionState = null;
+        if (Selection is not null)
+        {
+            var (newOffset, newLength) =
+                InsertIntoRange(Selection.Start, Selection.Length, insertOffset, insertBytes.Length);
+            selectionState = Selection;
+            Selection = Selection with
+            {
+                Start = newOffset,
+                Length = newLength
+            };
+        }
+
+        return new DocumentState(markerStates, selectionState, caretState);
     }
 
     private DocumentState ApplyWriteModification(long writeOffset, byte[] writeBytes)
     {
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
         return new DocumentState(Array.Empty<MarkerState>(), CaretState: caretState);
+    }
+
+    private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset, long deleteLength)
+    {
+        var end = offset + length;
+        var deleteEnd = deleteOffset + deleteLength;
+        var newOffset = offset;
+        var newLength = length;
+
+        if (deleteOffset < offset && deleteEnd > end)
+        {
+            newOffset -= offset - deleteOffset;
+            newLength = 0;
+        }
+
+        if (deleteOffset < offset && deleteEnd < offset)
+        {
+            newOffset -= deleteLength;
+        }
+
+        if (deleteEnd > offset && deleteEnd <= end && deleteOffset <= offset)
+        {
+            newOffset = deleteOffset;
+            newLength -= deleteLength - (offset - deleteOffset);
+        }
+
+        if (deleteEnd > end && deleteOffset >= offset && deleteOffset < end)
+        {
+            newLength -= newLength - (deleteOffset - offset);
+        }
+
+        if (deleteOffset > offset && deleteEnd < end)
+        {
+            newLength -= deleteLength;
+        }
+
+        return (newOffset, newLength);
+    }
+
+    private static (long Offset, long Length) InsertIntoRange(long offset, long length, long insertOffset, long insertLength)
+    {
+        var markerEnd = offset + length;
+        var newOffset = offset;
+        var newLength = length;
+
+        if (insertOffset < offset)
+        {
+            newOffset += insertLength;
+        }
+        else if (insertOffset >= offset && insertOffset < markerEnd)
+        {
+            newLength += insertLength;
+        }
+
+        return (newOffset, newLength);
     }
 }

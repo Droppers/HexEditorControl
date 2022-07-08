@@ -9,7 +9,7 @@ using DWFactory = SharpDX.DirectWrite.Factory;
 
 namespace HexControl.Renderer.Direct2D;
 
-internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
+internal class D2DRenderContext : RenderContext<Brush, D2DPen>
 {
     private readonly RenderTarget _context;
 
@@ -110,15 +110,19 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         }
     }
 
-    protected override void Clear(SolidColorBrush? brush)
+    protected override void Clear(Brush? brush)
     {
-        if (brush is not null)
+        var color = brush switch
         {
-            _context.Clear(new RawColor4(1, 1, 1, 0));
-        }
+            SolidColorBrush colorBrush => colorBrush.Color,
+            _ => new RawColor4(1, 1, 1, 0)
+        };
+
+        _context.Clear(color);
+
     }
 
-    protected override void DrawRectangle(SolidColorBrush? brush, D2DPen? pen, SharedRectangle rectangle)
+    protected override void DrawRectangle(Brush? brush, D2DPen? pen, SharedRectangle rectangle)
     {
         var rect = Convert(rectangle);
         if (brush is not null)
@@ -170,7 +174,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
 
     private RawVector2 Convert(SharedPoint position) => new((float)(position.X * Dpi), (float)(position.Y * Dpi));
 
-    protected override void DrawPolygon(SolidColorBrush? brush, D2DPen? pen,
+    protected override void DrawPolygon(Brush? brush, D2DPen? pen,
         IReadOnlyList<SharedPoint> points)
     {
         using var geometry = new PathGeometry(_d2dFactory);
@@ -197,7 +201,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         }
     }
 
-    protected override void DrawGlyphRun(SolidColorBrush? brush, SharedGlyphRun sharedGlyphRun)
+    protected override void DrawGlyphRun(Brush? brush, SharedGlyphRun sharedGlyphRun)
     {
         var advances = new float[sharedGlyphRun.AdvanceWidths.Count];
         var indices = new short[sharedGlyphRun.GlyphIndices.Count];
@@ -230,7 +234,7 @@ internal class D2DRenderContext : RenderContext<SolidColorBrush, D2DPen>
         _context.DrawGlyphRun(Convert(sharedGlyphRun.Position), glyphRun, brush, MeasuringMode.GdiClassic);
     }
 
-    protected override void DrawTextLayout(SolidColorBrush? brush, SharedTextLayout sharedLayout)
+    protected override void DrawTextLayout(Brush? brush, SharedTextLayout sharedLayout)
     {
         var fontFamily = ((D2DGlyphTypeface)sharedLayout.Typeface).FontFamily;
         var format = _textFormats[(fontFamily, Convert(sharedLayout.Size))];

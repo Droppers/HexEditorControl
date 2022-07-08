@@ -21,7 +21,7 @@ public class FileBuffer : ByteBuffer, IDisposable, IAsyncDisposable
     private MemoryMappedFile _memoryMappedFile = null!;
     private MemoryMappedViewAccessor _viewAccessor = null!;
 
-    public FileBuffer(string fileName, FileOpenMode openMode)
+    public FileBuffer(string fileName, FileOpenMode openMode, ChangeTracking changeTracking = ChangeTracking.UndoRedo) : base(changeTracking)
     {
         FileName = fileName ?? throw new ArgumentNullException(fileName);
         OpenMode = openMode;

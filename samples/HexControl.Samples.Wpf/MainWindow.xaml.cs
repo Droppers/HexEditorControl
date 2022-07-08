@@ -11,7 +11,7 @@ public partial class MainWindow
         InitializeComponent();
         DataContext = this;
 
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
     }
 
     public Document Document { get; set; }
@@ -40,7 +40,7 @@ public partial class MainWindow
 
     private void Insert_OnClick(object sender, RoutedEventArgs e)
     {
-        Document.Buffer.Insert(Document.Caret.Offset, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+        Document.Buffer.Insert(24, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
     }
 
     private async void Save_OnClick(object sender, RoutedEventArgs e)

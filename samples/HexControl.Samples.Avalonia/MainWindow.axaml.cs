@@ -25,6 +25,6 @@ public class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
 
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadOnly);
+        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
     }
 }

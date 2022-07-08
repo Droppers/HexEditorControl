@@ -6,7 +6,7 @@ using SharpDX.Mathematics.Interop;
 
 namespace HexControl.Renderer.Direct2D;
 
-internal abstract class D2DRenderFactory : RenderFactory<SolidColorBrush, D2DPen>
+internal abstract class D2DRenderFactory : RenderFactory<Brush, D2DPen>
 {
     private readonly RenderTarget _renderTarget;
 

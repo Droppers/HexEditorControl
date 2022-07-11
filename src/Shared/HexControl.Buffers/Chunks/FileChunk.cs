@@ -1,5 +1,5 @@
 ﻿using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace HexControl.Buffers.Chunks;
 
@@ -8,38 +8,44 @@ internal class FileChunk : Chunk, IImmutableChunk
     private readonly MemoryMappedViewAccessor _accessor;
     private readonly FileStream _fileStream;
 
-    public FileChunk(ByteBuffer buffer, FileStream fileStream, MemoryMappedViewAccessor accessor) : base(buffer)
+    public long SourceOffset { get; set; }
+
+    public FileChunk(ByteBuffer byteBuffer, FileStream fileStream, MemoryMappedViewAccessor accessor) : base(byteBuffer)
     {
         _fileStream = fileStream;
         _accessor = accessor;
     }
 
     public override IChunk Clone() =>
-        new FileChunk(buffer, _fileStream, _accessor)
+        new FileChunk(byteBuffer, _fileStream, _accessor)
         {
             Length = Length,
             SourceOffset = SourceOffset
         };
 
-    protected override unsafe void InternalRead(byte[] readBuffer, long sourceReadOffset, long readLength)
+    protected override long InternalRead(Span<byte> buffer, long offset)
     {
-        var ptr = (byte*)0;
-        _accessor.SafeMemoryMappedViewHandle.AcquirePointer(ref ptr);
-        try
+        _fileStream.Seek(offset + SourceOffset, SeekOrigin.Begin);
+        var bytesRead = _fileStream.Read(buffer);
+
+        if (bytesRead < buffer.Length)
         {
-            Marshal.Copy(IntPtr.Add(new IntPtr(ptr), (int)sourceReadOffset), readBuffer, 0, (int)readLength);
+            throw new InvalidOperationException($"File chunk returned unexpected number of bytes '{bytesRead}'.");
         }
-        finally
-        {
-            _accessor.SafeMemoryMappedViewHandle.ReleasePointer();
-        }
+
+        return buffer.Length;
     }
 
-    protected override async Task InternalReadAsync(byte[] readBuffer, long sourceReadOffset, long readLength,
-        CancellationToken cancellationToken = default)
+    protected override async Task<long> InternalReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default)
     {
-        // TODO: Investigate
-        _fileStream.Seek(sourceReadOffset, SeekOrigin.Begin);
-        await _fileStream.ReadAsync(readBuffer.AsMemory(0, (int)readLength), cancellationToken);
+        _fileStream.Seek(offset + SourceOffset, SeekOrigin.Begin);
+        var bytesRead = await _fileStream.ReadAsync(buffer, cancellationToken);
+
+        if (bytesRead < buffer.Length)
+        {
+            throw new InvalidOperationException($"File chunk returned unexpected number of bytes '{bytesRead}'.");
+        }
+
+        return buffer.Length;
     }
 }

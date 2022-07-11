@@ -73,7 +73,7 @@ internal class EditorColumn : VisualElement
         _previousMarkers = new Dictionary<IDocumentMarker, MarkerRange>(50);
 
         Bytes = Array.Empty<byte>();
-        Modifications = new List<ModifiedRange>(25);
+        Modifications = Array.Empty<ModifiedRange>();
 
         Configuration = new DocumentConfiguration();
 
@@ -87,7 +87,7 @@ internal class EditorColumn : VisualElement
             var height = Height - _parent.HeaderHeight;
             var rows = height / _parent.RowHeight;
             var offset = (long)rows * Configuration.BytesPerRow;
-            offset = Offset + Math.Min(offset, Bytes.Length);
+            offset = Offset + Math.Min(offset, BytesLength);
             return (long)(Math.Ceiling(offset / (double)Configuration.BytesPerRow) * Configuration.BytesPerRow);
         }
     }
@@ -123,7 +123,8 @@ internal class EditorColumn : VisualElement
 
     public long Offset { get; set; }
     public byte[] Bytes { get; set; }
-    public List<ModifiedRange> Modifications { get; }
+    public long BytesLength { get; set; }
+    public IReadOnlyList<ModifiedRange> Modifications { get; set; }
 
     public int HorizontalOffset
     {
@@ -135,7 +136,7 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private bool IsReadOnly => Document?.Buffer.IsReadOnly == true;
+    private bool CanModify => Document?.Buffer.IsReadOnly == true || Document?.Buffer.Locked == true;
 
     public ITextBuilder? TextBuilder { get; set; }
 
@@ -365,9 +366,9 @@ internal class EditorColumn : VisualElement
 
     private void ResizeForegroundLookup()
     {
-        if (Bytes.Length * 2 > _markerForegroundLookup.Length)
+        if (BytesLength * 2 > _markerForegroundLookup.Length)
         {
-            _markerForegroundLookup = new ISharedBrush[Bytes.Length * 2];
+            _markerForegroundLookup = new ISharedBrush[BytesLength * 2];
         }
         else
         {
@@ -385,7 +386,7 @@ internal class EditorColumn : VisualElement
         {
             var modification = Modifications[i];
             var startOffset = Math.Max(0, modification.StartOffset - Offset);
-            var length = Math.Min(Bytes.Length - startOffset,
+            var length = Math.Min(BytesLength - startOffset,
                 modification.Length - (modification.StartOffset < Offset ? Offset - modification.StartOffset : 0));
             for (var j = 0; j < length; j++)
             {
@@ -417,7 +418,7 @@ internal class EditorColumn : VisualElement
         }
 
         if (Document.Selection is null || Document.Selection.End < Offset ||
-            Document.Selection.Start > Offset + Bytes.Length || Document.Selection.Length <= 0)
+            Document.Selection.Start > Offset + BytesLength || Document.Selection.Length <= 0)
         {
             return Document.Markers.Count;
         }
@@ -452,7 +453,7 @@ internal class EditorColumn : VisualElement
         }
 
         var startOffset = Math.Max(0, marker.Offset - Offset);
-        var length = Math.Min(Bytes.Length - startOffset,
+        var length = Math.Min(BytesLength - startOffset,
             marker.Length - (marker.Offset < Offset ? Offset - marker.Offset : 0));
         for (var j = 0; j < length; j++)
         {
@@ -484,7 +485,7 @@ internal class EditorColumn : VisualElement
         var fakeMarker = new Marker(0, 0);
         var startOffset = -1L;
         var startColor = IntegerColor.Zero;
-        for (var i = Offset; i < Offset + Bytes.Length; i++)
+        for (var i = Offset; i < Offset + BytesLength; i++)
         {
             var color = document.StaticMarkerProvider.Lookup(i);
 
@@ -520,7 +521,7 @@ internal class EditorColumn : VisualElement
     }
 
     private bool IsMarkerVisible(long offset, long length) =>
-        offset + length > Offset && offset < Offset + Bytes.Length;
+        offset + length > Offset && offset < Offset + BytesLength;
 
     private bool IsMarkerVisible(IDocumentMarker marker) => IsMarkerVisible(marker.Offset, marker.Length);
 
@@ -629,7 +630,7 @@ internal class EditorColumn : VisualElement
 
     private void DrawCarets(IRenderContext context, Document document)
     {
-        if (document.Caret.Offset < Offset || document.Caret.Offset > Offset + Bytes.Length)
+        if (document.Caret.Offset < Offset || document.Caret.Offset > Offset + BytesLength)
         {
             return;
         }
@@ -782,7 +783,7 @@ internal class EditorColumn : VisualElement
     private MarkerPosition CalculateMarkerPosition(long markerOffset, long markerLength, ColumnSide column)
     {
         var startOffset = Math.Max(0, markerOffset - Offset);
-        var length = Math.Min(Bytes.Length, markerLength - (markerOffset < Offset ? Offset - markerOffset : 0) - 1);
+        var length = Math.Min(BytesLength, markerLength - (markerOffset < Offset ? Offset - markerOffset : 0) - 1);
         var endOffset = startOffset + length;
         var startRow = startOffset / Configuration.BytesPerRow;
         var endRow = endOffset / Configuration.BytesPerRow;
@@ -996,7 +997,7 @@ internal class EditorColumn : VisualElement
         var typeface = builder.Typeface;
         var bytesPerRow = Configuration.BytesPerRow;
         // Round content length to full row lengths for padding of final row
-        var contentLength = (int)(Math.Ceiling(Bytes.Length / (float)bytesPerRow) * bytesPerRow);
+        var contentLength = (int)(Math.Ceiling(BytesLength / (float)bytesPerRow) * bytesPerRow);
         var maxBytesWritten = Configuration.ColumnsVisible is not VisibleColumns.HexText
             ? bytesPerRow
             : bytesPerRow * 2;
@@ -1066,7 +1067,7 @@ internal class EditorColumn : VisualElement
         int byteIndex, int columnIndex)
     {
         int writtenCharacters;
-        if (byteIndex > Bytes.Length - 1) // Pad excess bytes with whitespaces
+        if (byteIndex > BytesLength - 1) // Pad excess bytes with whitespaces
         {
             writtenCharacters = characterSet.Width;
             builder.Whitespace(characterSet.Width);
@@ -1147,8 +1148,8 @@ internal class EditorColumn : VisualElement
         var isFinalRow = Offset == Document?.Offset && Document?.Length % Configuration.BytesPerRow is 0;
 
         // TODO: will break at start and end of document
-        var _ = Bytes.Length / Configuration.BytesPerRow -
-                (Bytes.Length % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
+        var _ = BytesLength / Configuration.BytesPerRow -
+                (BytesLength % Configuration.BytesPerRow == 0 && !isFinalRow ? 1 : 0);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var clampedRow = byteRow; //Math.Max(0, Math.Min(maxRow, byteRow));
@@ -1244,7 +1245,7 @@ internal class EditorColumn : VisualElement
 
         var inLeftColumn = point.X < leftWidth;
         var pastHeader = point.Y > _parent.HeaderHeight;
-        var rowCount = Math.Ceiling(Bytes.Length / (float)Configuration.BytesPerRow);
+        var rowCount = Math.Ceiling(BytesLength / (float)Configuration.BytesPerRow);
         var beforeEnd = point.Y < rowCount * _parent.RowHeight + _parent.HeaderHeight;
 
         // Only left column is visible, don't check right column
@@ -1350,11 +1351,11 @@ internal class EditorColumn : VisualElement
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z && !IsReadOnly && Document.Buffer.CanUndo)
+        else if (ctrlPressed && e.Key is HostKey.Z && !CanModify && Document.Buffer.CanUndo)
         {
             await Document.Buffer.UndoAsync();
         }
-        else if (ctrlPressed && e.Key is HostKey.Y && !IsReadOnly && Document.Buffer.CanRedo)
+        else if (ctrlPressed && e.Key is HostKey.Y && !CanModify && Document.Buffer.CanRedo)
         {
             await Document.Buffer.RedoAsync();
         }
@@ -1366,13 +1367,13 @@ internal class EditorColumn : VisualElement
                 caret.Offset;
             _keyboardSelectMode = true;
         }
-        else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete && !IsReadOnly)
+        else if (selection is not null && e.Key is HostKey.Back or HostKey.Delete && !CanModify)
         {
             await Document.Buffer.DeleteAsync(selection.Start, selection.End - selection.Start);
             SetCaretOffset(selection.Start);
             Deselect();
         }
-        else if (caret.Nibble is 0 && !IsReadOnly)
+        else if (caret.Nibble is 0 && !CanModify)
         {
             switch (e.Key)
             {
@@ -1417,7 +1418,7 @@ internal class EditorColumn : VisualElement
 
     private async Task HandleWriteKey(char @char)
     {
-        if (Document is null || IsReadOnly)
+        if (Document is null || CanModify)
         {
             return;
         }
@@ -1467,13 +1468,13 @@ internal class EditorColumn : VisualElement
         }
 
         var relativeOffset = caret.Offset - Offset;
-        if (relativeOffset < Bytes.Length)
+        if (relativeOffset < BytesLength)
         {
             return Bytes[relativeOffset];
         }
 
         // Allow for writing outside of current visible buffer
-        var readLength = await Document.Buffer.ReadAsync(caret.Offset, _readBuffer);
+        var readLength = await Document.Buffer.ReadAsync(_readBuffer, caret.Offset);
         if (readLength <= 0)
         {
             return null;

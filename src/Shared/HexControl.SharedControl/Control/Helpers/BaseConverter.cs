@@ -19,7 +19,7 @@ internal static class BaseConverter
         while (number != 0)
         {
             var part = number % @base;
-            var @char = part >= 10 ? NumberToHexChar(part, capitalization) : (char)(part + numericOffset);
+            var @char = part >= 10 ? NumberToHexChar(part - 10, capitalization) : (char)(part + numericOffset);
 
             characters[i] = @char;
             number /= @base;

@@ -52,10 +52,10 @@ public class ByteBufferStream : Stream
     {
         if (offset is not 0)
         {
-            throw new NotSupportedException("Reading data to a specific offset in buffer not yet supported.");
+            throw new NotSupportedException("Reading data to a specific offset in byteBuffer not yet supported.");
         }
 
-        var bytesRead = (int)_buffer.Read(buffer, offset, count);
+        var bytesRead = (int)_buffer.Read(buffer.AsSpan(0, count), offset);
         _position += bytesRead;
         return bytesRead;
     }
@@ -64,10 +64,10 @@ public class ByteBufferStream : Stream
     {
         if (offset is not 0)
         {
-            throw new NotSupportedException("Reading data to a specific offset in buffer not yet supported.");
+            throw new NotSupportedException("Reading data to a specific offset in byteBuffer not yet supported.");
         }
 
-        var bytesRead = (int)await _buffer.ReadAsync(buffer, _position, count, cancellationToken: cancellationToken);
+        var bytesRead = (int)await _buffer.ReadAsync(buffer.AsMemory(count), _position, cancellationToken: cancellationToken);
         _position += bytesRead;
         return bytesRead;
     }

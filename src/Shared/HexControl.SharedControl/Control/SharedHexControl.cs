@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using HexControl.Buffers;
 using HexControl.Buffers.Events;
 using HexControl.Buffers.Modifications;
 using HexControl.SharedControl.Control.Elements;
@@ -47,19 +48,16 @@ internal class SharedHexControl : VisualElement
     private readonly EditorColumn _editorColumn;
     private readonly OffsetColumn _offsetColumn;
     private long _lastRefreshLength;
+
+    private byte[] _displayBuffer = Array.Empty<byte>();
     private byte[] _readBuffer = Array.Empty<byte>();
+    private List<ModifiedRange> _displayModifications = new(25);
+    private List<ModifiedRange> _readModifications = new(25);
+
     private IRenderContext? _renderContext;
     private bool _requireTypefaceUpdate = true;
     private bool _scrollToCaret;
-
-    //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
-    //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
-    //private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
-    //private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(0, 0, 0));
-    //private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
-    //private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
-    //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
-
+    
     public SharedHexControl() : base(true)
     {
         // Register events
@@ -586,22 +584,26 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        // Required buffer size has increased
-        if (BytesToRead > _readBuffer.Length)
+        // Minimum required buffer size has increased
+        if (BytesToRead > _readBuffer.Length || BytesToRead > _displayBuffer.Length)
         {
-            _readBuffer = new byte[BytesToRead];
+            _readBuffer = new byte[BytesToRead * 2];
+            _displayBuffer = new byte[BytesToRead * 2];
         }
 
-        _editorColumn.Modifications.Clear();
+        _readModifications.Clear();
         var actualRead =
-            await Document.Buffer.ReadAsync(Document.Offset, _readBuffer, _editorColumn.Modifications);
-        var displayBuffer = actualRead < BytesToRead
-            ? CopyIntoBufferWithLength(_readBuffer, (int)actualRead)
-            : _readBuffer;
+            await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
+
+        // Swap read and display buffers
+        (_readBuffer, _displayBuffer) = (_displayBuffer, _readBuffer);
+        (_readModifications, _displayModifications) = (_displayModifications, _readModifications);
 
         _offsetColumn.Offset = Document.Offset;
-        _editorColumn.Bytes = displayBuffer;
         _editorColumn.Offset = Document.Offset;
+        _editorColumn.BytesLength = actualRead;
+        _editorColumn.Bytes = _displayBuffer;
+        _editorColumn.Modifications = _displayModifications;
 
         queue.StopIOTask();
 
@@ -618,19 +620,7 @@ internal class SharedHexControl : VisualElement
             CharacterWidth);
         Invalidate();
     }
-
-    private static byte[] CopyIntoBufferWithLength(byte[] sourceBuffer, int targetLength)
-    {
-        if (targetLength == 0)
-        {
-            return Array.Empty<byte>();
-        }
-
-        var targetBuffer = new byte[targetLength];
-        Buffer.BlockCopy(sourceBuffer, 0, targetBuffer, 0, targetBuffer.Length);
-        return targetBuffer;
-    }
-
+    
     // Scrolling
     public void VerticalSmallScroll(bool increment)
     {

@@ -83,7 +83,7 @@ internal class D2DRenderContext : RenderContext<Brush, D2DPen>
         _context.Transform = matrix;
     }
 
-    public float Convert(double number) => (float)number * Dpi;
+    private float Convert(double number) => (float)number * Dpi;
 
     public override void PushClip(SharedRectangle rectangle)
     {
@@ -174,13 +174,12 @@ internal class D2DRenderContext : RenderContext<Brush, D2DPen>
 
     private RawVector2 Convert(SharedPoint position) => new((float)(position.X * Dpi), (float)(position.Y * Dpi));
 
-    protected override void DrawPolygon(Brush? brush, D2DPen? pen,
-        IReadOnlyList<SharedPoint> points)
+    protected override void DrawPolygon(Brush? brush, D2DPen? pen, ReadOnlySpan<SharedPoint> points)
     {
         using var geometry = new PathGeometry(_d2dFactory);
         using var sink = geometry.Open();
         sink.BeginFigure(Convert(points[0]), FigureBegin.Filled);
-        for (var i = 1; i < points.Count; i++)
+        for (var i = 1; i < points.Length; i++)
         {
             var point = points[i];
             sink.AddLine(Convert(point));

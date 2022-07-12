@@ -27,10 +27,11 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
 
     public RenderFactory Factory => _factory;
 
-    public bool Synchronous { get; set; }
+    public virtual bool Synchronous => true;
 
     public virtual bool RequiresClear => false;
     public virtual bool PreferTextLayout => false;
+    public virtual bool DirtyRect => false;
 
     public void CollectGarbage()
     {
@@ -62,7 +63,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
         }
     }
 
-    public void DrawPolygon(ISharedBrush? brush, ISharedPen? pen, IReadOnlyList<SharedPoint> points)
+    public void DrawPolygon(ISharedBrush? brush, ISharedPen? pen, ReadOnlySpan<SharedPoint> points)
     {
         if (CanRender)
         {
@@ -143,7 +144,7 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
 
     protected abstract void DrawRectangle(TNativeBrush? brush, TNativePen? pen, SharedRectangle rectangle);
     protected abstract void DrawLine(TNativePen? pen, SharedPoint startPoint, SharedPoint endPoint);
-    protected abstract void DrawPolygon(TNativeBrush? brush, TNativePen? pen, IReadOnlyList<SharedPoint> points);
+    protected abstract void DrawPolygon(TNativeBrush? brush, TNativePen? pen, ReadOnlySpan<SharedPoint> points);
     protected abstract void DrawGlyphRun(TNativeBrush? brush, SharedGlyphRun sharedGlyphRun);
     protected abstract void DrawTextLayout(TNativeBrush? brush, SharedTextLayout layout);
 }

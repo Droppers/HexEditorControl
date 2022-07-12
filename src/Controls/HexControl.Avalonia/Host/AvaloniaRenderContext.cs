@@ -51,13 +51,13 @@ internal class AvaloniaRenderContext : RenderContext<IBrush, IPen>
         Context.DrawLine(pen, Convert(startPoint), Convert(endPoint));
     }
 
-    protected override void DrawPolygon(IBrush? brush, IPen? pen, IReadOnlyList<SharedPoint> points)
+    protected override void DrawPolygon(IBrush? brush, IPen? pen, ReadOnlySpan<SharedPoint> points)
     {
         var geometry = new StreamGeometry();
         using var ctx = geometry.Open();
 
         ctx.BeginFigure(Convert(points[0]), true);
-        for (var i = 1; i < points.Count; i++)
+        for (var i = 1; i < points.Length; i++)
         {
             ctx.LineTo(Convert(points[i]));
         }

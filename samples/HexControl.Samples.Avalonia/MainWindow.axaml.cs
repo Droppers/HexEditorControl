@@ -1,3 +1,4 @@
+using System.Drawing;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.SharedControl.Documents;
@@ -32,6 +33,17 @@ public class MainWindow : Window
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
 
         Document = Document.FromBytes(bytes, configuration: config);
+
+        for (var i = 0; i < 100_000; i++)
+        {
+            Document.AddMarker(new Marker(i * 12_000, 10_000)
+            {
+                Background = Color.FromArgb(120, 200, 0, 123),
+                Column = ColumnSide.Both,
+                BehindText = true,
+                Foreground = Color.Green
+            });
+        }
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
     }
 }

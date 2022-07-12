@@ -29,11 +29,10 @@ public class Document
         _redoStates = new Stack<DocumentState>();
 
         _markers = new List<IDocumentMarker>();
+
         Caret = new Caret(0, 0, ColumnSide.Left);
     }
-
-    public StaticMarkerProvider? StaticMarkerProvider { get; set; }
-
+    
     public Caret Caret { get; private set; }
 
     public DocumentConfiguration Configuration
@@ -51,6 +50,9 @@ public class Document
     public ByteBuffer Buffer { get; private set; }
 
     public IReadOnlyList<IDocumentMarker> Markers => _markers;
+
+    // Used internally for faster access to underlying array entries
+    internal List<IDocumentMarker> InternalMarkers => _markers;
 
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;

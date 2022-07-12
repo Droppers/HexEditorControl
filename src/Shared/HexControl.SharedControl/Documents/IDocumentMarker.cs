@@ -14,4 +14,6 @@ public interface IDocumentMarker
     public Color? Foreground { get; set; }
     public bool BehindText { get; set; }
     public ColumnSide Column { get; set; }
+
+    public bool IsVisible(long offset, long length);
 }

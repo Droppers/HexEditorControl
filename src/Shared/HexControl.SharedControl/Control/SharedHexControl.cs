@@ -13,8 +13,7 @@ using HexControl.Framework.Host;
 using HexControl.Framework.Observable;
 using HexControl.Framework.Visual;
 using HexControl.SharedControl.Documents;
-
-// ReSharper disable MemberCanBePrivate.Global
+using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Control;
 
@@ -39,6 +38,7 @@ internal class ScrollBarVisibilityChangedEventArgs : EventArgs
 // TODO: horizontal character offset in the editor column will be messed up if someone decides to change character sets
 // TODO:  -> recalculate this offset when this happens
 // TODO:  -> also store this offset in the document, will be necessary when switching between documents and remaining state.
+[PublicAPI]
 internal class SharedHexControl : VisualElement
 {
     public const string VerticalScrollBarName = "VerticalScrollBar";
@@ -163,13 +163,25 @@ internal class SharedHexControl : VisualElement
             {
                 return;
             }
-
-            _fontSize = value;
+            
             Set(ref _fontSize, value);
         }
     }
 
-#endregion
+    private string _offsetHeader = "Offset";
+    public string OffsetHeader
+    {
+        get => Get(ref _offsetHeader);
+        set => Set(ref _offsetHeader, value);
+    }
+
+    private string _textHeader = "Decoded text";
+    public string TextHeader
+    {
+        get => Get(ref _textHeader);
+        set => Set(ref _textHeader, value);
+    }
+    #endregion
 
     public IGlyphTypeface? Typeface { get; private set; }
 

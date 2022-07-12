@@ -1,23 +1,33 @@
 ﻿using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace HexControl.SharedControl.Documents;
 
-public class Marker : IDocumentMarker
+public sealed class Marker : IDocumentMarker
 {
+    private long _offset;
+    private long _length;
+
     public Marker(long offset, long length)
     {
-        Offset = offset;
-        Length = length;
+        _offset = offset;
+        _length = length;
     }
 
     public Guid Id { get; set; }
 
-    public long Offset { get; set; }
-    public long Length { get; set; }
+    public long Offset { get => _offset; set => _offset = value; }
+    public long Length { get => _length; set => _length = value; }
 
     public Color? Background { get; set; }
     public Color? Border { get; set; }
     public Color? Foreground { get; set; }
     public bool BehindText { get; set; }
     public ColumnSide Column { get; set; }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsVisible(long offset, long length)
+    {
+        return _offset + _length > offset && _offset < offset + length;
+    }
 }

@@ -8,7 +8,6 @@ namespace HexControl.SharedControl.Control.Elements;
 
 internal class OffsetColumn : VisualElement
 {
-    private const string OFFSET_HEADER_TEXT = "Offset";
     private readonly char[] _characterBuffer = new char[20];
 
     private readonly SharedHexControl _parent;
@@ -30,7 +29,7 @@ internal class OffsetColumn : VisualElement
         set
         {
             _length = value;
-            _zeroPadCount = Math.Max(OFFSET_HEADER_TEXT.Length,
+            _zeroPadCount = Math.Max(_parent.OffsetHeader.Length,
                 BaseConverter.Convert(value, Configuration.OffsetBase, true, _characterBuffer));
         }
     }
@@ -56,7 +55,7 @@ internal class OffsetColumn : VisualElement
     private void WriteOffsetHeader(ITextBuilder builder)
     {
         builder.Next(new SharedPoint(0, 0));
-        builder.Add(_parent.HeaderForeground, OFFSET_HEADER_TEXT);
+        builder.Add(_parent.HeaderForeground, _parent.OffsetHeader);
     }
 
     private void WriteContentOffsets(ITextBuilder builder)

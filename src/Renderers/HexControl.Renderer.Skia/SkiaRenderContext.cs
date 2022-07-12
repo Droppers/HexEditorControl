@@ -13,11 +13,11 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
         SkiaRenderFactory factory) : base(factory)
     {
         Context = context;
-        Synchronous = true;
     }
 
     public override bool RequiresClear => true;
     public override bool PreferTextLayout => false;
+    public override bool Synchronous => true;
 
     public SKCanvas Context { get; set; }
 
@@ -89,10 +89,10 @@ internal class SkiaRenderContext : RenderContext<SKPaint, SKPaint>
     private static SKRect Convert(SharedRectangle rectangle) => new((float)rectangle.X, (float)rectangle.Y,
         (float)(rectangle.X + rectangle.Width), (float)(rectangle.Y + rectangle.Height));
 
-    protected override void DrawPolygon(SKPaint? brush, SKPaint? pen, IReadOnlyList<SharedPoint> points)
+    protected override void DrawPolygon(SKPaint? brush, SKPaint? pen, ReadOnlySpan<SharedPoint> points)
     {
         using var path = new SKPath();
-        for (var i = 0; i < points.Count; i++)
+        for (var i = 0; i < points.Length; i++)
         {
             if (i == 0)
             {

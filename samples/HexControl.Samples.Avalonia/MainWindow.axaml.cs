@@ -25,6 +25,13 @@ public class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
 
-        Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
+        var config = new DocumentConfiguration
+        {
+            OffsetBase = NumberBase.Decimal
+        };
+        var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+
+        Document = Document.FromBytes(bytes, configuration: config);
+        //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
     }
 }

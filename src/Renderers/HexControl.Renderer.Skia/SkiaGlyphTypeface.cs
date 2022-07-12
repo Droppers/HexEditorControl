@@ -33,7 +33,7 @@ internal sealed class SkiaGlyphTypeface : CachedGlyphTypeface<SKFont>
         return widths[0];
     }
 
-    public override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)
+    protected override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)
     {
         glyphIndex = Typeface.GetGlyph(codePoint);
         return true;

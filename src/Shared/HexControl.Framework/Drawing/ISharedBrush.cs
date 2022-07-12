@@ -1,3 +1,3 @@
 ﻿namespace HexControl.Framework.Drawing;
 
-public interface ISharedBrush { }
+public interface ISharedBrush : IEquatable<ISharedBrush> { }

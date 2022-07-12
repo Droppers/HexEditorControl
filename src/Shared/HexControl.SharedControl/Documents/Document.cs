@@ -218,7 +218,7 @@ public class Document
         var oldArea = Selection;
 
         // TODO: offset validation
-        if (newArea?.Equals(oldArea) == true)
+        if (newArea is null && oldArea is null || newArea?.Equals(oldArea) == true)
         {
             return;
         }

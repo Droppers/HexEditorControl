@@ -1,6 +1,6 @@
 ﻿namespace HexControl.Framework.Drawing;
 
-internal abstract class NativeBrush<TNative> : ISharedBrush, IEquatable<NativeBrush<TNative>> where TNative : class
+internal abstract class NativeBrush<TNative> : ISharedBrush where TNative : class
 {
     protected NativeBrush(TNative brush)
     {
@@ -9,14 +9,14 @@ internal abstract class NativeBrush<TNative> : ISharedBrush, IEquatable<NativeBr
 
     public TNative Brush { get; }
 
-    public bool Equals(NativeBrush<TNative>? other)
+    public bool Equals(ISharedBrush? other)
     {
-        if (other is null)
+        if (!ReferenceEquals(this, other) || other is not NativeBrush<TNative> otherNativeBrush)
         {
             return false;
         }
 
-        return ReferenceEquals(this, other) || other.Brush.Equals(Brush);
+        return otherNativeBrush.Brush.Equals(Brush);
     }
 
     public override bool Equals(object? other)

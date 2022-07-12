@@ -4,11 +4,11 @@ namespace HexControl.Framework.Host;
 
 internal abstract class CachedGlyphTypeface<TTypeface> : IGlyphTypeface
 {
-    private readonly Dictionary<int, ushort> _glyphCache;
+    private int[] _glyphCache;
 
     protected CachedGlyphTypeface()
     {
-        _glyphCache = new Dictionary<int, ushort>();
+        _glyphCache = Array.Empty<int>();
     }
 
     public abstract TTypeface Typeface { get; }
@@ -21,18 +21,24 @@ internal abstract class CachedGlyphTypeface<TTypeface> : IGlyphTypeface
 
     public bool TryGetGlyphIndex(int codePoint, out ushort glyphIndex)
     {
-        if (_glyphCache.TryGetValue(codePoint, out var cachedGlyphIndex))
+        if (_glyphCache.Length is 0)
         {
-            glyphIndex = cachedGlyphIndex;
-            return cachedGlyphIndex != 0;
+            _glyphCache = new int[ushort.MaxValue - 1];
+        }
+
+        var cachedGlyphIndex = _glyphCache[codePoint];
+        if (cachedGlyphIndex is not 0)
+        {
+            glyphIndex = (ushort)cachedGlyphIndex;
+            return cachedGlyphIndex is not -1;
         }
 
         var success = TryGetGlyphIndexInternal(codePoint, out glyphIndex);
-        _glyphCache[codePoint] = success ? glyphIndex : (ushort)0;
+        _glyphCache[codePoint] = success ? glyphIndex : -1;
         return success;
     }
 
     public virtual void Dispose() { }
 
-    public abstract bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex);
+    protected abstract bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex);
 }

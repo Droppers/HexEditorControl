@@ -5,21 +5,20 @@ namespace HexControl.Framework.Drawing.Text;
 internal class GlyphRunBuilder : ITextBuilder
 {
     private readonly double _characterWidth;
-    private readonly Dictionary<ISharedBrush, SharedGlyphRun> _glyphRuns;
+    private readonly List<(ISharedBrush Brush, SharedGlyphRun GlyphRun)> _glyphRuns;
 
     private int _index;
     private SharedPoint? _point;
 
     public GlyphRunBuilder(IGlyphTypeface typeface, double size, double characterWidth)
     {
-        _characterWidth = characterWidth;
         Typeface = typeface;
         Size = size;
-        _glyphRuns = new Dictionary<ISharedBrush, SharedGlyphRun>();
+
+        _characterWidth = characterWidth;
+        _glyphRuns = new List<(ISharedBrush Brush, SharedGlyphRun GlyphRun)>();
     }
-
-    public IReadOnlyDictionary<ISharedBrush, SharedGlyphRun> Entries => _glyphRuns;
-
+    
     public SharedGlyphRun this[ISharedBrush brush] => GetGlyphRun(brush);
 
     public double Size { get; }
@@ -59,12 +58,12 @@ internal class GlyphRunBuilder : ITextBuilder
             _ => throw new NotSupportedException($"TextAlignment {alignment} is not supported.")
         };
 
-        _point = new SharedPoint(point.X, alignedY);
+        _point = point with {Y = alignedY};
     }
 
     public void Draw(IRenderContext context)
     {
-        foreach (var (brush, glyphRun) in Entries)
+        foreach (var (brush, glyphRun) in _glyphRuns)
         {
             if (glyphRun.Empty)
             {
@@ -83,15 +82,20 @@ internal class GlyphRunBuilder : ITextBuilder
         }
     }
 
+
     private SharedGlyphRun GetGlyphRun(ISharedBrush brush)
     {
-        if (_glyphRuns.TryGetValue(brush, out var glyphRun))
+        for (var i = 0; i < _glyphRuns.Count; i++)
         {
-            return glyphRun;
+            var run = _glyphRuns[i];
+            if (run.Brush.Equals(brush))
+            {
+                return run.GlyphRun;
+            }
         }
-
+        
         var newGlyphRun = new SharedGlyphRun(Typeface, Size, new SharedPoint(0, 0));
-        _glyphRuns[brush] = newGlyphRun;
+        _glyphRuns.Add((brush, newGlyphRun));
         return newGlyphRun;
     }
 }

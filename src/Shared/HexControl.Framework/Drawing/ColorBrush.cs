@@ -2,7 +2,7 @@
 
 namespace HexControl.Framework.Drawing;
 
-public class ColorBrush : ISharedBrush, IEquatable<ColorBrush>
+public class ColorBrush : ISharedBrush
 {
     public ColorBrush(Color color)
     {
@@ -11,14 +11,14 @@ public class ColorBrush : ISharedBrush, IEquatable<ColorBrush>
 
     public Color Color { get; }
 
-    public bool Equals(ColorBrush? other)
+    public bool Equals(ISharedBrush? other)
     {
-        if (other is null)
+        if (!ReferenceEquals(this, other) || other is not ColorBrush otherColorBrush)
         {
             return false;
         }
 
-        return ReferenceEquals(this, other) || Color.Equals(other.Color);
+        return Color.Equals(otherColorBrush.Color);
     }
 
     public override bool Equals(object? obj)
@@ -27,13 +27,8 @@ public class ColorBrush : ISharedBrush, IEquatable<ColorBrush>
         {
             return false;
         }
-
-        if (ReferenceEquals(this, obj))
-        {
-            return true;
-        }
-
-        return obj is ColorBrush other && Equals(other);
+        
+        return ReferenceEquals(this, obj) || obj is ColorBrush other && Equals(other);
     }
 
     public override int GetHashCode() => Color.GetHashCode();

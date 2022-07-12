@@ -1315,7 +1315,6 @@ internal class EditorColumn : VisualElement
         if (startOffset == endOffset)
         {
             Document.Deselect();
-            SetCaretOffset(startOffset, scrollToCaret: true);
         }
         else
         {

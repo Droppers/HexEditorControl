@@ -565,8 +565,11 @@ internal class SharedHexControl : VisualElement
 
     private void DocumentOnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // TODO: handle e.RequestCenter
-        RequestScrollToCaret();
+        if (e.RequestCenter)
+        {
+            RequestScrollToCaret();
+        }
+
         Invalidate();
     }
 

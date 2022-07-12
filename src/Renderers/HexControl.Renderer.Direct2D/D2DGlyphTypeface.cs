@@ -99,7 +99,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
         return -descent;
     }
 
-    public override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)
+    protected override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)
     {
         var indices = Typeface.GetGlyphIndices(new[] {codePoint});
         glyphIndex = (ushort)indices[0];

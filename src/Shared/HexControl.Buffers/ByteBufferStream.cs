@@ -2,6 +2,7 @@
 
 namespace HexControl.Buffers;
 
+// TODO: Update whenever ByteBuffer accepts Span and Memory instead of byte arrays
 // See the following link for implementation instructions: https://docs.microsoft.com/en-us/dotnet/api/system.io.stream#notes-to-implementers
 [PublicAPI]
 public class ByteBufferStream : Stream
@@ -20,7 +21,7 @@ public class ByteBufferStream : Stream
     public override bool CanRead => true;
     public override bool CanSeek => true;
 
-    public override bool CanWrite => !_buffer.IsReadOnly;
+    public override bool CanWrite => !_buffer.IsReadOnly && !_buffer.Locked;
 
     public override long Length => _buffer.Length;
 
@@ -91,8 +92,31 @@ public class ByteBufferStream : Stream
 
     public override void Write(byte[] buffer, int offset, int count)
     {
-        // TODO: implement write
-        // We do not have support for the given parameters yet
-        throw new NotImplementedException();
+        var copy = new byte[count];
+        new Span<byte>(buffer, offset, count).CopyTo(copy.AsSpan());
+
+        _buffer.Write(_position, copy);
+    }
+
+    public override void WriteByte(byte value)
+    {
+        _buffer.Write(_position, value);
+    }
+
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        var copy = new byte[count];
+        new Span<byte>(buffer, offset, count).CopyTo(copy.AsSpan());
+
+        await _buffer.WriteAsync(_position, copy);
+    }
+
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
+        CancellationToken cancellationToken = new CancellationToken())
+    {
+        var copy = new byte[buffer.Length];
+        buffer.Span.CopyTo(copy.AsSpan());
+
+        await _buffer.WriteAsync(_position, copy);
     }
 }

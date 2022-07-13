@@ -3,7 +3,7 @@
 namespace HexControl.SharedControl.Documents;
 
 [PublicAPI]
-public record Selection
+public record struct Selection
 {
     public Selection(long start, long end, ColumnSide column)
     {

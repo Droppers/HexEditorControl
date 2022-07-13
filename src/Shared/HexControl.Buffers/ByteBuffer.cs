@@ -86,7 +86,8 @@ public abstract class ByteBuffer
             cancellationToken.ThrowIfCancellationRequested();
 
             var chunk = node.Value;
-            var isLastChunk = node.Next is null || chunk.Length >= buffer.Length - actualRead;
+            var chunkLength = currentOffset < offset ? chunk.Length - (offset - currentOffset) : chunk.Length;
+            var isLastChunk = node.Next is null || chunkLength >= buffer.Length - actualRead;
 
             if (chunk is MemoryChunk && modificationStart == -1)
             {
@@ -95,7 +96,7 @@ public abstract class ByteBuffer
 
             if ((chunk is not MemoryChunk || isLastChunk) && modificationStart != -1)
             {
-                modifications?.Add(new ModifiedRange(modificationStart, currentOffset));
+                modifications?.Add(new ModifiedRange(modificationStart, modificationStart == currentOffset ? currentOffset + chunk.Length : currentOffset));
                 modificationStart = -1;
             }
 

@@ -294,7 +294,7 @@ internal abstract class VisualElement : ObservableObject
         _tree?.State.ReleaseFocus();
     }
 
-    protected void AddDirtyRect(SharedRectangle rectangle, int grow = 0)
+    public void AddDirtyRect(SharedRectangle rectangle, int grow = 0)
     {
         if (Left is not 0 || Top is not 0)
         {

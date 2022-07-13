@@ -16,6 +16,7 @@ public sealed class Marker : IDocumentMarker
 
     public Guid Id { get; set; }
 
+    // Not auto properties for performance reasons
     public long Offset { get => _offset; set => _offset = value; }
     public long Length { get => _length; set => _length = value; }
 
@@ -28,6 +29,6 @@ public sealed class Marker : IDocumentMarker
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsVisible(long offset, long length)
     {
-        return _offset + _length > offset && _offset < offset + length;
+        return unchecked(_offset + _length) > offset && _offset < unchecked(offset + length);
     }
 }

@@ -17,7 +17,7 @@ public sealed class TextCharacterSet : CharacterSet
 
     public TextCharacterSet(CharacterEncoding encoding) : this(CharacterTable.Table[encoding]) { }
 
-    public override int GetCharacters(byte @byte, char[] destBuffer)
+    public override int GetCharacters(byte @byte, Span<char> destBuffer)
     {
         var @char = _characters[@byte];
         destBuffer[0] = @char == '\0' ? '.' : @char;

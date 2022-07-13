@@ -5,19 +5,23 @@ using HexControl.Framework.Observable;
 using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
+using System.Runtime.InteropServices;
 
 namespace HexControl.SharedControl.Documents;
 
 [PublicAPI]
 public class Document
 {
-    private readonly List<IDocumentMarker> _markers;
     private readonly Stack<DocumentState> _redoStates;
-
     private readonly Stack<DocumentState> _undoStates;
-    private DocumentConfiguration _configuration;
 
+    private DocumentConfiguration _configuration;
     private long _offset;
+
+    private IDocumentMarker[] _capturedMarkers;
+    private CapturedState? _capturedState;
+    private int _markersVersion;
+    private int _capturedMarkersVersion = -1;
 
     public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
@@ -28,11 +32,12 @@ public class Document
         _undoStates = new Stack<DocumentState>();
         _redoStates = new Stack<DocumentState>();
 
-        _markers = new List<IDocumentMarker>();
+        InternalMarkers = new List<IDocumentMarker>();
+        _capturedMarkers = new IDocumentMarker[1000];
 
         Caret = new Caret(0, 0, ColumnSide.Left);
     }
-    
+
     public Caret Caret { get; private set; }
 
     public DocumentConfiguration Configuration
@@ -49,10 +54,10 @@ public class Document
 
     public ByteBuffer Buffer { get; private set; }
 
-    public IReadOnlyList<IDocumentMarker> Markers => _markers;
+    public IReadOnlyList<IDocumentMarker> Markers => InternalMarkers;
 
     // Used internally for faster access to underlying array entries
-    internal List<IDocumentMarker> InternalMarkers => _markers;
+    internal List<IDocumentMarker> InternalMarkers { get; }
 
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;
@@ -79,7 +84,7 @@ public class Document
     public Selection? Selection { get; private set; }
 
     // Maximum possible offset taking into account 'Configuration.BytesPerRow'
-    public long MaximumOffset => FloorOffsetToNearestRow(Length);
+    public long MaximumOffset => FloorOffsetToNearestRow(Length) - Configuration.BytesPerRow;
 
     public event EventHandler<PropertyChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
@@ -133,9 +138,9 @@ public class Document
 
     private void ApplyDocumentState(DocumentState state)
     {
-        for (var i = 0; i < _markers.Count; i++)
+        for (var i = 0; i < InternalMarkers.Count; i++)
         {
-            var marker = _markers[i];
+            var marker = InternalMarkers[i];
             for (var j = 0; j < state.MarkerStates.Count; j++)
             {
                 var markerState = state.MarkerStates[j];
@@ -144,28 +149,26 @@ public class Document
                     continue;
                 }
 
-                marker.Offset = markerState.Offset;
-                marker.Length = markerState.Length;
+                ChangeMarkerOffsetAndLength(marker, markerState.Offset, markerState.Length);
                 break;
             }
         }
 
-        if (state.SelectionState is not null)
+        if (state.SelectionState.HasValue)
         {
             Selection = state.SelectionState;
         }
 
-        if (state.CaretState is not null)
+        if (state.CaretState is { } caretState)
         {
-            Caret = state.CaretState;
+            Caret = caretState;
         }
     }
 
     private long FloorOffsetToNearestRow(long number)
     {
         var bytesPerRow = Configuration.BytesPerRow;
-        return Math.Max(0,
-            (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow) - bytesPerRow);
+        return Math.Max(0, (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow));
     }
 
     protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -227,37 +230,27 @@ public class Document
 
         Selection = newArea;
 
-        if (newArea is not null && newCaretLocation is not NewCaretLocation.Current)
+        if (newArea.HasValue && newCaretLocation is not NewCaretLocation.Current)
         {
-            Caret = new Caret(newCaretLocation is NewCaretLocation.SelectionStart ? newArea.Start : newArea.End, 0,
-                newArea.Column);
+            Caret = new Caret(
+                newCaretLocation is NewCaretLocation.SelectionStart ? newArea.Value.Start : newArea.Value.End, 0,
+                newArea.Value.Column);
         }
 
         OnSelectionChanged(oldArea, newArea, requestCenter);
     }
 
-    public Guid AddMarker(Guid id, IDocumentMarker marker)
+    public void AddMarker(IDocumentMarker marker)
     {
-        _markers.Add(marker);
+        InternalMarkers.Add(marker);
+        _markersVersion++;
         OnMarkersChanged();
-
-        return id;
     }
 
-    public Guid AddMarker(IDocumentMarker marker) => AddMarker(Guid.NewGuid(), marker);
-
-    public void RemoveMarker(Guid id)
+    public void RemoveMarker(IDocumentMarker marker)
     {
-        for (var i = 0; i < _markers.Count; i++)
-        {
-            if (_markers[i].Id == id)
-            {
-                OnMarkersChanged();
-                return;
-            }
-        }
-
-        throw new ArgumentOutOfRangeException(nameof(id), $"Marker with id '{id}' does not exist.");
+        InternalMarkers.Remove(marker);
+        _markersVersion--;
     }
 
     private bool ValidateCaret(Caret caret)
@@ -290,7 +283,7 @@ public class Document
         Select(null);
     }
 
-    public ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
+    internal ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
     {
         var oldBuffer = Buffer;
 
@@ -350,37 +343,36 @@ public class Document
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
-    private DocumentState ApplyDeleteModification(long deleteOffset, long deleteLength)
+    private DocumentState ApplyDeleteModification(long offset, long length)
     {
         var markerStates = new List<MarkerState>();
 
-        for (var i = 0; i < _markers.Count; i++)
+        for (var i = 0; i < InternalMarkers.Count; i++)
         {
-            var marker = _markers[i];
-            var (newOffset, newLength) = DeleteFromRange(marker.Offset, marker.Length, deleteOffset, deleteLength);
+            var marker = InternalMarkers[i];
+            var (newOffset, newLength) = DeleteFromRange(marker.Offset, marker.Length, offset, length);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
                 markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
-                marker.Offset = newOffset;
-                marker.Length = newLength;
+                ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
             }
         }
 
-        if (deleteOffset >= Caret.Offset)
+        if (offset >= Caret.Offset)
         {
             return new DocumentState(markerStates);
         }
 
-        var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
-        Caret = new Caret(Caret.Offset, 0, Caret.Column);
+        var caretState = Caret with { };
+        Caret = Caret with {Nibble = 0};
 
         Selection? selectionState = null;
-        if (Selection is not null)
+        if (Selection is { } selection)
         {
             var (newOffset, newLength) =
-                DeleteFromRange(Selection.Start, Selection.Length, deleteOffset, deleteLength);
+                DeleteFromRange(selection.Start, selection.Length, offset, length);
             selectionState = Selection;
-            Selection = Selection with
+            Selection = selection with
             {
                 Start = newOffset,
                 Length = newLength
@@ -390,38 +382,38 @@ public class Document
         return new DocumentState(markerStates, selectionState, caretState);
     }
 
-    private DocumentState ApplyInsertModification(long insertOffset, byte[] insertBytes)
+    private DocumentState ApplyInsertModification(long offset, byte[] bytes)
     {
         var markerStates = new List<MarkerState>();
 
-        for (var i = 0; i < _markers.Count; i++)
+        for (var i = 0; i < InternalMarkers.Count; i++)
         {
-            var marker = _markers[i];
+            var marker = InternalMarkers[i];
 
-            var (newOffset, newLength) = InsertIntoRange(marker.Offset, marker.Length, insertOffset, insertBytes.Length);
+            var (newOffset, newLength) =
+                InsertIntoRange(marker.Offset, marker.Length, offset, bytes.Length);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
                 markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
-                marker.Offset = newOffset;
-                marker.Length = newLength;
+                ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
             }
         }
 
-        var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
+        var caretState = Caret with { };
 
         // Don't move caret to the right for single byte inserts, this usually means a user is typing
-        if (insertBytes.Length >= 2)
+        if (bytes.Length >= 2)
         {
-            Caret = new Caret(insertOffset + insertBytes.Length, 0, Caret.Column);
+            Caret = Caret with {Offset = offset + bytes.Length, Nibble = 0};
         }
 
         Selection? selectionState = null;
-        if (Selection is not null)
+        if (Selection is { } selection)
         {
             var (newOffset, newLength) =
-                InsertIntoRange(Selection.Start, Selection.Length, insertOffset, insertBytes.Length);
+                InsertIntoRange(selection.Start, selection.Length, offset, bytes.Length);
             selectionState = Selection;
-            Selection = Selection with
+            Selection = selection with
             {
                 Start = newOffset,
                 Length = newLength
@@ -431,13 +423,14 @@ public class Document
         return new DocumentState(markerStates, selectionState, caretState);
     }
 
-    private DocumentState ApplyWriteModification(long writeOffset, byte[] writeBytes)
+    private DocumentState ApplyWriteModification(long offset, byte[] bytes)
     {
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
         return new DocumentState(Array.Empty<MarkerState>(), CaretState: caretState);
     }
 
-    private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset, long deleteLength)
+    private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset,
+        long deleteLength)
     {
         var end = offset + length;
         var deleteEnd = deleteOffset + deleteLength;
@@ -474,7 +467,8 @@ public class Document
         return (newOffset, newLength);
     }
 
-    private static (long Offset, long Length) InsertIntoRange(long offset, long length, long insertOffset, long insertLength)
+    private static (long Offset, long Length) InsertIntoRange(long offset, long length, long insertOffset,
+        long insertLength)
     {
         var markerEnd = offset + length;
         var newOffset = offset;
@@ -491,4 +485,46 @@ public class Document
 
         return (newOffset, newLength);
     }
+
+    private void ChangeMarkerOffsetAndLength(IDocumentMarker marker, long newOffset, long newLength)
+    {
+        if (marker.Offset == newOffset && marker.Length == newLength)
+        {
+            return;
+        }
+
+        _markersVersion++;
+        marker.Offset = newOffset;
+        marker.Length = newLength;
+    }
+
+    internal CapturedState CapturedState => _capturedState ??= CaptureState();
+
+    internal CapturedState CaptureState()
+    {
+        if (InternalMarkers.Count > _capturedMarkers.Length)
+        {
+            _capturedMarkers = new IDocumentMarker[InternalMarkers.Count * 2];
+        }
+
+        if (_markersVersion != _capturedMarkersVersion)
+        {
+            var capturedSpan = _capturedMarkers.AsSpan(0, InternalMarkers.Count);
+            var span = CollectionsMarshal.AsSpan(InternalMarkers);
+            span.CopyTo(capturedSpan);
+            _capturedMarkersVersion = _markersVersion;
+        }
+
+        var capturedMemory = _capturedMarkers.AsMemory(0, InternalMarkers.Count);
+        _capturedState = new CapturedState(
+            Offset, 
+            Length,
+            Selection is { } selection ? selection with { } : null,
+            Caret with { },
+            capturedMemory,
+            Configuration);
+        return _capturedState.Value;
+    }
 }
+
+internal readonly record struct CapturedState(long Offset, long Length, Selection? Selection, Caret Caret, Memory<IDocumentMarker> Markers, DocumentConfiguration Configuration);

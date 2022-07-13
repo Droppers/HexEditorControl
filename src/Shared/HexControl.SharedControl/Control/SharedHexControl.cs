@@ -308,17 +308,18 @@ internal class SharedHexControl : VisualElement
             var documentLength = Document?.Length ?? 1;
 
             newViewport = Height / RowHeight;
-            newMaximum = Math.Min(1000, documentLength / Configuration.BytesPerRow);
+            newMaximum = Math.Max(1, Math.Min(1000, documentLength / Configuration.BytesPerRow));
             visible = HeaderHeight + documentLength / Configuration.BytesPerRow * RowHeight > _editorColumn.Height;
         }
         else
         {
             var visibleWidth = (int)(_editorColumn.Width / CharacterWidth) - 1;
             newViewport = Math.Max(1, visibleWidth);
-            newMaximum = _editorColumn.TotalWidth - visibleWidth;
+            newMaximum = _editorColumn.TotalWidth - Math.Min(visibleWidth, _editorColumn.TotalWidth);
             visible = _editorColumn.TotalWidth * CharacterWidth > _editorColumn.Width;
         }
 
+        hostScrollBar.Minimum = 0;
         hostScrollBar.Maximum = newMaximum;
         hostScrollBar.Viewport = newViewport;
         ScrollBarVisibilityChanged?.Invoke(this, new ScrollBarVisibilityChangedEventArgs(scrollBar, visible));
@@ -362,6 +363,7 @@ internal class SharedHexControl : VisualElement
 
             Document = newDocument;
             _offsetColumn.Configuration = newDocument.Configuration;
+            _offsetColumn.Document = newDocument;
             _editorColumn.Configuration = newDocument.Configuration;
             _editorColumn.Document = newDocument;
 
@@ -386,8 +388,8 @@ internal class SharedHexControl : VisualElement
         {
             RequestScrollToCaret();
         }
-
-        _editorColumn.AddCaretDirtyRect(e.NewCaret);
+        
+        _editorColumn.AddDirtyRect(new SharedRectangle(0, 0, Width, _offsetColumn.Width + _editorColumn.Width + Margin));
         Invalidate();
     }
 
@@ -654,9 +656,7 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        var readOffset = (long)(scrollValue / VerticalScrollBar.Maximum * Document.Length) /
-                         Configuration.BytesPerRow *
-                         Configuration.BytesPerRow;
+        var readOffset = (long)(scrollValue / VerticalScrollBar.Maximum * Document.Length);
         Document.Offset = readOffset;
     }
 
@@ -678,6 +678,8 @@ internal class SharedHexControl : VisualElement
 
     protected override void Render(IRenderContext context)
     {
+        Document?.CaptureState();
+
         if (!ReferenceEquals(context, _renderContext))
         {
             UpdateTextBuilder(context);
@@ -709,15 +711,17 @@ internal class SharedHexControl : VisualElement
         _editorColumn.Top = Margin;
         _offsetColumn.Left = Margin;
 
+        var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
+
         if (_offsetColumn.Visible)
         {
             _editorColumn.Width = Width - _offsetColumn.Width - Margin;
-            _editorColumn.Left = (int)_offsetColumn.Width + _offsetColumn.Left;
+            _editorColumn.Left = Math.Min(editorWidth, (int)_offsetColumn.Width + _offsetColumn.Left);
         }
         else
         {
             _editorColumn.Left = Margin;
-            _editorColumn.Width = Width - Margin;
+            _editorColumn.Width = Math.Min(editorWidth, Width - Margin);
         }
 
         _offsetColumn.Height = Height - Margin;

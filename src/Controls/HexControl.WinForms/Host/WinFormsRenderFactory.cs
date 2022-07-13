@@ -16,9 +16,9 @@ internal class WinFormsRenderFactory : D2DRenderFactory
 
     public override SolidColorBrush CreateBrush(ISharedBrush brush)
     {
-        if (brush is WinFormsBrush {Brush: SolidBrush solidBrush})
+        if (brush is WinFormsBrush winFormsBrush)
         {
-            return new SolidColorBrush(_target, Convert(solidBrush.Color));
+            return new SolidColorBrush(_target, Convert(winFormsBrush.Brush));
         }
 
         return base.CreateBrush(brush);

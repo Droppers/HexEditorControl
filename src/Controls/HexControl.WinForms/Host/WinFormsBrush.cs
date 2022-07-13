@@ -2,7 +2,7 @@
 
 namespace HexControl.WinForms.Host;
 
-internal class WinFormsBrush : NativeBrush<Brush>
+internal class WinFormsBrush : NativeBrush<Color>
 {
-    public WinFormsBrush(Brush brush) : base(brush) { }
+    public WinFormsBrush(Color brush) : base(brush) { }
 }

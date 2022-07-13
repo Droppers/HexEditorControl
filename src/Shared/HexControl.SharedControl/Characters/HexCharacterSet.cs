@@ -42,7 +42,7 @@ public sealed class HexCharacterSet : CharacterSet
         Width = 2;
     }
 
-    public override int GetCharacters(byte @byte, char[] destBuffer)
+    public override int GetCharacters(byte @byte, Span<char> destBuffer)
     {
         destBuffer[0] = Characters[@byte * 2];
         destBuffer[1] = Characters[@byte * 2 + 1];

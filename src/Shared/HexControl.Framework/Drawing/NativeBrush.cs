@@ -1,6 +1,6 @@
 ﻿namespace HexControl.Framework.Drawing;
 
-internal abstract class NativeBrush<TNative> : ISharedBrush where TNative : class
+internal abstract class NativeBrush<TNative> : ISharedBrush where TNative : notnull
 {
     protected NativeBrush(TNative brush)
     {

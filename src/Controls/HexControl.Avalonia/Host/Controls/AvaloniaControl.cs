@@ -3,9 +3,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Host.Controls;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
 
 namespace HexControl.Avalonia.Host.Controls;
 

@@ -9,7 +9,7 @@
 		<PackageReference Include="SharpDX.Direct3D11" Version="$(SharpDXVersion)" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
+		<ProjectReference Include="..\..\Renderers\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
 	</ItemGroup>
 </Project>

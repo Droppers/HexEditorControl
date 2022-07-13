@@ -1,4 +1,4 @@
-﻿using HexControl.Core;
+﻿using HexControl.SharedControl.Documents;
 
 namespace HexControl.Samples.WinUI;
 

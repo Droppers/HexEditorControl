@@ -17,8 +17,8 @@
 		<PackageReference Include="SharpDX.Direct3D9" Version="$(SharpDXVersion)" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
+		<ProjectReference Include="..\..\Renderers\HexControl.Renderer.Direct2D\HexControl.Renderer.Direct2D.csproj" />
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />
-		<ProjectReference Include="..\..\Shared\HexControl.Renderer.Skia\HexControl.Renderer.Skia.csproj" />
+		<ProjectReference Include="..\..\Renderers\HexControl.Renderer.Skia\HexControl.Renderer.Skia.csproj" />
 	</ItemGroup>
 </Project>

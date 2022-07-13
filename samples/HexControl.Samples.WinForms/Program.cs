@@ -16,6 +16,7 @@ internal static class Program
             SetProcessDPIAware();
         }
 
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new Form1());

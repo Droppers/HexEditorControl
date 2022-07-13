@@ -1,18 +1,19 @@
 ﻿using System.Drawing;
-using HexControl.Core;
-using HexControl.Core.Buffers.Modifications;
-using HexControl.Core.Events;
-using HexControl.Core.Observable;
+using HexControl.Buffers;
+using HexControl.Buffers.Events;
+using HexControl.Buffers.Modifications;
 using HexControl.SharedControl.Control.Elements;
-using HexControl.SharedControl.Framework;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Drawing.Text;
-using HexControl.SharedControl.Framework.Host.Controls;
-using HexControl.SharedControl.Framework.Host.EventArgs;
-using HexControl.SharedControl.Framework.Host.Typeface;
-using HexControl.SharedControl.Framework.Visual;
-
-// ReSharper disable MemberCanBePrivate.Global
+using HexControl.SharedControl.Documents.Events;
+using HexControl.Framework;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Drawing.Text;
+using HexControl.Framework.Host.Controls;
+using HexControl.Framework.Host.Events;
+using HexControl.Framework.Host;
+using HexControl.Framework.Observable;
+using HexControl.Framework.Visual;
+using HexControl.SharedControl.Documents;
+using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Control;
 
@@ -37,6 +38,7 @@ internal class ScrollBarVisibilityChangedEventArgs : EventArgs
 // TODO: horizontal character offset in the editor column will be messed up if someone decides to change character sets
 // TODO:  -> recalculate this offset when this happens
 // TODO:  -> also store this offset in the document, will be necessary when switching between documents and remaining state.
+[PublicAPI]
 internal class SharedHexControl : VisualElement
 {
     public const string VerticalScrollBarName = "VerticalScrollBar";
@@ -46,19 +48,16 @@ internal class SharedHexControl : VisualElement
     private readonly EditorColumn _editorColumn;
     private readonly OffsetColumn _offsetColumn;
     private long _lastRefreshLength;
+
+    private byte[] _displayBuffer = Array.Empty<byte>();
     private byte[] _readBuffer = Array.Empty<byte>();
+    private List<ModifiedRange> _displayModifications = new(25);
+    private List<ModifiedRange> _readModifications = new(25);
+
     private IRenderContext? _renderContext;
     private bool _requireTypefaceUpdate = true;
     private bool _scrollToCaret;
-
-    //private ISharedBrush _background = new ColorBrush(Color.FromArgb(255, 255, 255, 255));
-    //private ISharedBrush _headerForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
-    //private ISharedBrush _offsetForeground = new ColorBrush(Color.FromArgb(0, 0, 190));
-    //private ISharedBrush _foreground = new ColorBrush(Color.FromArgb(0, 0, 0));
-    //private ISharedBrush _evenForeground = new ColorBrush(Color.FromArgb(180, 0, 0, 0));
-    //private ISharedBrush _caretBackground = new ColorBrush(Color.FromArgb(0, 0, 0));
-    //private ISharedBrush _modifiedForeground = new ColorBrush(Color.FromArgb(255, 240, 111, 143));
-
+    
     public SharedHexControl() : base(true)
     {
         // Register events
@@ -164,13 +163,25 @@ internal class SharedHexControl : VisualElement
             {
                 return;
             }
-
-            _fontSize = value;
+            
             Set(ref _fontSize, value);
         }
     }
 
-#endregion
+    private string _offsetHeader = "Offset";
+    public string OffsetHeader
+    {
+        get => Get(ref _offsetHeader);
+        set => Set(ref _offsetHeader, value);
+    }
+
+    private string _textHeader = "Decoded text";
+    public string TextHeader
+    {
+        get => Get(ref _textHeader);
+        set => Set(ref _textHeader, value);
+    }
+    #endregion
 
     public IGlyphTypeface? Typeface { get; private set; }
 
@@ -297,17 +308,18 @@ internal class SharedHexControl : VisualElement
             var documentLength = Document?.Length ?? 1;
 
             newViewport = Height / RowHeight;
-            newMaximum = Math.Min(1000, documentLength / Configuration.BytesPerRow);
+            newMaximum = Math.Max(1, Math.Min(1000, documentLength / Configuration.BytesPerRow));
             visible = HeaderHeight + documentLength / Configuration.BytesPerRow * RowHeight > _editorColumn.Height;
         }
         else
         {
             var visibleWidth = (int)(_editorColumn.Width / CharacterWidth) - 1;
             newViewport = Math.Max(1, visibleWidth);
-            newMaximum = _editorColumn.TotalWidth - visibleWidth;
+            newMaximum = _editorColumn.TotalWidth - Math.Min(visibleWidth, _editorColumn.TotalWidth);
             visible = _editorColumn.TotalWidth * CharacterWidth > _editorColumn.Width;
         }
 
+        hostScrollBar.Minimum = 0;
         hostScrollBar.Maximum = newMaximum;
         hostScrollBar.Viewport = newViewport;
         ScrollBarVisibilityChanged?.Invoke(this, new ScrollBarVisibilityChangedEventArgs(scrollBar, visible));
@@ -351,6 +363,7 @@ internal class SharedHexControl : VisualElement
 
             Document = newDocument;
             _offsetColumn.Configuration = newDocument.Configuration;
+            _offsetColumn.Document = newDocument;
             _editorColumn.Configuration = newDocument.Configuration;
             _editorColumn.Document = newDocument;
 
@@ -375,8 +388,8 @@ internal class SharedHexControl : VisualElement
         {
             RequestScrollToCaret();
         }
-
-        _editorColumn.AddCaretDirtyRect(e.NewCaret);
+        
+        _editorColumn.AddDirtyRect(new SharedRectangle(0, 0, Width, _offsetColumn.Width + _editorColumn.Width + Margin));
         Invalidate();
     }
 
@@ -566,8 +579,11 @@ internal class SharedHexControl : VisualElement
 
     private void DocumentOnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // TODO: handle e.RequestCenter
-        RequestScrollToCaret();
+        if (e.RequestCenter)
+        {
+            RequestScrollToCaret();
+        }
+
         Invalidate();
     }
 
@@ -585,22 +601,26 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        // Required buffer size has increased
-        if (BytesToRead > _readBuffer.Length)
+        // Minimum required buffer size has increased
+        if (BytesToRead > _readBuffer.Length || BytesToRead > _displayBuffer.Length)
         {
-            _readBuffer = new byte[BytesToRead];
+            _readBuffer = new byte[BytesToRead * 2];
+            _displayBuffer = new byte[BytesToRead * 2];
         }
 
-        _editorColumn.Modifications.Clear();
+        _readModifications.Clear();
         var actualRead =
-            await Document.Buffer.ReadAsync(Document.Offset, _readBuffer, _editorColumn.Modifications);
-        var displayBuffer = actualRead < BytesToRead
-            ? CopyIntoBufferWithLength(_readBuffer, (int)actualRead)
-            : _readBuffer;
+            await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
+
+        // Swap read and display buffers
+        (_readBuffer, _displayBuffer) = (_displayBuffer, _readBuffer);
+        (_readModifications, _displayModifications) = (_displayModifications, _readModifications);
 
         _offsetColumn.Offset = Document.Offset;
-        _editorColumn.Bytes = displayBuffer;
         _editorColumn.Offset = Document.Offset;
+        _editorColumn.BytesLength = actualRead;
+        _editorColumn.Bytes = _displayBuffer;
+        _editorColumn.Modifications = _displayModifications;
 
         queue.StopIOTask();
 
@@ -617,19 +637,7 @@ internal class SharedHexControl : VisualElement
             CharacterWidth);
         Invalidate();
     }
-
-    private static byte[] CopyIntoBufferWithLength(byte[] sourceBuffer, int targetLength)
-    {
-        if (targetLength == 0)
-        {
-            return Array.Empty<byte>();
-        }
-
-        var targetBuffer = new byte[targetLength];
-        Buffer.BlockCopy(sourceBuffer, 0, targetBuffer, 0, targetBuffer.Length);
-        return targetBuffer;
-    }
-
+    
     // Scrolling
     public void VerticalSmallScroll(bool increment)
     {
@@ -648,9 +656,7 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        var readOffset = (long)(scrollValue / VerticalScrollBar.Maximum * Document.Length) /
-                         Configuration.BytesPerRow *
-                         Configuration.BytesPerRow;
+        var readOffset = (long)(scrollValue / VerticalScrollBar.Maximum * Document.Length);
         Document.Offset = readOffset;
     }
 
@@ -672,6 +678,8 @@ internal class SharedHexControl : VisualElement
 
     protected override void Render(IRenderContext context)
     {
+        Document?.CaptureState();
+
         if (!ReferenceEquals(context, _renderContext))
         {
             UpdateTextBuilder(context);
@@ -703,15 +711,17 @@ internal class SharedHexControl : VisualElement
         _editorColumn.Top = Margin;
         _offsetColumn.Left = Margin;
 
+        var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
+
         if (_offsetColumn.Visible)
         {
             _editorColumn.Width = Width - _offsetColumn.Width - Margin;
-            _editorColumn.Left = (int)_offsetColumn.Width + _offsetColumn.Left;
+            _editorColumn.Left = Math.Min(editorWidth, (int)_offsetColumn.Width + _offsetColumn.Left);
         }
         else
         {
             _editorColumn.Left = Margin;
-            _editorColumn.Width = Width - Margin;
+            _editorColumn.Width = Math.Min(editorWidth, Width - Margin);
         }
 
         _offsetColumn.Height = Height - Margin;

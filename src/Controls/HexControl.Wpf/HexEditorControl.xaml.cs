@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Media;
-using HexControl.Core;
 using HexControl.SharedControl.Control;
+using HexControl.SharedControl.Documents;
 using HexControl.Wpf.Host;
 using HexControl.Wpf.Host.Controls;
 #if !SKIA_RENDER

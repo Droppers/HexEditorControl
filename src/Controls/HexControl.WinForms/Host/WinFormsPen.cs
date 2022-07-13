@@ -1,4 +1,4 @@
-﻿using HexControl.SharedControl.Framework.Drawing;
+﻿using HexControl.Framework.Drawing;
 
 namespace HexControl.WinForms.Host;
 

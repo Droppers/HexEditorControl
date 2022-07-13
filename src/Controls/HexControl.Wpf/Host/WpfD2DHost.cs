@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using HexControl.Core.Helpers;
+using HexControl.Framework;
 using HexControl.Renderer.Direct2D;
 using HexControl.Wpf.D2D;
 using HexControl.Wpf.Host.Controls;

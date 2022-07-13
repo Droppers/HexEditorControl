@@ -1,5 +1,5 @@
 ﻿using System.Windows.Media;
-using HexControl.SharedControl.Framework.Drawing;
+using HexControl.Framework.Drawing;
 
 namespace HexControl.Wpf.Host;
 

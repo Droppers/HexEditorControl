@@ -1,5 +1,5 @@
-﻿using HexControl.Core.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
+﻿using HexControl.Framework;
+using HexControl.Framework.Drawing;
 using SharpDX;
 using SharpDX.Direct2D1;
 using SharpDX.DXGI;

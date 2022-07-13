@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../shared.props" />
+	<ItemGroup>
+		<PackageReference Include="SharpDX.Direct2D1" Version="$(SharpDXVersion)" />
+		<PackageReference Include="SharpDX.Direct3D11" Version="$(SharpDXVersion)" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\shared\HexControl.Framework\HexControl.Framework.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,6 +1,6 @@
 ﻿using System.Windows.Media;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
 
 namespace HexControl.Wpf.Host;
 

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="../../../control.props" />
 	<ItemGroup>
-		<PackageReference Include="Avalonia" Version="0.10.3" />
+		<PackageReference Include="Avalonia" Version="0.10.16" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Shared\HexControl.SharedControl\HexControl.SharedControl.csproj" />

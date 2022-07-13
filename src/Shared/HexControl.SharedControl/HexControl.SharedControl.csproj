@@ -1,9 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
 	<Import Project="../../../shared.props" />
 	<ItemGroup>
 		<EmbeddedResource Include="Control\Fonts\DejaVuSansMono.ttf" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\HexControl.Core\HexControl.Core.csproj" />
+		<ProjectReference Include="..\HexControl.Buffers\HexControl.Buffers.csproj" />
+		<ProjectReference Include="..\HexControl.Framework.\HexControl.Framework.csproj" />
 	</ItemGroup>
 </Project>

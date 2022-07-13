@@ -2,8 +2,8 @@
 using System.Timers;
 using System.Windows;
 using System.Windows.Media;
-using HexControl.Core.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
+using HexControl.Framework;
+using HexControl.Framework.Drawing;
 using SharpDX.Direct2D1;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;

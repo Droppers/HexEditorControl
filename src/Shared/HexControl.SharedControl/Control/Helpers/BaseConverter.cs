@@ -1,10 +1,10 @@
-﻿using HexControl.Core;
+﻿using NumberBase = HexControl.SharedControl.Documents.NumberBase;
 
 namespace HexControl.SharedControl.Control.Helpers;
 
 internal static class BaseConverter
 {
-    public static int Convert(long number, NumberBase numberBase, bool capitalization, IList<char> characters)
+    public static int Convert(long number, NumberBase numberBase, bool capitalization, Span<char> characters)
     {
         const int numericOffset = 48;
 
@@ -19,7 +19,7 @@ internal static class BaseConverter
         while (number != 0)
         {
             var part = number % @base;
-            var @char = part >= 10 ? NumberToHexChar(part, capitalization) : (char)(part + numericOffset);
+            var @char = part >= 10 ? NumberToHexChar(part - 10, capitalization) : (char)(part + numericOffset);
 
             characters[i] = @char;
             number /= @base;

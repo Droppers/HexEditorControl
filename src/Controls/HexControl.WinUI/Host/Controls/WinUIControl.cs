@@ -1,7 +1,7 @@
-﻿using HexControl.Core.Helpers;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
-using HexControl.SharedControl.Framework.Host.Controls;
+﻿using HexControl.Framework;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;

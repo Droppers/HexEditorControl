@@ -1,21 +1,21 @@
 ﻿using System.Drawing.Drawing2D;
-using HexControl.SharedControl.Framework.Drawing;
-using HexControl.SharedControl.Framework.Host;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
 
 namespace HexControl.WinForms.Host;
 
-internal class WinFormsNativeFactory : NativeFactory<Brush, Pen>
+internal class WinFormsNativeFactory : NativeFactory<Color, Pen>
 {
-    public override ISharedBrush WrapBrush(Brush brush) => new WinFormsBrush(brush);
+    public override ISharedBrush WrapBrush(Color brush) => new WinFormsBrush(brush);
 
     public override ISharedPen WrapPen(Pen pen) => new WinFormsPen(pen);
 
-    public override Brush ConvertBrushToNative(ISharedBrush brush)
+    public override Color ConvertBrushToNative(ISharedBrush brush)
     {
         return brush switch
         {
             WinFormsBrush winFormsBrush => winFormsBrush.Brush,
-            ColorBrush colorBrush => new SolidBrush(colorBrush.Color),
+            ColorBrush colorBrush => colorBrush.Color,
             _ => throw new ArgumentOutOfRangeException(nameof(brush), brush, null)
         };
     }

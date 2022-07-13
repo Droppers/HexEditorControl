@@ -5,9 +5,9 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using HexControl.Avalonia.Host;
 using HexControl.Avalonia.Host.Controls;
-using HexControl.Core;
 using HexControl.SharedControl.Control;
-using HexControl.SharedControl.Framework.Mapping;
+using HexControl.Framework.Mapping;
+using HexControl.SharedControl.Documents;
 using JetBrains.Annotations;
 
 namespace HexControl.Avalonia;
@@ -33,9 +33,16 @@ public class HexEditorControl : UserControl
     public static readonly StyledProperty<IBrush> EvenForegroundProperty =
         AvaloniaProperty.Register<HexEditorControl, IBrush>(nameof(EvenForeground));
 
+    public static readonly StyledProperty<string> OffsetHeaderProperty =
+        AvaloniaProperty.Register<HexEditorControl, string>(nameof(OffsetHeader));
+
+    public static readonly StyledProperty<string> TextHeaderProperty =
+        AvaloniaProperty.Register<HexEditorControl, string>(nameof(TextHeader));
+
     private static readonly AvaloniaProperty[] Properties =
     {
-        DocumentProperty, BackgroundProperty, HeaderForegroundProperty, OffsetForegroundProperty, ForegroundProperty, EvenForegroundProperty
+        DocumentProperty, BackgroundProperty, HeaderForegroundProperty, OffsetForegroundProperty, ForegroundProperty, EvenForegroundProperty,
+        OffsetHeaderProperty, TextHeaderProperty
     };
 
     private readonly SharedHexControl _control;
@@ -99,6 +106,18 @@ public class HexEditorControl : UserControl
     {
         get => _mapper.GetValue<IBrush>(GetValue(EvenForegroundProperty));
         set => SetValue(EvenForegroundProperty, value);
+    }
+
+    public string OffsetHeader
+    {
+        get => _mapper.GetValue<string>(GetValue(OffsetHeaderProperty));
+        set => SetValue(OffsetHeaderProperty, value);
+    }
+
+    public string TextHeader
+    {
+        get => _mapper.GetValue<string>(GetValue(TextHeaderProperty));
+        set => SetValue(TextHeaderProperty, value);
     }
 
     private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)

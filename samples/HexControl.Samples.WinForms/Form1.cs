@@ -1,5 +1,4 @@
-﻿using HexControl.Core;
-using HexControl.Core.Buffers;
+﻿using HexControl.SharedControl.Documents;
 
 namespace HexControl.Samples.WinForms;
 
@@ -13,8 +12,6 @@ public partial class Form1 : Form
         var bytes = File.ReadAllBytes(fileName);
         var document = Document.FromBytes(bytes);
 
-        var buffer = new FileBuffer(fileName, FileOpenMode.ReadWrite);
-        document.ReplaceBuffer(buffer);
         //var document = Document.FromFile(fileName);
         hexEditorControl2.Document = document;
 

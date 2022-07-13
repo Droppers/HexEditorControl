@@ -2,7 +2,6 @@ using System.Drawing;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using HexControl.SharedControl.Documents;
-using HexControl.Buffers;
 #if DEBUG
 using Avalonia;
 #endif

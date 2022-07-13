@@ -1,5 +1,4 @@
-﻿using HexControl.Buffers;
-using HexControl.SharedControl.Documents;
+﻿using HexControl.SharedControl.Documents;
 
 namespace HexControl.Samples.WinForms;
 

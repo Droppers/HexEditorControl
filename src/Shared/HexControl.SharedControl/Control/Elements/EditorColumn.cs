@@ -158,7 +158,7 @@ internal class EditorColumn : VisualElement
     {
         var oldCalculator = _calculator;
         _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset);
-        oldCalculator?.Dispose();
+        oldCalculator.Dispose();
     }
 
     protected override unsafe void Render(IRenderContext context)
@@ -221,8 +221,6 @@ internal class EditorColumn : VisualElement
 
         var byteColumn = (leftInCharacters - groupCount) / characterSet.Width;
         var nibble = Math.Max(0, ((int)relativePoint.X - _calculator.GetLeft(byteColumn, column)) / _control.CharacterWidth);
-
-        var isFinalRow = Offset == Document?.Offset && Document?.Length % Configuration.BytesPerRow is 0;
         
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var offset = Offset + (byteRow * Configuration.BytesPerRow + byteColumn);

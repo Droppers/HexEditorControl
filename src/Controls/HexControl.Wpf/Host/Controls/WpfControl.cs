@@ -9,7 +9,7 @@ namespace HexControl.Wpf.Host.Controls;
 internal class WpfControl : HostControl
 {
     private readonly FrameworkElement _element;
-    private HostKeyModifier _modifiers = HostKeyModifier.Default;
+    protected HostKeyModifier modifiers = HostKeyModifier.Default;
 
     protected WpfControl(FrameworkElement element)
     {
@@ -83,14 +83,14 @@ internal class WpfControl : HostControl
 
     private void ElementOnKeyDown(object sender, KeyEventArgs e)
     {
-        _modifiers |= MapKeyModifier(e.Key);
-        RaiseKeyDown(_modifiers, MapKey(e.Key));
+        modifiers |= MapKeyModifier(e.Key);
+        RaiseKeyDown(modifiers, MapKey(e.Key));
     }
 
     private void ElementOnKeyUp(object sender, KeyEventArgs e)
     {
-        _modifiers &= ~MapKeyModifier(e.Key);
-        RaiseKeyUp(_modifiers, MapKey(e.Key));
+        modifiers &= ~MapKeyModifier(e.Key);
+        RaiseKeyUp(modifiers, MapKey(e.Key));
     }
 
     private void ElementOnMouseEnter(object sender, MouseEventArgs e)

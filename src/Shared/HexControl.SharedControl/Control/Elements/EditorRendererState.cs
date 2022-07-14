@@ -21,7 +21,7 @@ internal class EditorRendererState
     private readonly VisualElement _owner;
     private bool _caretTick;
     private long _previousCaretOffset;
-    private Timer? _caretTimer;
+    private readonly Timer? _caretTimer;
     private bool _caretUpdated;
 
     public EditorRendererState(VisualElement owner)

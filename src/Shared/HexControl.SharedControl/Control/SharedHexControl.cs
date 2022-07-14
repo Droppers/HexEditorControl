@@ -433,8 +433,8 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        if (e.Modification.Offset + e.Modification.Length < Document.Offset ||
-            e.Modification.Offset > Document.Offset + _editorColumn.MaxVisibleOffset)
+        if (e.Modifications.All(m => m.Offset + m.Length < Document.Offset ||
+                                     m.Offset > Document.Offset + _editorColumn.MaxVisibleOffset))
         {
             return;
         }

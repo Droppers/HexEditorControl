@@ -40,7 +40,6 @@ public class InsertNewChunkChange : IBufferChange
         _ = contextNode ?? throw new ArgumentNullException(nameof(contextNode));
 
         buffer.Chunks.Remove(contextNode);
-
         buffer.Length -= _chunk.Length;
         return this;
     }

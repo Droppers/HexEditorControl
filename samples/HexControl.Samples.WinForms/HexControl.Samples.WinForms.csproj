@@ -6,9 +6,6 @@
 		<UseWindowsForms>true</UseWindowsForms>
 	</PropertyGroup>
 	<ItemGroup>
-	  <AdditionalFiles Remove="app.manifest" />
-	</ItemGroup>
-	<ItemGroup>
 	  <ProjectReference Include="..\..\src\Controls\HexControl.WinForms\HexControl.WinForms.csproj" />
 	</ItemGroup>
 </Project>

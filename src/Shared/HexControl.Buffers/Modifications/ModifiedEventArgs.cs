@@ -2,12 +2,12 @@
 
 public class ModifiedEventArgs : EventArgs
 {
-    public ModifiedEventArgs(BufferModification modification, ModificationSource source = ModificationSource.User)
+    public ModifiedEventArgs(IReadOnlyList<BufferModification> modifications, ModificationSource source = ModificationSource.User)
     {
-        Modification = modification;
+        Modifications = modifications;
         Source = source;
     }
 
-    public BufferModification Modification { get; }
+    public IReadOnlyList<BufferModification> Modifications { get; }
     public ModificationSource Source { get; }
 }

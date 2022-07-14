@@ -69,7 +69,7 @@ public class Document
         get => _offset;
         set
         {
-            var newOffset = Math.Min(FloorOffsetToNearestRow(value), MaximumOffset);
+            var newOffset = Math.Min(CeilOffsetToNearestRow(value), MaximumOffset);
             var oldOffset = _offset;
             if (oldOffset == newOffset)
             {
@@ -84,7 +84,14 @@ public class Document
     public Selection? Selection { get; private set; }
 
     // Maximum possible offset taking into account 'Configuration.BytesPerRow'
-    public long MaximumOffset => FloorOffsetToNearestRow(Length) - Configuration.BytesPerRow;
+    public long MaximumOffset
+    {
+        get
+        {
+            var ceil = CeilOffsetToNearestRow(Length);
+            return ceil == Length ? ceil - Configuration.BytesPerRow : ceil;
+        }
+    }
 
     public event EventHandler<PropertyChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
@@ -101,30 +108,33 @@ public class Document
 
     private void BufferOnModified(object? sender, ModifiedEventArgs e)
     {
-        switch (e.Source)
+        foreach (var modification in e.Modifications)
         {
-            case ModificationSource.Undo:
-                var undoState = _undoStates.Pop();
-                _redoStates.Push(undoState);
-                ApplyDocumentState(undoState);
-                break;
-            case ModificationSource.Redo:
-                var redoState = _redoStates.Pop();
-                _undoStates.Push(redoState);
-                ApplyDocumentState(redoState);
-                break;
-            case ModificationSource.User:
-                var userState = e.Modification switch
-                {
-                    DeleteModification(var offset, var length) => ApplyDeleteModification(offset, length),
-                    InsertModification(var offset, var bytes) => ApplyInsertModification(offset, bytes),
-                    WriteModification(var offset, var bytes) => ApplyWriteModification(offset, bytes),
-                    _ => throw new InvalidOperationException(
-                        $"Modification with type '{e.Modification.GetType().Name}' is not yet supported.")
-                };
-                _undoStates.Push(userState);
-                _redoStates.Clear();
-                break;
+            switch (e.Source)
+            {
+                case ModificationSource.Undo:
+                    var undoState = _undoStates.Pop();
+                    _redoStates.Push(undoState);
+                    ApplyDocumentState(undoState);
+                    break;
+                case ModificationSource.Redo:
+                    var redoState = _redoStates.Pop();
+                    _undoStates.Push(redoState);
+                    ApplyDocumentState(redoState);
+                    break;
+                case ModificationSource.User:
+                    var userState = modification switch
+                    {
+                        DeleteModification(var offset, var length) => ApplyDeleteModification(offset, length),
+                        InsertModification(var offset, var bytes) => ApplyInsertModification(offset, bytes),
+                        WriteModification(var offset, var bytes) => ApplyWriteModification(offset, bytes),
+                        _ => throw new InvalidOperationException(
+                            $"Modification with type '{modification.GetType().Name}' is not yet supported.")
+                    };
+                    _undoStates.Push(userState);
+                    _redoStates.Clear();
+                    break;
+            }
         }
     }
 
@@ -165,10 +175,11 @@ public class Document
         }
     }
 
-    private long FloorOffsetToNearestRow(long number)
+    private long CeilOffsetToNearestRow(long number)
     {
         var bytesPerRow = Configuration.BytesPerRow;
-        return Math.Max(0, (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow));
+        var ceil = (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow);
+        return Math.Max(0, ceil == number ? ceil : ceil - bytesPerRow);
     }
 
     protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -191,6 +202,16 @@ public class Document
         ChangeTracking changeTracking = ChangeTracking.UndoRedo,
         DocumentConfiguration? configuration = null) =>
         new(new MemoryBuffer(bytes, readOnly, changeTracking), configuration);
+
+    public void ChangeCaret(long offset, bool scrollToCaret = false)
+    {
+        ChangeCaret(Caret.Column, offset, 0, scrollToCaret);
+    }
+
+    public void ChangeCaret(long offset, int nibble, bool scrollToCaret = false)
+    {
+        ChangeCaret(Caret.Column, offset, nibble, scrollToCaret);
+    }
 
     public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
     {

@@ -1,14 +1,13 @@
 ﻿using HexControl.Framework.Drawing;
 using HexControl.Framework.Host;
 using HexControl.Framework.Host.Controls;
-using System.Windows.Forms;
 
 namespace HexControl.WinForms.Host.Controls;
 
 internal class WinFormsControl : HostControl
 {
     private readonly Control _control;
-    private HostKeyModifier _modifiers = HostKeyModifier.Default;
+    protected HostKeyModifier modifiers = HostKeyModifier.Default;
 
     protected WinFormsControl(Control control)
     {
@@ -109,14 +108,14 @@ internal class WinFormsControl : HostControl
 
     private void ControlOnKeyDown(object? sender, KeyEventArgs e)
     {
-        _modifiers |= MapKeyModifier(e.KeyCode);
-        RaiseKeyDown(_modifiers, MapKey(e.KeyCode));
+        modifiers |= MapKeyModifier(e.KeyCode);
+        RaiseKeyDown(modifiers, MapKey(e.KeyCode));
     }
 
     private void ControlOnKeyUp(object? sender, KeyEventArgs e)
     {
-        _modifiers &= ~MapKeyModifier(e.KeyCode);
-        RaiseKeyUp(_modifiers, MapKey(e.KeyCode));
+        modifiers &= ~MapKeyModifier(e.KeyCode);
+        RaiseKeyUp(modifiers, MapKey(e.KeyCode));
     }
 
     private static HostKeyModifier MapKeyModifier(Keys key)

@@ -336,7 +336,7 @@ internal class SharedHexControl : VisualElement
     }
 
 
-    public async Task SetDocumentAsync(Document? newDocument)
+    public async ValueTask SetDocumentAsync(Document? newDocument)
     {
         if (Document is not null)
         {
@@ -561,7 +561,7 @@ internal class SharedHexControl : VisualElement
         }
     }
 
-    private async Task InitDocument()
+    private async ValueTask InitDocument()
     {
         _editorColumn.HorizontalOffset = Document?.HorizontalOffset ?? 0;
         _offsetColumn.Length = Document?.Length ?? 0;
@@ -587,7 +587,7 @@ internal class SharedHexControl : VisualElement
         Invalidate();
     }
 
-    private async Task RefreshDocument()
+    private async ValueTask RefreshDocument()
     {
         if (Document is null || BytesToRead <= 0)
         {

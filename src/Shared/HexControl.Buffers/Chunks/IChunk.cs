@@ -7,7 +7,7 @@ public interface IChunk
 {
     public long Length { get; set; }
     
-    Task<long> ReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default);
+    ValueTask<long> ReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default);
 
     long Read(Span<byte> buffer, long offset);
 

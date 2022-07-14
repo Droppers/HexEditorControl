@@ -35,7 +35,7 @@ internal class FileChunk : Chunk, IImmutableChunk
         return buffer.Length;
     }
 
-    protected override async Task<long> InternalReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default)
+    protected override async ValueTask<long> InternalReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default)
     {
         var bytesRead = await RandomAccess.ReadAsync(_fileStream.SafeFileHandle, buffer, offset + SourceOffset, cancellationToken);
         if (bytesRead < buffer.Length)

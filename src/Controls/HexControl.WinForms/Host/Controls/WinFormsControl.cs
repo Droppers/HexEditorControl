@@ -8,7 +8,7 @@ internal class WinFormsControl : HostControl
 {
     private readonly Control _control;
 
-    public WinFormsControl(Control control)
+    protected WinFormsControl(Control control)
     {
         _control = control;
 
@@ -44,8 +44,8 @@ internal class WinFormsControl : HostControl
         set => _control.Visible = value;
     }
 
-    public override double Width => _control.Width;
-    public override double Height => _control.Height;
+    public override double Width => ConvertDpi(_control.Width);
+    public override double Height => ConvertDpi(_control.Height);
 
     private static Cursor MapCursor(HostCursor? cursor)
     {
@@ -102,7 +102,15 @@ internal class WinFormsControl : HostControl
         RaiseMouseUp(MapButton(e.Button), MapPoint(e.Location));
     }
 
-    private static SharedPoint MapPoint(Point point) => new(point.X, point.Y);
+    private SharedPoint MapPoint(Point point)
+    {
+        return new SharedPoint(ConvertDpi(point.X), ConvertDpi(point.Y));
+    }
+
+    private float ConvertDpi(float value)
+    {
+        return value / (_control.DeviceDpi / 96f);
+    }
 
     private static HostMouseButton MapButton(MouseButtons button)
     {

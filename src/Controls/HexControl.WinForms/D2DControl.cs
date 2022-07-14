@@ -45,7 +45,7 @@ internal class D2DControl : Control, IRenderStateProvider
 
     private void InitRendering()
     {
-        if (_d2dRenderTarget is not null)
+        if (DesignMode || _d2dRenderTarget is not null)
         {
             return;
         }
@@ -90,9 +90,13 @@ internal class D2DControl : Control, IRenderStateProvider
         CanRender = false;
 
         InitRendering();
-        lock (_drawLock)
+        if (_windowRenderTarget is not null)
         {
-            _windowRenderTarget?.Resize(new Size2(Width, Height));
+            lock (_drawLock)
+            {
+                var maxSize = _windowRenderTarget.MaximumBitmapSize;
+                _windowRenderTarget.Resize(new Size2(Math.Min(maxSize, Width), Math.Min(maxSize, Height)));
+            }
         }
 
         base.OnResize(e);

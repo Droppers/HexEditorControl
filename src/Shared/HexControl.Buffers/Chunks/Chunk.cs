@@ -14,7 +14,7 @@ public abstract class Chunk : IChunk
 
     public long Length { get; set; }
     
-    public async Task<long> ReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default)
+    public async ValueTask<long> ReadAsync(Memory<byte> buffer, long offset, CancellationToken cancellationToken = default)
     {
         if (offset + buffer.Length > Length)
         {
@@ -36,7 +36,7 @@ public abstract class Chunk : IChunk
 
     public abstract IChunk Clone();
     
-    protected abstract Task<long> InternalReadAsync(Memory<byte> buffer, long offset,
+    protected abstract ValueTask<long> InternalReadAsync(Memory<byte> buffer, long offset,
         CancellationToken cancellationToken = default);
 
     protected abstract long InternalRead(Span<byte> buffer, long offset);

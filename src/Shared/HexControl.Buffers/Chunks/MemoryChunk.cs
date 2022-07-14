@@ -16,11 +16,11 @@ internal class MemoryChunk : Chunk
         return buffer.Length;
     }
 
-    protected override Task<long> InternalReadAsync(Memory<byte> buffer, long offset,
+    protected override ValueTask<long> InternalReadAsync(Memory<byte> buffer, long offset,
         CancellationToken cancellationToken = default)
     {
         new Span<byte>(Bytes, (int)offset, buffer.Length).CopyTo(buffer.Span);
-        return Task.FromResult((long)buffer.Length);
+        return new ValueTask<long>(buffer.Length);
     }
 
     public override IChunk Clone()

@@ -4,8 +4,10 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>$(TargetFramework)-windows</TargetFramework>
 		<UseWindowsForms>true</UseWindowsForms>
-		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
+	<ItemGroup>
+	  <AdditionalFiles Remove="app.manifest" />
+	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\..\src\Controls\HexControl.WinForms\HexControl.WinForms.csproj" />
 	</ItemGroup>

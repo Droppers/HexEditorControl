@@ -73,7 +73,11 @@ internal readonly ref struct EditorRenderer
                 WriteTextHeader(_textBuilder);
             }
 
-            WriteContentBytes(_textBuilder);
+            if (_bytes.Length is not 0 && _bytesLength is not 0)
+            {
+                WriteContentBytes(_textBuilder);
+            }
+
             _textBuilder.Draw(_context);
         }
 
@@ -329,7 +333,8 @@ internal readonly ref struct EditorRenderer
         }
     }
 
-    // Utility for WPF, when not offsetting borders it will take up two half pixels (blurry)
+    // When not offsetting borders it will take up two half pixels (blurry)
+    // TODO: find a more convenient solution for this, because this is terrible
     private static double GetLineAntiAliasOffset(ISharedPen? pen) =>
         pen is not null && pen.Thickness % 2 is not 0 ? .5 : 0;
 
@@ -621,7 +626,7 @@ internal readonly ref struct EditorRenderer
         return writtenCharacters;
     }
 
-    private int WriteByteToTextBuilder(
+    private static int WriteByteToTextBuilder(
         ITextBuilder builder,
         IGlyphTypeface typeface,
         ISharedBrush brush,

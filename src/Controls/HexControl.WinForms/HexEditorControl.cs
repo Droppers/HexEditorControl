@@ -1,39 +1,94 @@
 ﻿using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using HexControl.SharedControl.Control;
-using HexControl.SharedControl.Documents;
-using HexControl.WinForms.Host;
 using HexControl.WinForms.Host.Controls;
+using HexControl.WinForms.Host;
+using System.Runtime.CompilerServices;
+using HexControl.SharedControl.Documents;
 using JetBrains.Annotations;
 
 namespace HexControl.WinForms;
 
 [PublicAPI]
 [ToolboxItem(true)]
-public partial class HexEditorControl : UserControl
+public class HexEditorControl : UserControl
 {
+    private readonly float _startupDpi;
     private readonly HexControlPropertyMapper _mapper;
+    private readonly TableLayoutPanel _tableLayoutPanel;
+    private readonly VScrollBar _verticalScrollBar;
+    private readonly HScrollBar _horizontalScrollBar;
 
     public HexEditorControl()
     {
-        PropertyChanged += OnPropertyChanged;
+        AutoScaleMode = AutoScaleMode.Dpi;
 
+        _tableLayoutPanel = new TableLayoutPanel
+        {
+            RowCount = 2,
+            ColumnCount = 2,
+            RowStyles = { new RowStyle(SizeType.Percent, 100), new RowStyle(SizeType.AutoSize) },
+            ColumnStyles = { new ColumnStyle(SizeType.Percent, 100), new ColumnStyle(SizeType.AutoSize) },
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        };
+        Controls.Add(_tableLayoutPanel);
+
+        var d2dControl = new D2DControl
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+        _tableLayoutPanel.Controls.Add(d2dControl, 0, 0);
+
+        _verticalScrollBar = new VScrollBar
+        {
+            Dock = DockStyle.Fill,
+            Width = 17
+        };
+        _tableLayoutPanel.Controls.Add(_verticalScrollBar, 1, 0);
+
+        _horizontalScrollBar = new HScrollBar
+        {
+            Dock = DockStyle.Fill,
+            Height = 17
+        };
+        _tableLayoutPanel.Controls.Add(_horizontalScrollBar, 0, 1);
+
+        var textBox = new TextBox();
+        Controls.Add(textBox);
+
+        PropertyChanged += OnPropertyChanged;
         var control = new SharedHexControl();
         control.ScrollBarVisibilityChanged += OnScrollBarVisibilityChanged;
         var factory = new WinFormsNativeFactory();
         _mapper = new HexControlPropertyMapper(control, factory);
 
-        AutoScaleMode = AutoScaleMode.Dpi;
-        InitializeComponent();
-
         var host = new WinFormsHost(d2dControl)
         {
-            {SharedHexControl.VerticalScrollBarName, new WinFormsScrollBar(sbVertical)},
-            {SharedHexControl.HorizontalScrollBarName, new WinFormsScrollBar(sbHorizontal)},
-            {SharedHexControl.FakeTextBoxName, new WinFormsTextBox(txtFake)}
+            {SharedHexControl.VerticalScrollBarName, new WinFormsScrollBar(_verticalScrollBar)},
+            {SharedHexControl.HorizontalScrollBarName, new WinFormsScrollBar(_horizontalScrollBar)},
+            {SharedHexControl.FakeTextBoxName, new WinFormsTextBox(textBox)}
         };
-        
+
         control.AttachHost(host);
+
+        _startupDpi = DeviceDpi / 96f;
+        ResizeScrollBars();
+    }
+
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+        ResizeScrollBars();
+    }
+
+    private void ResizeScrollBars()
+    {
+        var currentDpi = DeviceDpi / 96f;
+        _horizontalScrollBar.Height = (int)(SystemInformation.HorizontalScrollBarHeight / _startupDpi * currentDpi);
+        _verticalScrollBar.Width = (int)(SystemInformation.VerticalScrollBarWidth / _startupDpi * currentDpi);
     }
 
     private void OnScrollBarVisibilityChanged(object? sender, ScrollBarVisibilityChangedEventArgs e)
@@ -41,12 +96,12 @@ public partial class HexEditorControl : UserControl
         switch (e.ScrollBar)
         {
             case SharedScrollBar.Horizontal:
-                tlpGrid.RowStyles[1].Height = 0;
-                tlpGrid.RowStyles[1].SizeType = e.Visible ? SizeType.AutoSize : SizeType.Absolute;
+                _tableLayoutPanel.RowStyles[1].Height = 0;
+                _tableLayoutPanel.RowStyles[1].SizeType = e.Visible ? SizeType.AutoSize : SizeType.Absolute;
                 break;
             case SharedScrollBar.Vertical:
-                tlpGrid.ColumnStyles[1].Width = 0;
-                tlpGrid.ColumnStyles[1].SizeType = e.Visible ? SizeType.AutoSize : SizeType.Absolute;
+                _tableLayoutPanel.ColumnStyles[1].Width = 0;
+                _tableLayoutPanel.ColumnStyles[1].SizeType = e.Visible ? SizeType.AutoSize : SizeType.Absolute;
                 break;
         }
     }

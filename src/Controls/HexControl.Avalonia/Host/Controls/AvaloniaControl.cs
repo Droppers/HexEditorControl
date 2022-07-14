@@ -94,7 +94,7 @@ internal class AvaloniaControl : HostControl
         modifiers |= MapKeyModifier(e.Key);
 
         var key = MapKey(e.Key);
-        RaiseKeyDown(false, false, true, modifiers, key);
+        RaiseKeyDown(modifiers, key);
     }
 
     private void ControlOnKeyUp(object? sender, KeyEventArgs e)
@@ -102,7 +102,7 @@ internal class AvaloniaControl : HostControl
         modifiers &= ~MapKeyModifier(e.Key);
 
         var key = MapKey(e.Key);
-        RaiseKeyUp(false, true, false, modifiers, key);
+        RaiseKeyUp(modifiers, key);
     }
 
     private static HostKey MapKey(Key key)

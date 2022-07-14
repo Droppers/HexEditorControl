@@ -29,6 +29,8 @@ internal class WinFormsHost : WinFormsControl
             _renderContext.AttachStateProvider(_control);
         }
 
+        _renderContext.Dpi = _control.DeviceDpi / 96f;
+
         RaiseRender(_renderContext, newSurface);
     }
 

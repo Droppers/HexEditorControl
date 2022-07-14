@@ -10,19 +10,9 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
-        // ***this line is added***
-        if (Environment.OSVersion.Version.Major >= 6)
-        {
-            SetProcessDPIAware();
-        }
-
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
+
+        ApplicationConfiguration.Initialize();
         Application.Run(new Form1());
     }
-
-    // ***also dllimport of that function***
-    [DllImport("user32.dll")]
-    private static extern bool SetProcessDPIAware();
 }

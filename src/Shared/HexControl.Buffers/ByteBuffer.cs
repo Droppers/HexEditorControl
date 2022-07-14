@@ -46,7 +46,7 @@ public abstract class ByteBuffer
     public event EventHandler<ModifiedEventArgs>? Modified;
     public event EventHandler<EventArgs>? Saved;
 
-    public async Task<long> ReadAsync(Memory<byte> buffer,
+    public async ValueTask<long> ReadAsync(Memory<byte> buffer,
         long offset,
         List<ModifiedRange>? modifications = null,
         CancellationToken cancellationToken = default)
@@ -55,7 +55,7 @@ public abstract class ByteBuffer
         return await InternalReadAsync(buffer, offset, modifications, cancellationToken);
     }
 
-    private async Task<long> InternalReadAsync(
+    private async ValueTask<long> InternalReadAsync(
         Memory<byte> buffer,
         long offset,
         List<ModifiedRange>? modifications = null,

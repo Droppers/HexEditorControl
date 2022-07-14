@@ -141,6 +141,22 @@ public partial class ByteBufferTests
     }
 
     [Fact]
+    public void Write_AfterDelete()
+    {
+        var bytes = new byte[] {97};
+
+        _buffer.Delete(37, 4);
+        _buffer.ValidateWrite(37, bytes, expects =>
+            expects
+                .Length(542)
+                .Immutable(37, 0)
+                .Memory(bytes)
+                .Immutable(504, 42));
+
+        _buffer.ValidateUndoRedo();
+    }
+
+    [Fact]
     public void Write_ALotOfSingleBytes()
     {
         _buffer.Write(969, new byte[] {160});

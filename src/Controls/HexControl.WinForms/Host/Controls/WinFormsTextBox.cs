@@ -1,4 +1,5 @@
-﻿using HexControl.Framework.Host.Controls;
+﻿using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
 
 namespace HexControl.WinForms.Host.Controls;
 
@@ -27,6 +28,11 @@ internal class WinFormsTextBox : WinFormsControl, IHostTextBox
 
     private void TextBoxOnTextChanged(object? sender, EventArgs e)
     {
+        if (modifiers.HasFlag(HostKeyModifier.Control))
+        {
+            return;
+        }
+
         TextChanged?.Invoke(this, new HostTextChangedEventArgs(_textBox.Text));
     }
 

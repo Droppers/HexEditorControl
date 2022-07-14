@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace HexControl.Samples.WinForms;
 
 internal static class Program

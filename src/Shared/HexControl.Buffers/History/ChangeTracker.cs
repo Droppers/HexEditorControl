@@ -8,32 +8,65 @@ namespace HexControl.Buffers.History;
 internal class ChangeTracker
 {
     private readonly ByteBuffer _buffer;
-    private readonly Stack<ChangeCollection> _redoStack;
-    private readonly Stack<ChangeCollection> _undoStack;
+    private readonly Stack<ChangeCollectionGroup> _redoStack;
+    private readonly Stack<ChangeCollectionGroup> _undoStack;
 
+    private readonly List<ChangeCollection> _group;
 
     public ChangeTracker(ByteBuffer buffer)
     {
         _buffer = buffer;
-        _undoStack = new Stack<ChangeCollection>();
-        _redoStack = new Stack<ChangeCollection>();
+        _undoStack = new Stack<ChangeCollectionGroup>();
+        _redoStack = new Stack<ChangeCollectionGroup>();
+        _group = new List<ChangeCollection>();
     }
 
-    public IReadOnlyCollection<ChangeCollection> UndoStack => _undoStack;
+    public IReadOnlyCollection<ChangeCollectionGroup> UndoStack => _undoStack;
 
-    public IReadOnlyCollection<ChangeCollection> RedoStack => _redoStack;
+    public IReadOnlyCollection<ChangeCollectionGroup> RedoStack => _redoStack;
 
     public bool CanUndo => _undoStack.Count > 0 && _buffer.ChangeTracking is not ChangeTracking.None;
     public bool CanRedo => _redoStack.Count > 0 && _buffer.ChangeTracking is ChangeTracking.UndoRedo;
 
-    internal void Push(ChangeCollection changes)
+    public bool IsGroup { get; private set; }
+
+    public void Start()
+    {
+        IsGroup = true;
+    }
+
+    public IReadOnlyList<ChangeCollection> End()
+    {
+        IsGroup = false;
+
+        var collections = new List<ChangeCollection>(_group);
+        Push(new ChangeCollectionGroup(collections));
+        _group.Clear();
+
+        return collections;
+    }
+
+
+    public void Push(ChangeCollection collection)
+    {
+        if (IsGroup)
+        {
+            _group.Add(collection);
+        }
+        else
+        {
+            Push(new ChangeCollectionGroup(collection));
+        }
+    }
+
+    private void Push(ChangeCollectionGroup group)
     {
         if (_buffer.ChangeTracking is ChangeTracking.None)
         {
             return;
         }
 
-        _undoStack.Push(changes);
+        _undoStack.Push(group);
 
         if (_buffer.ChangeTracking is ChangeTracking.UndoRedo)
         {
@@ -41,56 +74,75 @@ internal class ChangeTracker
         }
     }
 
-    public BufferModification Undo()
+    public IReadOnlyList<BufferModification> Undo()
     {
         if (!CanUndo)
         {
             throw new InvalidOperationException("Undo stack is empty.");
         }
-
+        
         Debug.WriteLine("");
         Debug.WriteLine($"Current undo stack ({_undoStack.Count}):");
-        foreach (var modification in _undoStack.Reverse())
+        
+        foreach (var debugGroup in _undoStack.Reverse())
         {
-            switch (modification.Modification)
+            foreach (var collection in debugGroup.Collections.Reverse())
             {
-                case InsertModification insert:
-                    Debug.WriteLine(
-                        $"doc.Buffer.Insert({insert.Offset}, new byte[] {{ {string.Join(", ", insert.Bytes)} }});");
-                    break;
-                case WriteModification write:
-                    Debug.WriteLine(
-                        $"doc.Buffer.Write({write.Offset}, new byte[] {{ {string.Join(", ", write.Bytes)} }});");
-                    break;
-                case DeleteModification delete:
-                    Debug.WriteLine($"doc.Buffer.Delete({delete.Offset}, {delete.Length});");
-                    break;
+                switch (collection.Modification)
+                {
+                    case InsertModification insert:
+                        Debug.WriteLine(
+                            $"_buffer.Insert({insert.Offset}, new byte[] {{ {string.Join(", ", insert.Bytes)} }});");
+                        break;
+                    case WriteModification write:
+                        Debug.WriteLine(
+                            $"_buffer.Write({write.Offset}, new byte[] {{ {string.Join(", ", write.Bytes)} }});");
+                        break;
+                    case DeleteModification delete:
+                        Debug.WriteLine($"_buffer.Delete({delete.Offset}, {delete.Length});");
+                        break;
+                }
             }
         }
 
-        var pop = _undoStack.Pop();
-        ApplyChanges(pop, true);
+        var group = _undoStack.Pop();
+        var modifications = new BufferModification[group.Collections.Count];
+        for (var i = 0; i < group.Collections.Count; i++)
+        {
+            var collection = group.Collections[group.Collections.Count - 1 - i];
+            ApplyChanges(collection, true);
+
+            modifications[i] = collection.Modification;
+        }
 
         if (_buffer.ChangeTracking is ChangeTracking.UndoRedo)
         {
-            _redoStack.Push(pop);
+            _redoStack.Push(group);
         }
 
-        return pop.Modification;
+        return modifications;
     }
 
-    public BufferModification Redo()
+    public IReadOnlyList<BufferModification> Redo()
     {
         if (!CanRedo)
         {
             throw new InvalidOperationException("Redo stack is empty.");
         }
 
-        var pop = _redoStack.Pop();
-        ApplyChanges(pop, false);
-        _undoStack.Push(pop);
+        var group = _redoStack.Pop();
+        var modifications = new BufferModification[group.Collections.Count];
+        for (var i = 0; i < group.Collections.Count; i++)
+        {
+            var collection = group.Collections[i];
+            ApplyChanges(collection, false);
 
-        return pop.Modification;
+            modifications[i] = collection.Modification;
+        }
+        
+        _undoStack.Push(group);
+
+        return modifications;
     }
 
     public void Clear()
@@ -101,12 +153,14 @@ internal class ChangeTracker
 
     private void ApplyChanges(ChangeCollection collection, bool revert)
     {
+        var firstIsRemove = revert && IsRemoveChange(collection.Changes[0], revert);
+
         var (node, _) = _buffer.GetNodeAt(collection.ChangeOffset);
-        if (collection.StartAtPrevious && node?.Previous != null)
+        if (collection.StartAtPrevious && !firstIsRemove && node?.Previous != null)
         {
             (node, _) = _buffer.GetNodeAt(collection.ChangeOffset - 1);
         }
-
+        
         var currentTargetNode = node;
         for (var i = 0; i < collection.Count; i++)
         {
@@ -114,33 +168,40 @@ internal class ChangeTracker
             var isInsertion = IsInsertChange(change, revert);
             var nextIsInsertion = i + 1 < collection.Changes.Count && IsInsertChange(collection.Changes[i + 1], revert);
 
+            var previous = currentTargetNode?.Previous;
             var next = currentTargetNode?.Next;
             var (removed, insertedBefore, insertedAfter) = ApplyChange(change, currentTargetNode, revert);
 
-            if (_buffer.Chunks.Count == 0)
+            if (_buffer.Chunks.Count is 0)
             {
                 currentTargetNode = null;
             }
             else if (nextIsInsertion)
             {
-                currentTargetNode =
-                    (isInsertion ? insertedBefore ? currentTargetNode?.Previous : currentTargetNode?.Next : null) ??
-                    currentTargetNode;
+                var insertion = (isInsertion ? (insertedBefore ? currentTargetNode?.Previous : currentTargetNode?.Next) : null);
+                var other = removed ? previous : null;
+                currentTargetNode = insertion ?? other ?? currentTargetNode;
             }
             else
             {
-                var nodeAfterPreviousDiffers = (insertedBefore || insertedAfter) && !removed
-                    ? insertedBefore ? currentTargetNode : currentTargetNode?.Next?.Next
+                var insertion = (insertedBefore || insertedAfter) && !removed
+                    ? (insertedBefore ? currentTargetNode : currentTargetNode?.Next?.Next)
                     : next;
                 var currentTargetNodeAfterRemoved = removed ? null : currentTargetNode;
-                currentTargetNode =
-                    nodeAfterPreviousDiffers ?? currentTargetNode?.Next ?? currentTargetNodeAfterRemoved;
+                currentTargetNode = insertion ?? currentTargetNode?.Next ?? currentTargetNodeAfterRemoved;
             }
         }
     }
 
-    private static bool IsInsertChange(IChange change, bool revert) =>
-        change is RemoveChunkChange && revert || change is InsertNewChunkChange && !revert;
+    private static bool IsInsertChange(IChange change, bool revert)
+    {
+        return change is RemoveChunkChange && revert || change is InsertNewChunkChange && !revert;
+    }
+
+    private static bool IsRemoveChange(IChange change, bool revert)
+    {
+        return change is RemoveChunkChange && !revert || change is InsertNewChunkChange && revert;
+    }
 
     private (bool removed, bool insertedBefore, bool insertedAfter) ApplyChange(IChange change,
         LinkedListNode<IChunk>? currentNode, bool revert)
@@ -161,7 +222,7 @@ internal class ChangeTracker
                 Do(documentModification, currentNode, revert);
                 break;
             default:
-                throw new InvalidOperationException("Invalid state while undoing or redoing changes.");
+                throw new InvalidOperationException("Change type has not been implemented");
         }
 
         var removed = currentNode is {List: null};

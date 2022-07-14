@@ -389,6 +389,11 @@ internal class EditorColumn : VisualElement
             return;
         }
 
+        if (sender is IHostTextBox textBox)
+        {
+            textBox.Clear();
+        }
+
         var caret = Document.Caret;
         var selection = Document.Selection;
         var ctrlPressed = (e.Modifiers & HostKeyModifier.Control) is not 0;
@@ -472,22 +477,20 @@ internal class EditorColumn : VisualElement
         }
     }
 
-    private async Task HandleWriteKey(char @char)
+    private async ValueTask HandleWriteKey(char @char)
     {
         if (Document is null || CanModify)
         {
             return;
         }
 
-        Deselect();
-
         var caret = Document.Caret;
-        var appendToDocument = caret.Offset >= Document.Length;
+        var endOfDocument = caret.Offset >= Document.Length;
 
         var characterSet = _calculator.GetCharacterSetForColumn(caret.Column);
         var oldByte = (byte)0;
 
-        if (!appendToDocument)
+        if (!endOfDocument)
         {
             var readByte = await ReadCaretByte(caret);
             if (readByte is null)
@@ -504,7 +507,12 @@ internal class EditorColumn : VisualElement
             return;
         }
 
-        if (appendToDocument || Configuration.WriteInsert)
+        if (Document.Selection is { } selection)
+        {
+            await Document.Buffer.ReplaceAsync(selection.Start, selection.Length, newByte);
+            Document.ChangeCaret(selection.Start);
+        }
+        else if (endOfDocument || Configuration.WriteInsert && caret.Nibble is 0)
         {
             await Document.Buffer.InsertAsync(caret.Offset, newByte);
         }
@@ -516,7 +524,7 @@ internal class EditorColumn : VisualElement
         HandleArrowKeys(Document, HostKey.Right);
     }
 
-    private async Task<byte?> ReadCaretByte(Caret caret)
+    private async ValueTask<byte?> ReadCaretByte(Caret caret)
     {
         if (Document is null)
         {

@@ -97,14 +97,14 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
         SizeChanged?.Invoke(this, new HostSizeChangedEventArgs(oldSize, newSize));
     }
 
-    protected void RaiseKeyDown(bool isRepeat, bool isUp, bool isDown, HostKeyModifier modifiers, HostKey key)
+    protected void RaiseKeyDown(HostKeyModifier modifiers, HostKey key)
     {
-        KeyDown?.Invoke(this, new HostKeyEventArgs(isRepeat, isUp, isDown, modifiers, key));
+        KeyDown?.Invoke(this, new HostKeyEventArgs(modifiers, key));
     }
 
-    protected void RaiseKeyUp(bool isRepeat, bool isUp, bool isDown, HostKeyModifier modifiers, HostKey key)
+    protected void RaiseKeyUp(HostKeyModifier modifiers, HostKey key)
     {
-        KeyUp?.Invoke(this, new HostKeyEventArgs(isRepeat, isUp, isDown, modifiers, key));
+        KeyUp?.Invoke(this, new HostKeyEventArgs(modifiers, key));
     }
 
     protected void RaiseRender(IRenderContext context, bool newSurface)

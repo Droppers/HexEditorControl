@@ -358,13 +358,12 @@ public class Document
             }
         }
 
-        if (offset >= Caret.Offset)
+        Caret? caretState = null;
+        if (offset < Caret.Offset)
         {
-            return new DocumentState(markerStates);
+            caretState = Caret with { };
+            Caret = Caret with {Nibble = 0};
         }
-
-        var caretState = Caret with { };
-        Caret = Caret with {Nibble = 0};
 
         Selection? selectionState = null;
         if (Selection is { } selection)
@@ -372,7 +371,7 @@ public class Document
             var (newOffset, newLength) =
                 DeleteFromRange(selection.Start, selection.Length, offset, length);
             selectionState = Selection;
-            Selection = selection with
+            Selection = newLength <= 0 ? null : selection with
             {
                 Start = newOffset,
                 Length = newLength

@@ -84,13 +84,13 @@ internal class WpfControl : HostControl
     private void ElementOnKeyDown(object sender, KeyEventArgs e)
     {
         _modifiers |= MapKeyModifier(e.Key);
-        RaiseKeyDown(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
+        RaiseKeyDown(_modifiers, MapKey(e.Key));
     }
 
     private void ElementOnKeyUp(object sender, KeyEventArgs e)
     {
         _modifiers &= ~MapKeyModifier(e.Key);
-        RaiseKeyUp(e.IsRepeat, e.IsUp, e.IsDown, _modifiers, MapKey(e.Key));
+        RaiseKeyUp(_modifiers, MapKey(e.Key));
     }
 
     private void ElementOnMouseEnter(object sender, MouseEventArgs e)

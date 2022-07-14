@@ -69,7 +69,7 @@ public class Document
         get => _offset;
         set
         {
-            var newOffset = Math.Min(FloorOffsetToNearestRow(value), MaximumOffset);
+            var newOffset = Math.Min(CeilOffsetToNearestRow(value), MaximumOffset);
             var oldOffset = _offset;
             if (oldOffset == newOffset)
             {
@@ -84,7 +84,14 @@ public class Document
     public Selection? Selection { get; private set; }
 
     // Maximum possible offset taking into account 'Configuration.BytesPerRow'
-    public long MaximumOffset => FloorOffsetToNearestRow(Length);
+    public long MaximumOffset
+    {
+        get
+        {
+            var ceil = CeilOffsetToNearestRow(Length);
+            return ceil == Length ? ceil - Configuration.BytesPerRow : ceil;
+        }
+    }
 
     public event EventHandler<PropertyChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
@@ -168,11 +175,11 @@ public class Document
         }
     }
 
-    private long FloorOffsetToNearestRow(long number)
+    private long CeilOffsetToNearestRow(long number)
     {
         var bytesPerRow = Configuration.BytesPerRow;
         var ceil = (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow);
-        return Math.Max(0, ceil == number ? ceil : number - bytesPerRow);
+        return Math.Max(0, ceil == number ? ceil : ceil - bytesPerRow);
     }
 
     protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

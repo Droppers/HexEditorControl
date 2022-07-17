@@ -155,6 +155,8 @@ internal class WinFormsControl : HostControl
             Keys.Z => HostKey.Z,
             Keys.Y => HostKey.Y,
             Keys.A => HostKey.A,
+            Keys.C => HostKey.C,
+            Keys.V => HostKey.V,
             _ => HostKey.Unknown
         };
     }

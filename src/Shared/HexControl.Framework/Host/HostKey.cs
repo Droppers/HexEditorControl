@@ -13,5 +13,7 @@ internal enum HostKey
     Delete,
     Z,
     Y,
-    A
+    A,
+    C,
+    V
 }

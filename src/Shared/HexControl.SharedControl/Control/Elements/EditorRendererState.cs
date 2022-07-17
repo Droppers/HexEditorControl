@@ -85,13 +85,20 @@ internal class EditorRendererState
             CaretTick = !CaretTick;
             CaretUpdated = true;
 
-            if (_syncContext is not null)
+            try
             {
-                _syncContext.Post(_ => _owner.Invalidate(), null);
+                if (_syncContext is not null)
+                {
+                    _syncContext.Post(_ => _owner.Invalidate(), null);
+                }
+                else
+                {
+                    _owner.Invalidate();
+                }
             }
-            else
+            catch
             {
-                _owner.Invalidate();
+                // ignore
             }
         };
 

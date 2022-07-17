@@ -1,6 +1,8 @@
-﻿namespace HexControl.SharedControl.Characters;
+﻿using System.Text;
 
-public sealed class TextCharacterSet : CharacterSet
+namespace HexControl.SharedControl.Characters;
+
+public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IStringParsable
 {
     private readonly char[] _characters;
 
@@ -12,6 +14,8 @@ public sealed class TextCharacterSet : CharacterSet
         }
 
         _characters = characters;
+
+        Groupable = false;
         Width = 1;
     }
 
@@ -21,7 +25,6 @@ public sealed class TextCharacterSet : CharacterSet
     {
         var @char = _characters[@byte];
         destBuffer[0] = @char == '\0' ? '.' : @char;
-
         return Width;
     }
 
@@ -39,6 +42,51 @@ public sealed class TextCharacterSet : CharacterSet
         }
 
         output = input;
+        return false;
+    }
+
+    public bool TryParse(string value, Span<byte> parsedBuffer, out int length)
+    {
+        length = 0;
+
+        foreach(var chr in value)
+        {
+            if(!TryConvertCharacterToByte(chr, out var @byte))
+            {
+                return false;
+            }
+
+            parsedBuffer[length] = @byte;
+            length++;
+        }
+
+        return true;
+    }
+
+    public string ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
+    {
+        var sb = new StringBuilder();
+        foreach (var @byte in buffer)
+        {
+            sb.Append(_characters[@byte]);
+        }
+
+        return sb.ToString();
+    }
+
+    private bool TryConvertCharacterToByte(char value, out byte @byte)
+    {
+        for (var i = 0; i < Math.Min(255, _characters.Length); i++)
+        {
+            var @char = _characters[i];
+            if(@char == value)
+            {
+                @byte = (byte)i;
+                return true;
+            }
+        }
+
+        @byte = default;
         return false;
     }
 }

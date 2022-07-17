@@ -122,6 +122,8 @@ internal class AvaloniaControl : HostControl
             Key.Z => HostKey.Z,
             Key.Y => HostKey.Y,
             Key.A => HostKey.A,
+            Key.C => HostKey.C,
+            Key.V => HostKey.V,
             _ => HostKey.Unknown
         };
     }

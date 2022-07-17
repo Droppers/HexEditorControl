@@ -115,7 +115,7 @@ internal class EditorColumn : VisualElement
             : 0);
 
     public long Offset { get; set; }
-    private bool CanModify => Document?.Buffer.IsReadOnly == true || Document?.Buffer.Locked == true;
+    private bool CanModify => Document?.Buffer.IsReadOnly == false && Document?.Buffer.Locked == false;
 
     private int RowHeight => _control.RowHeight;
     private int CharacterWidth => _control.CharacterWidth;
@@ -406,17 +406,32 @@ internal class EditorColumn : VisualElement
 
             HandleArrowKeys(Document, e.Key, !ctrlPressed);
         }
+        else if (ctrlPressed && e.Key is HostKey.C && selection.HasValue)
+        {
+            await Document.CopyAsync(selection.Value.Start, selection.Value.Length);
+        }
+        else if (ctrlPressed && e.Key is HostKey.V && CanModify)
+        {
+            if (selection.HasValue)
+            {
+                await Document.PasteAsync(selection.Value.Start, selection.Value.Length);
+            }
+            else
+            {
+                await Document.PasteAsync(Document.Caret.Offset);
+            }
+        }
         else if (ctrlPressed && e.Key is HostKey.A)
         {
             _startSelectionOffset = 0;
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z && !CanModify && Document.Buffer.CanUndo)
+        else if (ctrlPressed && e.Key is HostKey.Z && CanModify && Document.Buffer.CanUndo)
         {
             await Document.Buffer.UndoAsync();
         }
-        else if (ctrlPressed && e.Key is HostKey.Y && !CanModify && Document.Buffer.CanRedo)
+        else if (ctrlPressed && e.Key is HostKey.Y && CanModify && Document.Buffer.CanRedo)
         {
             await Document.Buffer.RedoAsync();
         }
@@ -428,13 +443,13 @@ internal class EditorColumn : VisualElement
                 caret.Offset;
             _keyboardSelectMode = true;
         }
-        else if (selection.HasValue && e.Key is HostKey.Back or HostKey.Delete && !CanModify)
+        else if (e.Key is HostKey.Back or HostKey.Delete && CanModify && selection.HasValue)
         {
             await Document.Buffer.DeleteAsync(selection.Value.Start, selection.Value.End - selection.Value.Start);
             SetCaretOffset(selection.Value.Start);
             Deselect();
         }
-        else if (caret.Nibble is 0 && !CanModify)
+        else if (caret.Nibble is 0 && CanModify)
         {
             switch (e.Key)
             {
@@ -479,7 +494,7 @@ internal class EditorColumn : VisualElement
 
     private async ValueTask HandleWriteKey(char @char)
     {
-        if (Document is null || CanModify)
+        if (Document is null || !CanModify)
         {
             return;
         }

@@ -138,6 +138,8 @@ internal class WpfControl : HostControl
             Key.A => HostKey.A,
             Key.Z => HostKey.Z,
             Key.Y => HostKey.Y,
+            Key.C => HostKey.C,
+            Key.V => HostKey.V,
             _ => HostKey.Unknown
         };
     }

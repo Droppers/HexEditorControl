@@ -5,6 +5,8 @@ using HexControl.Framework.Observable;
 using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
+using System;
+using System.Buffers;
 using System.Runtime.InteropServices;
 
 namespace HexControl.SharedControl.Documents;
@@ -12,6 +14,8 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public class Document
 {
+    private const int CLIPBOARD_LIMIT = 1024 * 1024 * 32;
+
     private readonly Stack<DocumentState> _redoStates;
     private readonly Stack<DocumentState> _undoStates;
 
@@ -69,7 +73,8 @@ public class Document
         get => _offset;
         set
         {
-            var newOffset = Math.Min(CeilOffsetToNearestRow(value), MaximumOffset);
+            var newOffset = (long)Math.Floor(value / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
+            newOffset = Math.Max(0, Math.Min(newOffset, MaximumOffset));
             var oldOffset = _offset;
             if (oldOffset == newOffset)
             {
@@ -88,8 +93,7 @@ public class Document
     {
         get
         {
-            var ceil = CeilOffsetToNearestRow(Length);
-            return ceil == Length ? ceil - Configuration.BytesPerRow : ceil;
+            return (long)Math.Floor(Length / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
         }
     }
 
@@ -175,13 +179,6 @@ public class Document
         }
     }
 
-    private long CeilOffsetToNearestRow(long number)
-    {
-        var bytesPerRow = Configuration.BytesPerRow;
-        var ceil = (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow);
-        return Math.Max(0, ceil == number ? ceil : ceil - bytesPerRow);
-    }
-
     protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Reset the horizontal offset (scroll) when changing the columns or character sets
@@ -261,6 +258,11 @@ public class Document
         OnSelectionChanged(oldArea, newArea, requestCenter);
     }
 
+    public void Deselect()
+    {
+        Select(null);
+    }
+
     public void AddMarker(IDocumentMarker marker)
     {
         InternalMarkers.Add(marker);
@@ -271,7 +273,81 @@ public class Document
     public void RemoveMarker(IDocumentMarker marker)
     {
         InternalMarkers.Remove(marker);
-        _markersVersion--;
+        _markersVersion++;
+    }
+
+    public async Task CopyAsync(long offset, long length, CancellationToken cancellationToken = default)
+    {
+        if (length > CLIPBOARD_LIMIT)
+        {
+            return;
+        }
+
+        var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
+
+        try
+        {
+            await Buffer.ReadAsync(readBuffer.AsMemory(0, (int)length), offset, null, cancellationToken);
+
+            var characterSet = GetCharacterSet(Caret.Column);
+            if (characterSet is IStringConvertible convertible)
+            {
+                var value = convertible.ToString(readBuffer.AsSpan(0, (int)length), new FormatInfo(offset, Configuration));
+                // TODO: write to clipboard
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(readBuffer);
+        }
+    }
+
+    public async Task PasteAsync(long offset, long? length = null)
+    {
+        // TODO: read from clipboard
+        var value = "5A9000 03000000 04000000 FFFF0000 B8000000 00000000 40";
+        if (value.Length > CLIPBOARD_LIMIT)
+        {
+            return;
+        }
+
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(value.Length);
+
+        try
+        {
+            var characterSet = GetCharacterSet(Caret.Column);
+            if (characterSet is IStringParsable parsable)
+            {
+                if (parsable.TryParse(value, tempBuffer.AsSpan(), out var parsedLength))
+                {
+                    var writeBuffer = new byte[parsedLength];
+                    tempBuffer.AsSpan(0, parsedLength).CopyTo(writeBuffer.AsSpan());
+
+                    if (length.HasValue)
+                    {
+                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer);
+                    }
+                    else
+                    {
+                        await Buffer.WriteAsync(offset, writeBuffer);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+        }
+    }
+
+    private CharacterSet GetCharacterSet(ColumnSide column)
+    {
+        return column switch
+        {
+            ColumnSide.Left => Configuration.LeftCharacterSet,
+            ColumnSide.Right => Configuration.RightCharacterSet,
+            _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
+        };
     }
 
     private bool ValidateCaret(Caret caret)
@@ -297,11 +373,6 @@ public class Document
             ColumnSide.Right => Configuration.RightCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
-    }
-
-    public void Deselect()
-    {
-        Select(null);
     }
 
     internal ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)

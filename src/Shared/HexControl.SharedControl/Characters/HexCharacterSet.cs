@@ -85,6 +85,12 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
         {
             var lower = value[i];
             var upper = value[i + 1];
+
+            if (!CharIsHexadecinal(lower) || !CharIsHexadecinal(upper))
+            {
+                return false;
+            }
+
             buffer[length] = Convert.ToByte($"{upper}{lower}", 16);
 
             length++;
@@ -121,5 +127,10 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
             >= 'a' and <= 'z' => @char - 87,
             _ => @char - 48
         };
+    }
+
+    private static bool CharIsHexadecinal(char @char)
+    {
+        return @char is (>= 'A' and <= 'F') or (>= 'a' and <= 'f') or (>= '0' and <= '9');
     }
 }

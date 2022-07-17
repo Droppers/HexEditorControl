@@ -5,21 +5,21 @@ namespace HexControl.Buffers.History.Changes;
 
 internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
 {
-    private readonly byte[] _writeBuffer;
-    private readonly long _writeOffset;
+    private readonly long _offset;
+    private readonly byte[] _bytes;
 
-    public WriteToMemoryChange(long writeOffset, byte[] writeBuffer)
+    public WriteToMemoryChange(long offset, byte[] bytes)
     {
-        _writeOffset = writeOffset;
-        _writeBuffer = writeBuffer;
+        _offset = offset;
+        _bytes = bytes;
     }
 
     public RevertData Data { get; private set; } = null!;
 
     public IChunkChange<MemoryChunk> Apply(ByteBuffer buffer, LinkedListNode<IChunk> contextNode, MemoryChunk chunk)
     {
-        var growStart = _writeOffset < 0 ? Math.Abs(_writeOffset) : 0;
-        var growEnd = Math.Max(0, _writeOffset + _writeBuffer.Length - chunk.Length);
+        var growStart = _offset < 0 ? Math.Abs(_offset) : 0;
+        var growEnd = Math.Max(0, _offset + _bytes.Length - chunk.Length);
 
         if (growStart > 0 || growEnd > 0)
         {
@@ -31,19 +31,19 @@ internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
             if (growStart > 0 && growEnd > 0)
             {
                 overwritten = chunk.Bytes.Copy(0, chunk.Bytes.Length); // all overwritten
-                newBuffer.Write(0, _writeBuffer);
+                newBuffer.Write(0, _bytes);
             }
             else if (growStart > 0)
             {
                 direction = GrowDirection.Start;
-                overwritten = chunk.Bytes.Copy(0, _writeBuffer.Length - growStart);
-                newBuffer.Write(0, _writeBuffer);
+                overwritten = chunk.Bytes.Copy(0, _bytes.Length - growStart);
+                newBuffer.Write(0, _bytes);
             }
             else if (growEnd > 0)
             {
                 direction = GrowDirection.End;
-                overwritten = chunk.Bytes.Copy(_writeOffset, _writeBuffer.Length - growEnd);
-                newBuffer.Write(_writeOffset, _writeBuffer);
+                overwritten = chunk.Bytes.Copy(_offset, _bytes.Length - growEnd);
+                newBuffer.Write(_offset, _bytes);
             }
 
             chunk.Bytes = newBuffer;
@@ -52,8 +52,8 @@ internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
         }
         else
         {
-            var overwritten = chunk.Bytes.Copy(_writeOffset, _writeBuffer.Length);
-            chunk.Bytes.Write(_writeOffset, _writeBuffer);
+            var overwritten = chunk.Bytes.Copy(_offset, _bytes.Length);
+            chunk.Bytes.Write(_offset, _bytes);
             Data = new RevertData(GrowDirection.None, 0, 0, overwritten);
         }
 
@@ -70,7 +70,7 @@ internal class WriteToMemoryChange : IChunkChange<MemoryChunk>
 
         if (Data.Direction is GrowDirection.None)
         {
-            chunk.Bytes.Write(_writeOffset, Data.OverwrittenBuffer);
+            chunk.Bytes.Write(_offset, Data.OverwrittenBuffer);
             return this;
         }
 

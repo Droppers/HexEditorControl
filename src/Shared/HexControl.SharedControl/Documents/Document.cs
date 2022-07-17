@@ -1,11 +1,11 @@
 ﻿using HexControl.Buffers;
 using HexControl.Buffers.Events;
 using HexControl.Buffers.Modifications;
+using HexControl.Framework.Clipboard;
 using HexControl.Framework.Observable;
 using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
-using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
 
@@ -168,10 +168,7 @@ public class Document
             }
         }
 
-        if (state.SelectionState.HasValue)
-        {
-            Selection = state.SelectionState;
-        }
+        Selection = state.SelectionState;
 
         if (state.CaretState is { } caretState)
         {
@@ -276,11 +273,33 @@ public class Document
         _markersVersion++;
     }
 
-    public async Task CopyAsync(long offset, long length, CancellationToken cancellationToken = default)
+    #region Clipboard operations
+    public async Task<bool> TryCopyAsync(CancellationToken cancellationToken = default)
     {
+        if (Selection.HasValue)
+        {
+            return await TryCopyAsync(Selection.Value.Start, Selection.Value.Length, cancellationToken);
+        }
+
+        return false;
+    }
+
+    public async Task<bool> TryCopyAsync(long offset, long length, CancellationToken cancellationToken = default)
+    {
+        return await TryCopyAsync(offset, length, null, cancellationToken);
+    }
+
+    public async Task<bool> TryCopyAsync(long offset, long length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        columnSide ??= Caret.Column;
+        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return false;
+        }
+
         if (length > CLIPBOARD_LIMIT)
         {
-            return;
+            return false;
         }
 
         var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
@@ -293,32 +312,74 @@ public class Document
             if (characterSet is IStringConvertible convertible)
             {
                 var value = convertible.ToString(readBuffer.AsSpan(0, (int)length), new FormatInfo(offset, Configuration));
-                // TODO: write to clipboard
+                if (string.IsNullOrEmpty(value))
+                {
+                    return false;
+                }
+
+                return await Clipboard.Instance.TrySetAsync(value, cancellationToken);
             }
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(readBuffer);
         }
+
+        return false;
     }
 
-    public async Task PasteAsync(long offset, long? length = null)
+    public async Task<bool> TryPasteAsync(CancellationToken cancellationToken = default)
     {
-        // TODO: read from clipboard
-        var value = "5A9000 03000000 04000000 FFFF0000 B8000000 00000000 40";
-        if (value.Length > CLIPBOARD_LIMIT)
+        if (Selection.HasValue)
         {
-            return;
+            return await TryPasteAsync(Selection.Value.Start, Selection.Value.Length, cancellationToken);
         }
 
-        var tempBuffer = ArrayPool<byte>.Shared.Rent(value.Length);
+        return await TryPasteAsync(Caret.Offset, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, null, null, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, null, columnSide, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, long? length, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, length, null, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, long? length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        columnSide ??= Caret.Column;
+        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return false;
+        }
+
+        var (success, content) = await Clipboard.Instance.TryReadAsync(cancellationToken);
+        if (!success || string.IsNullOrEmpty(content))
+        {
+            return false;
+        }
+
+        if (content.Length > CLIPBOARD_LIMIT)
+        {
+            return false;
+        }
+
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(content.Length);
 
         try
         {
             var characterSet = GetCharacterSet(Caret.Column);
             if (characterSet is IStringParsable parsable)
             {
-                if (parsable.TryParse(value, tempBuffer.AsSpan(), out var parsedLength))
+                if (parsable.TryParse(content, tempBuffer.AsSpan(), out var parsedLength))
                 {
                     var writeBuffer = new byte[parsedLength];
                     tempBuffer.AsSpan(0, parsedLength).CopyTo(writeBuffer.AsSpan());
@@ -331,6 +392,8 @@ public class Document
                     {
                         await Buffer.WriteAsync(offset, writeBuffer);
                     }
+
+                    return true;
                 }
             }
         }
@@ -338,7 +401,10 @@ public class Document
         {
             ArrayPool<byte>.Shared.Return(tempBuffer);
         }
+
+        return false;
     }
+    #endregion
 
     private CharacterSet GetCharacterSet(ColumnSide column)
     {
@@ -454,10 +520,10 @@ public class Document
         if (offset < Caret.Offset)
         {
             caretState = Caret with { };
-            Caret = Caret with {Nibble = 0};
+            Caret = Caret with { Nibble = 0 };
         }
 
-        Selection? selectionState = null;
+        Selection? selectionState = Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
@@ -495,10 +561,10 @@ public class Document
         // Don't move caret to the right for single byte inserts, this usually means a user is typing
         if (bytes.Length >= 2)
         {
-            Caret = Caret with {Offset = offset + bytes.Length, Nibble = 0};
+            Caret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
         }
 
-        Selection? selectionState = null;
+        Selection? selectionState = Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
@@ -516,8 +582,9 @@ public class Document
 
     private DocumentState ApplyWriteModification(long offset, byte[] bytes)
     {
+        var selectionState = Selection.HasValue ? Selection with { } : null;
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
-        return new DocumentState(Array.Empty<MarkerState>(), CaretState: caretState);
+        return new DocumentState(Array.Empty<MarkerState>(), selectionState, caretState);
     }
 
     private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset,
@@ -608,7 +675,7 @@ public class Document
 
         var capturedMemory = _capturedMarkers.AsMemory(0, InternalMarkers.Count);
         _capturedState = new CapturedState(
-            Offset, 
+            Offset,
             Length,
             Selection is { } selection ? selection with { } : null,
             Caret with { },

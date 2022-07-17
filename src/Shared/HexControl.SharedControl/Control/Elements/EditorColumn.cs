@@ -397,6 +397,7 @@ internal class EditorColumn : VisualElement
         var caret = Document.Caret;
         var selection = Document.Selection;
         var ctrlPressed = (e.Modifiers & HostKeyModifier.Control) is not 0;
+        var shitPressed = (e.Modifiers & HostKeyModifier.Shift) is not 0;
         if (e.Key is HostKey.Left or HostKey.Up or HostKey.Down or HostKey.Right)
         {
             if (!_keyboardSelectMode)
@@ -406,20 +407,13 @@ internal class EditorColumn : VisualElement
 
             HandleArrowKeys(Document, e.Key, !ctrlPressed);
         }
-        else if (ctrlPressed && e.Key is HostKey.C && selection.HasValue)
+        else if (ctrlPressed && e.Key is HostKey.C)
         {
-            await Document.CopyAsync(selection.Value.Start, selection.Value.Length);
+            _ = await Document.TryCopyAsync();
         }
         else if (ctrlPressed && e.Key is HostKey.V && CanModify)
         {
-            if (selection.HasValue)
-            {
-                await Document.PasteAsync(selection.Value.Start, selection.Value.Length);
-            }
-            else
-            {
-                await Document.PasteAsync(Document.Caret.Offset);
-            }
+            _ = await Document.TryPasteAsync();
         }
         else if (ctrlPressed && e.Key is HostKey.A)
         {
@@ -427,13 +421,18 @@ internal class EditorColumn : VisualElement
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z && CanModify && Document.Buffer.CanUndo)
+        else if (((ctrlPressed && e.Key is HostKey.Y) || (ctrlPressed && shitPressed && e.Key is HostKey.Z)) && CanModify)
         {
-            await Document.Buffer.UndoAsync();
+            if (Document.Buffer.CanRedo)
+            {
+                await Document.Buffer.RedoAsync();
+            }
         }
-        else if (ctrlPressed && e.Key is HostKey.Y && CanModify && Document.Buffer.CanRedo)
+        else if (ctrlPressed && e.Key is HostKey.Z && CanModify)
         {
-            await Document.Buffer.RedoAsync();
+            if Document.Buffer.CanUndo() {
+                await Document.Buffer.UndoAsync();
+            }
         }
         else if (e.Key is HostKey.Shift)
         {

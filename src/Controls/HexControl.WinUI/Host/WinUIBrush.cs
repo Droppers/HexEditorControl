@@ -1,7 +1,4 @@
-﻿using HexControl.Framework.Drawing;
-using Microsoft.UI.Xaml.Media;
-
-namespace HexControl.WinUI.Host;
+﻿namespace HexControl.WinUI.Host;
 
 internal class WinUIBrush : NativeBrush<Brush>
 {

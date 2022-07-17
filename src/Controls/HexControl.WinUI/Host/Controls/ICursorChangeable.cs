@@ -1,6 +1,4 @@
-﻿using Microsoft.UI.Input;
-
-namespace HexControl.WinUI.Host.Controls;
+﻿namespace HexControl.WinUI.Host.Controls;
 
 internal interface ICursorChangeable
 {

@@ -1,7 +1,4 @@
-﻿using HexControl.Framework.Host.Controls;
-using Microsoft.UI.Xaml.Controls;
-
-namespace HexControl.WinUI.Host.Controls;
+﻿namespace HexControl.WinUI.Host.Controls;
 
 internal class WinUITextBox : WinUIControl, IHostTextBox
 {

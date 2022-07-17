@@ -1,7 +1,4 @@
-﻿using HexControl.Framework.Host.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-
-namespace HexControl.WinUI.Host.Controls;
+﻿namespace HexControl.WinUI.Host.Controls;
 
 internal class WinUIScrollBar : WinUIControl, IHostScrollBar
 {

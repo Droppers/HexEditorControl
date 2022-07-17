@@ -35,14 +35,14 @@ public class ChangeCollection
     public BufferModification Modification { get; }
     public long ChangeOffset { get; }
 
-    public static ChangeCollection Delete(long deleteOffset, long deleteLength) =>
-        new(new DeleteModification(deleteOffset, deleteLength), deleteOffset);
+    public static ChangeCollection Delete(long offset, long length) =>
+        new(new DeleteModification(offset, length), offset);
 
-    public static ChangeCollection Insert(long insertOffset, byte[] insertBytes) =>
-        new(new InsertModification(insertOffset, insertBytes), insertOffset);
+    public static ChangeCollection Insert(long offset, byte[] bytes) =>
+        new(new InsertModification(offset, bytes), offset);
 
-    public static ChangeCollection Write(long writeOffset, byte[] writeBytes) =>
-        new(new WriteModification(writeOffset, writeBytes), writeOffset);
+    public static ChangeCollection Write(long offset, byte[] bytes) =>
+        new(new WriteModification(offset, bytes), offset);
 
     public void SetStartAtPrevious(bool startAtPrevious = true)
     {

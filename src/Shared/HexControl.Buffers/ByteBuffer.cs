@@ -104,14 +104,14 @@ public abstract class ByteBuffer
     // TODO: fill gaps with zeros, e.g. writing at startOffset 300 when document is completely empty, or writing past the maxLength.
     private void InternalWrite(long offset, byte[] bytes)
     {
-        GuardAgainstInvalidState();
+        BeforeModification();
 
         var oldLength = Length;
         var changes = ChangeCollection.Write(offset, bytes);
 
         var (node, currentOffset) = GetNodeAt(offset);
 
-        if (node == null)
+        if (node is null)
         {
             changes.Add(InsertChunk(null, new MemoryChunk(this, bytes)));
             PushChanges(changes, oldLength);
@@ -129,7 +129,7 @@ public abstract class ByteBuffer
             changes.SetStartAtPrevious();
             WriteToMemoryChunk(changes, node.Previous, previousMemoryChunk.Length, bytes, previousMemoryChunk);
         }
-        else if (offset + bytes.Length > currentOffset + chunk.Length &&
+        else if (offset + bytes.Length >= currentOffset + chunk.Length &&
                  node.Next?.Value is MemoryChunk nextMemoryChunk)
         {
             WriteToMemoryChunk(changes, node.Next, -(currentOffset + chunk.Length - offset), bytes,
@@ -181,12 +181,12 @@ public abstract class ByteBuffer
 
     private void InternalInsert(long offset, byte[] bytes)
     {
-        GuardAgainstInvalidState();
+        BeforeModification();
 
         var oldLength = Length;
 
         var (node, currentOffset) = GetNodeAt(offset);
-        if (node == null)
+        if (node is null)
         {
             return;
         }
@@ -235,7 +235,7 @@ public abstract class ByteBuffer
 
     private void InternalDelete(long offset, long length)
     {
-        GuardAgainstInvalidState();
+        BeforeModification();
 
         var oldLength = Length;
         var (node, currentOffset) = GetNodeAt(offset);
@@ -261,7 +261,7 @@ public abstract class ByteBuffer
             var deleteLength = Math.Min(bytesToDelete, chunk.Length - relativeOffset);
             RemoveFromChunk(changes, node, relativeOffset, deleteLength);
 
-            if (Chunks.First == null)
+            if (Chunks.First is null)
             {
                 changes.Add(InsertChunk(null, new MemoryChunk(this, Array.Empty<byte>())));
             }
@@ -342,7 +342,7 @@ public abstract class ByteBuffer
 
         var actualRead = 0L;
         var modificationStart = -1L;
-        while (node != null && buffer.Length - actualRead > 0)
+        while (node is not null && buffer.Length - actualRead > 0)
         {
             var chunk = node.Value;
 
@@ -406,7 +406,7 @@ public abstract class ByteBuffer
 
         var actualRead = 0L;
         var modificationStart = -1L;
-        while (node != null && buffer.Length - actualRead > 0)
+        while (node is not null && buffer.Length - actualRead > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -619,23 +619,29 @@ public abstract class ByteBuffer
         byte[] bytes,
         ChangeCollection changes)
     {
+        var targetNode = relativeOffset is 0 ? node.Previous ?? node : node;
+
         changes.SetStartAtPrevious();
 
         var newChunk = new MemoryChunk(this, bytes);
-        changes.Add(InsertChunk(node, newChunk));
+        changes.Add(InsertChunk(targetNode, newChunk));
 
-        var memoryNode = node.Next;
-        if (memoryNode is null)
+        var newMemoryNode = targetNode.Next;
+        if (newMemoryNode is null)
         {
             throw new InvalidOperationException("Next node is not supposed to be null.");
         }
 
-        var newImmutableLength = node.Value.Length - (relativeOffset + bytes.Length);
-        RemoveBefore(changes, memoryNode, node.Value.Length - relativeOffset);
+        var newImmutableLength = -newMemoryNode.Value.Length;
+        if (relativeOffset is not 0)
+        {
+            newImmutableLength = node.Value.Length - (relativeOffset + bytes.Length);
+            RemoveBefore(changes, newMemoryNode, node.Value.Length - relativeOffset);
+        }
 
         if (newImmutableLength <= 0)
         {
-            RemoveAfter(changes, memoryNode, Math.Abs(newImmutableLength));
+            RemoveAfter(changes, newMemoryNode, Math.Abs(newImmutableLength));
         }
         else
         {
@@ -646,7 +652,7 @@ public abstract class ByteBuffer
 
             newImmutableChunk.SourceOffset += relativeOffset + bytes.Length;
             newImmutableChunk.Length = newImmutableLength;
-            changes.Add(InsertChunk(memoryNode, newImmutableChunk));
+            changes.Add(InsertChunk(newMemoryNode, newImmutableChunk));
         }
     }
 
@@ -660,7 +666,7 @@ public abstract class ByteBuffer
 
         changes.Add(modification);
 
-        if (modification.Data.Direction is GrowDirection.Start or GrowDirection.Both && node.Previous != null)
+        if (modification.Data.Direction is GrowDirection.Start or GrowDirection.Both && node.Previous is not null)
         {
             RemoveBefore(changes, node, modification.Data.GrowStart);
         }
@@ -673,7 +679,7 @@ public abstract class ByteBuffer
 
     private void RemoveBefore(ChangeCollection changes, LinkedListNode<IChunk> node, long removeLength)
     {
-        if (node.Previous == null)
+        if (node.Previous is null)
         {
             return;
         }
@@ -686,14 +692,14 @@ public abstract class ByteBuffer
 
     private void RemoveAfter(ChangeCollection changes, LinkedListNode<IChunk> node, long removeLength)
     {
-        if (node.Next == null)
+        if (node.Next is null)
         {
             return;
         }
 
         long removedBytes = 0;
         var removeNode = node.Next;
-        while (removeNode != null && removedBytes < removeLength)
+        while (removeNode is not null && removedBytes < removeLength)
         {
             var nextNode = removeNode.Next;
             var removableLength = removeNode.Value.Length;
@@ -711,7 +717,15 @@ public abstract class ByteBuffer
         if (length >= node.Value.Length)
         {
             changes.SetStartAtPrevious();
-            changes.Add(new RemoveChunkChange(changes.Count is 0 && node.Previous is null).Apply(this, node));
+            var removeChunkChange = new RemoveChunkChange(ReferenceEquals(node.Value, _firstChunk)).Apply(this, node);
+            if (prependChange)
+            {
+                changes.Prepend(removeChunkChange);
+            }
+            else
+            {
+                changes.Add(removeChunkChange);
+            }
             return;
         }
 
@@ -741,10 +755,10 @@ public abstract class ByteBuffer
     {
         var offset = 0L;
         var node = Chunks.First;
-        while (node != null)
+        while (node is not null)
         {
             var chunk = node.Value;
-            if (offset <= findOffset && offset + chunk.Length > findOffset || node.Next == null)
+            if (offset <= findOffset && offset + chunk.Length > findOffset || node.Next is null)
             {
                 return (node, offset);
             }
@@ -760,7 +774,7 @@ public abstract class ByteBuffer
 
     public async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
-        GuardAgainstInvalidState();
+        BeforeModification();
 
         if (!IsModified)
         {
@@ -870,7 +884,9 @@ public abstract class ByteBuffer
                        collection.Modification is InsertModification or DeleteModification));
     }
 
-    private void GuardAgainstInvalidState()
+    private IChunk? _firstChunk;
+
+    private void BeforeModification()
     {
         if (Locked)
         {
@@ -881,5 +897,7 @@ public abstract class ByteBuffer
         {
             throw new InvalidOperationException("Modifications are not permitted, buffer is opened in readonly mode.");
         }
+
+        _firstChunk = Chunks.First?.Value;
     }
 }

@@ -4,13 +4,13 @@ namespace HexControl.Buffers.History.Changes;
 
 internal class InsertToMemoryChange : IChunkChange<MemoryChunk>
 {
-    private readonly byte[] _insertBytes;
-    private readonly long _insertOffset;
+    private readonly byte[] _bytes;
+    private readonly long _offset;
 
-    public InsertToMemoryChange(long insertOffset, byte[] insertBytes)
+    public InsertToMemoryChange(long offset, byte[] bytes)
     {
-        _insertOffset = insertOffset;
-        _insertBytes = insertBytes;
+        _offset = offset;
+        _bytes = bytes;
     }
 
     public IChunkChange<MemoryChunk> Apply(
@@ -18,23 +18,23 @@ internal class InsertToMemoryChange : IChunkChange<MemoryChunk>
         LinkedListNode<IChunk> contextNode,
         MemoryChunk chunk)
     {
-        var newBytes = new byte[chunk.Bytes.Length + _insertBytes.Length];
-        if (_insertOffset > 0)
+        var newBytes = new byte[chunk.Bytes.Length + _bytes.Length];
+        if (_offset > 0)
         {
-            Array.Copy(chunk.Bytes, 0, newBytes, 0, _insertOffset);
+            Array.Copy(chunk.Bytes, 0, newBytes, 0, _offset);
         }
 
-        Array.Copy(_insertBytes, 0, newBytes, _insertOffset, _insertBytes.Length);
-        if (_insertOffset < chunk.Bytes.Length)
+        Array.Copy(_bytes, 0, newBytes, _offset, _bytes.Length);
+        if (_offset < chunk.Bytes.Length)
         {
-            Array.Copy(chunk.Bytes, _insertOffset, newBytes, _insertOffset + _insertBytes.Length,
-                chunk.Bytes.Length - _insertOffset);
+            Array.Copy(chunk.Bytes, _offset, newBytes, _offset + _bytes.Length,
+                chunk.Bytes.Length - _offset);
         }
 
         chunk.Bytes = newBytes;
-        chunk.Length += _insertBytes.Length;
+        chunk.Length += _bytes.Length;
 
-        buffer.Length += _insertBytes.Length;
+        buffer.Length += _bytes.Length;
         return this;
     }
 
@@ -43,22 +43,22 @@ internal class InsertToMemoryChange : IChunkChange<MemoryChunk>
         LinkedListNode<IChunk> contextNode,
         MemoryChunk chunk)
     {
-        var newBytes = new byte[chunk.Bytes.Length - _insertBytes.Length];
-        if (_insertOffset > 0)
+        var newBytes = new byte[chunk.Bytes.Length - _bytes.Length];
+        if (_offset > 0)
         {
-            Array.Copy(chunk.Bytes, 0, newBytes, 0, _insertOffset);
+            Array.Copy(chunk.Bytes, 0, newBytes, 0, _offset);
         }
 
-        if (_insertOffset < newBytes.Length)
+        if (_offset < newBytes.Length)
         {
-            Array.Copy(chunk.Bytes, _insertOffset + _insertBytes.Length, newBytes, _insertOffset,
-                chunk.Bytes.Length - (_insertOffset + _insertBytes.Length));
+            Array.Copy(chunk.Bytes, _offset + _bytes.Length, newBytes, _offset,
+                chunk.Bytes.Length - (_offset + _bytes.Length));
         }
 
         chunk.Bytes = newBytes;
-        chunk.Length -= _insertBytes.Length;
+        chunk.Length -= _bytes.Length;
 
-        buffer.Length -= _insertBytes.Length;
+        buffer.Length -= _bytes.Length;
         return this;
     }
 }

@@ -4,6 +4,8 @@ namespace HexControl.SharedControl.Characters;
 
 public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IStringParsable
 {
+    private const char NULL_CHARACTER_REPLACEMENT = '�';
+
     private readonly char[] _characters;
 
     public TextCharacterSet(char[] characters)
@@ -53,7 +55,9 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
         {
             if(!TryConvertCharacterToByte(chr, out var @byte))
             {
-                return false;
+                parsedBuffer[length] = 0;
+                length++;
+                continue;
             }
 
             parsedBuffer[length] = @byte;
@@ -68,7 +72,8 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
         var sb = new StringBuilder();
         foreach (var @byte in buffer)
         {
-            sb.Append(_characters[@byte]);
+            var chr = _characters[@byte];
+            sb.Append(chr is '\0' ? NULL_CHARACTER_REPLACEMENT : chr);
         }
 
         return sb.ToString();
@@ -76,7 +81,7 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
 
     private bool TryConvertCharacterToByte(char value, out byte @byte)
     {
-        for (var i = 0; i < Math.Min(255, _characters.Length); i++)
+        for (var i = 0; i < Math.Min(256, _characters.Length); i++)
         {
             var @char = _characters[i];
             if(@char == value)

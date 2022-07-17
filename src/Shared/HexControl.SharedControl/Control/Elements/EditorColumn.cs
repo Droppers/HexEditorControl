@@ -430,7 +430,8 @@ internal class EditorColumn : VisualElement
         }
         else if (ctrlPressed && e.Key is HostKey.Z && CanModify)
         {
-            if Document.Buffer.CanUndo() {
+            if (Document.Buffer.CanUndo)
+            {
                 await Document.Buffer.UndoAsync();
             }
         }

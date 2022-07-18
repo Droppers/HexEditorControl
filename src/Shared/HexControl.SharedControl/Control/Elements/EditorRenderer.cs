@@ -7,7 +7,6 @@ using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Control.Helpers;
 using HexControl.SharedControl.Documents;
 using System.Drawing;
-using System.Runtime.InteropServices;
 
 namespace HexControl.SharedControl.Control.Elements;
 

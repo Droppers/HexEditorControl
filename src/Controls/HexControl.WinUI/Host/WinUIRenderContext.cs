@@ -1,4 +1,8 @@
-﻿using Factory = SharpDX.Direct2D1.Factory;
+﻿using HexControl.Framework.Drawing;
+using HexControl.Renderer.Direct2D;
+using SharpDX.Direct2D1;
+using SharpDX.DXGI;
+using Factory = SharpDX.Direct2D1.Factory;
 
 namespace HexControl.WinUI.Host;
 

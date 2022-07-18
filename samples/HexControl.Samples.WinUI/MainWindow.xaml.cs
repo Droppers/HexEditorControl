@@ -1,4 +1,6 @@
-﻿namespace HexControl.Samples.WinUI;
+﻿using HexControl.SharedControl.Documents;
+
+namespace HexControl.Samples.WinUI;
 
 public sealed partial class MainWindow
 {

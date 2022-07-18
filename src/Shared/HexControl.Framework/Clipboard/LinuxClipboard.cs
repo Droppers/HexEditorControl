@@ -43,12 +43,14 @@ internal class LinuxClipboard : IClipboard
         {
             throw;
         }
+        // ReSharper disable once RedundantCatchClause
         catch
         {
 #if DEBUG
             throw;
-#endif
+#else
             return (false, null!);
+#endif
         }
     }
 
@@ -70,12 +72,14 @@ internal class LinuxClipboard : IClipboard
         {
             throw;
         }
+        // ReSharper disable once RedundantCatchClause
         catch
         {
 #if DEBUG
             throw;
-#endif
+#else
             return false;
+#endif
         }
         finally
         {

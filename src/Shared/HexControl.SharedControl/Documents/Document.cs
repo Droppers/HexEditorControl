@@ -523,7 +523,7 @@ public class Document
             Caret = Caret with { Nibble = 0 };
         }
 
-        Selection? selectionState = Selection with { };
+        Selection? selectionState = Selection is null ? null : Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
@@ -564,7 +564,7 @@ public class Document
             Caret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
         }
 
-        Selection? selectionState = Selection with { };
+        Selection? selectionState = Selection is null ? null : Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =

@@ -16,7 +16,6 @@ internal class EditorCalculator : IDisposable
 
     public DocumentConfiguration Configuration
     {
-        get => _configuration;
         set
         {
             _configuration.PropertyChanged -= OnPropertyChanged;
@@ -55,10 +54,19 @@ internal class EditorCalculator : IDisposable
         set => _rightCharacterSet = value;
     }
 
-    public EditorCalculator(SharedHexControl control, DocumentConfiguration configuration, int horizontalOffset)
+    public EditorCalculator(SharedHexControl control, DocumentConfiguration configuration, int horizontalOffset, bool shortLifeSpan)
     {
         _control = control;
-        Configuration = configuration;
+        if (shortLifeSpan)
+        {
+            _configuration = configuration;
+            UpdateCharacterSets();
+        }
+        else
+        {
+            Configuration = configuration;
+        }
+
         HorizontalOffset = horizontalOffset;
     }
 
@@ -104,10 +112,10 @@ internal class EditorCalculator : IDisposable
         {
             case ColumnSide.Left:
                 return GetLeft(offsetFromLeft, column, excludeLastGroup) -
-                       Math.Max(0, GetLeft(_horizontalCharacterOffset, column, excludeLastGroup));
+                       Math.Max(0, GetLeft(_horizontalCharacterOffset, column));
             case ColumnSide.Right:
                 var leftOffset = _horizontalCharacterOffset > _configuration.BytesPerRow
-                    ? GetLeft(_horizontalCharacterOffset - _configuration.BytesPerRow, column, excludeLastGroup)
+                    ? GetLeft(_horizontalCharacterOffset - _configuration.BytesPerRow, column)
                     : 0;
                 return GetLeft(offsetFromLeft, column, excludeLastGroup) - leftOffset;
             default:
@@ -169,12 +177,12 @@ internal class EditorCalculator : IDisposable
 
     private void UpdateCharacterSets()
     {
-        _leftCharacterSet = Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
-            ? Configuration.LeftCharacterSet
-            : Configuration.RightCharacterSet;
+        _leftCharacterSet = _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+            ? _configuration.LeftCharacterSet
+            : _configuration.RightCharacterSet;
 
-        _rightCharacterSet = Configuration.ColumnsVisible is VisibleColumns.HexText
-            ? Configuration.RightCharacterSet
+        _rightCharacterSet = _configuration.ColumnsVisible is VisibleColumns.HexText
+            ? _configuration.RightCharacterSet
             : null;
     }
 

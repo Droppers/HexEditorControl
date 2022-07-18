@@ -14,12 +14,9 @@ internal class MacClipboard : IClipboard
 
         var nsPasteboard = objc_getClass("NSPasteboard");
         var generalPasteboard = objc_msgSend(nsPasteboard, sel_registerName("generalPasteboard"));
-
-        var utfTextType = objc_msgSend(objc_msgSend(nsString, sel_registerName("alloc")), sel_registerName("initWithUTF8String:"), "public.utf8-plain-text");
-        var nsStringPboardType = objc_msgSend(objc_msgSend(nsString, sel_registerName("alloc")), sel_registerName("initWithUTF8String:"), "NSStringPboardType");
-
-
-        var ptr = objc_msgSend(generalPasteboard, stringForTypeRegister, nsStringPboardType);
+        
+        var nsStringPasteboardType = objc_msgSend(objc_msgSend(nsString, sel_registerName("alloc")), sel_registerName("initWithUTF8String:"), "NSStringPboardType");
+        var ptr = objc_msgSend(generalPasteboard, stringForTypeRegister, nsStringPasteboardType);
         var charArray = objc_msgSend(ptr, sel_registerName("initWithUTF8String:"));
 
         var content = Marshal.PtrToStringAnsi(charArray);

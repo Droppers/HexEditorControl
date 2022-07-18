@@ -1,4 +1,12 @@
-﻿namespace HexControl.WinUI.Host.Controls;
+﻿using HexControl.Framework;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
+using HexControl.Framework.Host.Controls;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
+
+namespace HexControl.WinUI.Host.Controls;
 
 internal class WinUIControl : HostControl
 {

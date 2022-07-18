@@ -67,7 +67,7 @@ internal class EditorColumn : VisualElement
     public EditorColumn(SharedHexControl control)
     {
         _control = control;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset);
+        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
         _renderState = new EditorRendererState(this);
 
         _readBuffer = new byte[8];
@@ -157,7 +157,7 @@ internal class EditorColumn : VisualElement
     private void OnDocumentChanged()
     {
         var oldCalculator = _calculator;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset);
+        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
         oldCalculator.Dispose();
     }
 
@@ -179,7 +179,7 @@ internal class EditorColumn : VisualElement
         }
 
         var state = Document.CapturedState;
-        var calculator = new EditorCalculator(_control, state.Configuration, _horizontalOffset);
+        var calculator = new EditorCalculator(_control, state.Configuration, _horizontalOffset, true);
         new EditorRenderer(
             _control,
             this,

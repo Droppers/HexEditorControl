@@ -1,5 +1,9 @@
-﻿using HexControl.WinUI.Host;
+﻿using HexControl.SharedControl.Control;
+using HexControl.SharedControl.Documents;
+using HexControl.WinUI.Host;
 using HexControl.WinUI.Host.Controls;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml;
 
 namespace HexControl.WinUI;
 

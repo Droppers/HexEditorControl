@@ -1,4 +1,9 @@
-﻿namespace HexControl.WinUI.Host;
+﻿using Windows.UI;
+using HexControl.Framework.Drawing;
+using HexControl.Framework.Host;
+using Microsoft.UI.Xaml.Media;
+
+namespace HexControl.WinUI.Host;
 
 internal class WinUINativeFactory : NativeFactory<Brush, int>
 {

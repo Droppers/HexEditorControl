@@ -2,11 +2,11 @@
 
 namespace HexControl.Framework.Clipboard;
 
-internal class Clipboard
+internal static class Clipboard
 {
-    private static readonly Lazy<IClipboard> _lazy = new(CreateClipboard);
+    private static readonly Lazy<IClipboard> Lazy = new(CreateClipboard);
 
-    public static IClipboard Instance => _lazy.Value;
+    public static IClipboard Instance => Lazy.Value;
 
     private static IClipboard CreateClipboard()
     {

@@ -246,7 +246,9 @@ internal readonly ref struct EditorRenderer
         var brush = marker.Background is { } background ? _renderState.ColorToBrushCache[background] : null;
         var pen = marker.Border is { } border ? new SharedPen(_renderState.ColorToBrushCache[border]!, 1) : null;
 
-        if (position.StartRow == position.EndRow || marker.Length <= _documentState.Configuration.BytesPerRow)
+        var square = position.StartOffset % _documentState.Configuration.BytesPerRow is 0 && 
+                     (position.EndOffset + 1) % _documentState.Configuration.BytesPerRow is 0;
+        if (position.StartRow == position.EndRow || marker.Length <= _documentState.Configuration.BytesPerRow || square)
         {
             DrawMarkerAreaSimple(brush, pen, column, marker, position);
         }
@@ -258,28 +260,31 @@ internal readonly ref struct EditorRenderer
 
     private MarkerPosition CalculateMarkerPosition(long markerOffset, long markerLength, ColumnSide column)
     {
+        var bytesPerRow = _documentState.Configuration.BytesPerRow;
+
         var startOffset = Math.Max(0, markerOffset - _documentState.Offset);
         var length = Math.Min(_bytesLength, markerLength - (markerOffset < _documentState.Offset ? _documentState.Offset - markerOffset : 0) - 1);
         var endOffset = startOffset + length;
         var startRow = startOffset / _documentState.Configuration.BytesPerRow;
         var endRow = endOffset / _documentState.Configuration.BytesPerRow;
 
-        var startX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(startOffset % _documentState.Configuration.BytesPerRow), column));
+        var startX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(startOffset % bytesPerRow), column));
         var startY = startOffset / _documentState.Configuration.BytesPerRow * _control.RowHeight + _control.HeaderHeight;
 
         var charset = _calculator.GetCharacterSetForColumn(column);
 
-        var startColumn = startOffset % _documentState.Configuration.BytesPerRow;
-        var extendPastEdge = charset.Groupable && startColumn % _documentState.Configuration.GroupSize == 0;
+        var startColumn = startOffset % bytesPerRow;
+        var extendPastEdge = charset.Groupable && (startColumn % _documentState.Configuration.GroupSize is 0 || !IsOffsetVisibleHorizontally(startColumn));
         if (extendPastEdge)
         {
             startX -= _control.CharacterWidth / 2;
         }
 
-        var endX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(endOffset % _documentState.Configuration.BytesPerRow) + 1, column, true));
+        var endX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(endOffset % bytesPerRow) + 1, column, true));
         var endY = endRow * _control.RowHeight + _control.HeaderHeight;
 
-        extendPastEdge = charset.Groupable && IsEndOfGroup(_documentState, endOffset + 1);
+        var endOffsetVisible = IsOffsetVisibleHorizontally((endOffset + 1) % bytesPerRow is 0 ? endOffset : endOffset + 1);
+        extendPastEdge = charset.Groupable && IsEndOfGroup(_documentState, endOffset + 1) && endOffsetVisible;
         if (extendPastEdge)
         {
             endX += _control.CharacterWidth / 2;
@@ -301,17 +306,29 @@ internal readonly ref struct EditorRenderer
         var aliasOffset = GetLineAntiAliasOffset(pen);
         var characterSet = _calculator.GetCharacterSetForColumn(column);
 
-        if (position.StartRow == position.EndRow)
+        var square = position.StartOffset % _documentState.Configuration.BytesPerRow is 0 &&
+                     (position.EndOffset + 1) % _documentState.Configuration.BytesPerRow is 0;
+
+        if (position.StartRow == position.EndRow || square)
         {
+            // +------------+ 
+            // |            |
+            // +------------+
             var rect = new SharedRectangle(
                 position.Start.X - aliasOffset,
                 position.Start.Y - aliasOffset,
                 position.End.X - position.Start.X + aliasOffset * 2,
-                _control.RowHeight + aliasOffset * 2);
+                (position.EndRow - position.StartRow + 1) * _control.RowHeight + aliasOffset * 2);
             _context.DrawRectangle(brush, pen, rect);
         }
         else if (marker.Length <= _documentState.Configuration.BytesPerRow)
         {
+            //              +------------+ 
+            //              |            |
+            //              +------------+
+            // +------------+ 
+            // |            |
+            // +------------+
             var extendPastEdge = characterSet.Groupable ? _control.CharacterWidth / 2 : 0;
 
             var firstRect = new SharedRectangle(
@@ -344,14 +361,21 @@ internal readonly ref struct EditorRenderer
         ColumnSide column,
         MarkerPosition position)
     {
+        //           +------------+
+        //           |            |
+        // +---------+    +-------+
+        // |              |
+        // +--------------+
+
         var characterSet = _calculator.GetCharacterSetForColumn(column);
         var columnWidth = _calculator.GetVisibleColumnWidth(column);
         var aliasOffset = GetLineAntiAliasOffset(pen);
 
+        var hideLastRow = position.End.X is 0;
         var extendPastEdge = characterSet.Groupable ? _control.CharacterWidth / 2 : 0;
 
         var pointCount = 3 + (position.StartOffset is 0 || position.End.Y is 0 ? 1 : 2)
-            + (position.EndOffset == _documentState.Configuration.BytesPerRow - 1 ? 1 : 3);
+            + (position.EndOffset == _documentState.Configuration.BytesPerRow - 1 || hideLastRow ? 1 : 3);
         Span<SharedPoint> points = stackalloc SharedPoint[pointCount];
         var pointIndex = 0;
 
@@ -368,7 +392,7 @@ internal readonly ref struct EditorRenderer
 
         points[pointIndex++] = new SharedPoint(columnWidth + extendPastEdge + aliasOffset, position.Start.Y - aliasOffset);
 
-        if (position.EndOffset == _documentState.Configuration.BytesPerRow - 1)
+        if (position.EndOffset == _documentState.Configuration.BytesPerRow - 1 || hideLastRow)
         {
             points[pointIndex++] = new SharedPoint(columnWidth + extendPastEdge - aliasOffset, position.End.Y + aliasOffset);
         }
@@ -379,7 +403,7 @@ internal readonly ref struct EditorRenderer
             points[pointIndex++] = new SharedPoint(position.End.X + aliasOffset, position.End.Y + _control.RowHeight + aliasOffset);
         }
 
-        points[pointIndex++] = new SharedPoint(-extendPastEdge + -aliasOffset, position.End.Y + _control.RowHeight + aliasOffset);
+        points[pointIndex++] = new SharedPoint(-extendPastEdge + -aliasOffset, position.End.Y + (hideLastRow ? 0 : _control.RowHeight) + aliasOffset);
         points[pointIndex] = new SharedPoint(-extendPastEdge + -aliasOffset, position.Start.Y + _control.RowHeight - aliasOffset);
 
         _context.DrawPolygon(brush, pen, points);
@@ -529,12 +553,17 @@ internal readonly ref struct EditorRenderer
         var textMiddleOffset = (int)Math.Round(_control.RowHeight / 2d - _control.CharacterHeight / 2d);
 
         var typeface = builder.Typeface;
+        var groupSize = _documentState.Configuration.GroupSize;
         var bytesPerRow = _documentState.Configuration.BytesPerRow;
         // Round content length to full row lengths for padding of final row
         var contentLength = (int)(Math.Ceiling(_bytesLength / (float)bytesPerRow) * bytesPerRow);
         var maxBytesWritten = _documentState.Configuration.ColumnsVisible is not VisibleColumns.HexText
             ? bytesPerRow
             : bytesPerRow * 2;
+
+        var leftCharacterSet = _calculator.LeftCharacterSet;
+        var rightCharacterSet = _calculator.RightCharacterSet;
+        var horizontalOffset = _calculator.HorizontalOffset;
 
         for (var row = 0; row < verticalSpace; row++)
         {
@@ -546,12 +575,13 @@ internal readonly ref struct EditorRenderer
             var horizontalCharacterOffset = _calculator.HorizontalCharacterOffset;
             builder.Next(new SharedPoint(0, y));
 
-            while (visualCol < horizontalSpace && ++bytesWritten + _calculator.HorizontalCharacterOffset <= maxBytesWritten)
+            while (visualCol < horizontalSpace &&
+                   ++bytesWritten + _calculator.HorizontalCharacterOffset <= maxBytesWritten)
             {
-                var column = visualCol < leftWidth - _calculator.HorizontalOffset ? ColumnSide.Left : ColumnSide.Right;
+                var column = visualCol < leftWidth - horizontalOffset ? ColumnSide.Left : ColumnSide.Right;
                 var characterSet = column is ColumnSide.Left
-                    ? _calculator.LeftCharacterSet
-                    : _calculator.RightCharacterSet;
+                    ? leftCharacterSet
+                    : rightCharacterSet;
 
                 var columnIndex = (byteColumn + horizontalCharacterOffset) % bytesPerRow;
                 var byteIndex = row * bytesPerRow + columnIndex;
@@ -571,7 +601,18 @@ internal readonly ref struct EditorRenderer
 
                 if (characterSet is not null)
                 {
-                    visualCol += WriteSingleContentByte(builder, typeface, characterSet, characterBuffer, column, byteIndex, columnIndex);
+                    visualCol += WriteSingleContentByte(
+                        builder,
+                        typeface,
+                        characterSet,
+                        characterBuffer,
+                        column,
+                        byteIndex,
+                        columnIndex,
+
+                        // Performance reasons
+                        groupSize,
+                        bytesPerRow);
                 }
 
                 byteColumn++;
@@ -579,8 +620,48 @@ internal readonly ref struct EditorRenderer
         }
     }
 
+    private int WriteSingleContentByte(
+        ITextBuilder builder, 
+        IGlyphTypeface typeface, 
+        CharacterSet characterSet,
+        Span<char> characterBuffer, 
+        ColumnSide column,
+        int byteIndex, 
+        int columnIndex,
+        
+        // Perf reasons
+        int groupSize,
+        int bytesPerRow)
+    {
+        int writtenCharacters;
+        if (byteIndex > _bytesLength - 1) // Pad excess bytes with whitespaces
+        {
+            writtenCharacters = characterSet.Width;
+            builder.Whitespace(writtenCharacters);
+        }
+        else
+        {
+            var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex, groupSize);
+            writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, characterBuffer, _bytes[byteIndex]);
+        }
+
+        // Add whitespace between characters
+        if (column is ColumnSide.Left && columnIndex == bytesPerRow - 1)
+        {
+            builder.Whitespace(SPACING_BETWEEN_COLUMNS);
+            writtenCharacters += SPACING_BETWEEN_COLUMNS;
+        }
+        else if (characterSet.Groupable && columnIndex % groupSize == groupSize - 1)
+        {
+            builder.Whitespace();
+            writtenCharacters++;
+        }
+
+        return writtenCharacters;
+    }
+
     private ISharedBrush LookupBrushForByte(CharacterSet characterSet, ColumnSide column, int byteIndex,
-        int columnIndex)
+        int columnIndex, int groupSize)
     {
         // Uses an array twice the size of the bytes buffer instead of dictionary, since looking up an array item by index is faster.
         var offset = column is ColumnSide.Left ? 0 : _renderState.MarkerForegroundLookup.Length / 2;
@@ -590,40 +671,9 @@ internal readonly ref struct EditorRenderer
             return brush;
         }
 
-        return characterSet.Groupable && columnIndex / _documentState.Configuration.GroupSize % 2 == 1
+        return characterSet.Groupable && columnIndex / groupSize % 2 == 1
             ? _control.EvenForeground
             : _control.Foreground;
-    }
-
-    private int WriteSingleContentByte(ITextBuilder builder, IGlyphTypeface typeface, CharacterSet characterSet,
-        Span<char> characterBuffer, ColumnSide column,
-        int byteIndex, int columnIndex)
-    {
-        int writtenCharacters;
-        if (byteIndex > _bytesLength - 1) // Pad excess bytes with whitespaces
-        {
-            writtenCharacters = characterSet.Width;
-            builder.Whitespace(characterSet.Width);
-        }
-        else
-        {
-            var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex);
-            writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, characterBuffer, _bytes[byteIndex]);
-        }
-
-        // Add whitespace between characters
-        if (column is ColumnSide.Left && columnIndex == _documentState.Configuration.BytesPerRow - 1)
-        {
-            builder.Whitespace(SPACING_BETWEEN_COLUMNS);
-            writtenCharacters += SPACING_BETWEEN_COLUMNS;
-        }
-        else if (characterSet.Groupable && columnIndex % _documentState.Configuration.GroupSize == _documentState.Configuration.GroupSize - 1)
-        {
-            builder.Whitespace();
-            writtenCharacters++;
-        }
-
-        return writtenCharacters;
     }
 
     private static int WriteByteToTextBuilder(
@@ -693,7 +743,8 @@ internal readonly ref struct EditorRenderer
         var drawCaret = _renderState.PreviousCaretOffset != caret.Offset &&
                         (caret.Column == column || !_documentState.Selection.HasValue) ||
                         (caret.Column != column || _renderState.CaretTick) &&
-                        (caret.Column == column || !_documentState.Selection.HasValue);
+                        (caret.Column == column || !_documentState.Selection.HasValue) &&
+                        IsOffsetVisibleHorizontally(caret.Offset);
 
         var position = CalculateCaretPosition(caret.Offset, caret.Nibble, characterSet, column);
         if (position.X < 0 || position.Y > _owner.Height)
@@ -798,6 +849,13 @@ internal readonly ref struct EditorRenderer
 
         return 255 - delta < threshold ? Color.Black : Color.White;
     }
+
+    private bool IsOffsetVisibleHorizontally(long offset)
+    {
+        var visible = _calculator.HorizontalCharacterOffset % _documentState.Configuration.BytesPerRow;
+        return offset % _documentState.Configuration.BytesPerRow > visible;
+    }
+
     #endregion
 
     private record struct MarkerPosition(long StartOffset, long StartRow, SharedPoint Start, long EndOffset,

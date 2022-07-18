@@ -1,10 +1,12 @@
 ﻿using HexControl.Buffers;
 using HexControl.Buffers.Events;
 using HexControl.Buffers.Modifications;
+using HexControl.Framework.Clipboard;
 using HexControl.Framework.Observable;
 using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
+using System.Buffers;
 using System.Runtime.InteropServices;
 
 namespace HexControl.SharedControl.Documents;
@@ -12,6 +14,8 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public class Document
 {
+    private const int CLIPBOARD_LIMIT = 1024 * 1024 * 32;
+
     private readonly Stack<DocumentState> _redoStates;
     private readonly Stack<DocumentState> _undoStates;
 
@@ -69,7 +73,8 @@ public class Document
         get => _offset;
         set
         {
-            var newOffset = Math.Min(CeilOffsetToNearestRow(value), MaximumOffset);
+            var newOffset = (long)Math.Floor(value / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
+            newOffset = Math.Max(0, Math.Min(newOffset, MaximumOffset));
             var oldOffset = _offset;
             if (oldOffset == newOffset)
             {
@@ -88,8 +93,7 @@ public class Document
     {
         get
         {
-            var ceil = CeilOffsetToNearestRow(Length);
-            return ceil == Length ? ceil - Configuration.BytesPerRow : ceil;
+            return (long)Math.Floor(Length / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
         }
     }
 
@@ -164,22 +168,12 @@ public class Document
             }
         }
 
-        if (state.SelectionState.HasValue)
-        {
-            Selection = state.SelectionState;
-        }
+        Selection = state.SelectionState;
 
         if (state.CaretState is { } caretState)
         {
             Caret = caretState;
         }
-    }
-
-    private long CeilOffsetToNearestRow(long number)
-    {
-        var bytesPerRow = Configuration.BytesPerRow;
-        var ceil = (int)(Math.Ceiling(number / (double)bytesPerRow) * bytesPerRow);
-        return Math.Max(0, ceil == number ? ceil : ceil - bytesPerRow);
     }
 
     protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -261,6 +255,11 @@ public class Document
         OnSelectionChanged(oldArea, newArea, requestCenter);
     }
 
+    public void Deselect()
+    {
+        Select(null);
+    }
+
     public void AddMarker(IDocumentMarker marker)
     {
         InternalMarkers.Add(marker);
@@ -271,7 +270,150 @@ public class Document
     public void RemoveMarker(IDocumentMarker marker)
     {
         InternalMarkers.Remove(marker);
-        _markersVersion--;
+        _markersVersion++;
+    }
+
+    #region Clipboard operations
+    public async Task<bool> TryCopyAsync(CancellationToken cancellationToken = default)
+    {
+        if (Selection.HasValue)
+        {
+            return await TryCopyAsync(Selection.Value.Start, Selection.Value.Length, cancellationToken);
+        }
+
+        return false;
+    }
+
+    public async Task<bool> TryCopyAsync(long offset, long length, CancellationToken cancellationToken = default)
+    {
+        return await TryCopyAsync(offset, length, null, cancellationToken);
+    }
+
+    public async Task<bool> TryCopyAsync(long offset, long length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        columnSide ??= Caret.Column;
+        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return false;
+        }
+
+        if (length > CLIPBOARD_LIMIT)
+        {
+            return false;
+        }
+
+        var readBuffer = ArrayPool<byte>.Shared.Rent((int)length);
+
+        try
+        {
+            await Buffer.ReadAsync(readBuffer.AsMemory(0, (int)length), offset, null, cancellationToken);
+
+            var characterSet = GetCharacterSet(Caret.Column);
+            if (characterSet is IStringConvertible convertible)
+            {
+                var value = convertible.ToString(readBuffer.AsSpan(0, (int)length), new FormatInfo(offset, Configuration));
+                if (string.IsNullOrEmpty(value))
+                {
+                    return false;
+                }
+
+                return await Clipboard.Instance.TrySetAsync(value, cancellationToken);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(readBuffer);
+        }
+
+        return false;
+    }
+
+    public async Task<bool> TryPasteAsync(CancellationToken cancellationToken = default)
+    {
+        if (Selection.HasValue)
+        {
+            return await TryPasteAsync(Selection.Value.Start, Selection.Value.Length, cancellationToken);
+        }
+
+        return await TryPasteAsync(Caret.Offset, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, null, null, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, null, columnSide, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, long? length, CancellationToken cancellationToken = default)
+    {
+        return await TryPasteAsync(offset, length, null, cancellationToken);
+    }
+
+    public async Task<bool> TryPasteAsync(long offset, long? length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    {
+        columnSide ??= Caret.Column;
+        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return false;
+        }
+
+        var (success, content) = await Clipboard.Instance.TryReadAsync(cancellationToken);
+        if (!success || string.IsNullOrEmpty(content))
+        {
+            return false;
+        }
+
+        if (content.Length > CLIPBOARD_LIMIT)
+        {
+            return false;
+        }
+
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(content.Length);
+
+        try
+        {
+            var characterSet = GetCharacterSet(Caret.Column);
+            if (characterSet is IStringParsable parsable)
+            {
+                if (parsable.TryParse(content, tempBuffer.AsSpan(), out var parsedLength))
+                {
+                    var writeBuffer = new byte[parsedLength];
+                    tempBuffer.AsSpan(0, parsedLength).CopyTo(writeBuffer.AsSpan());
+
+                    if (length.HasValue)
+                    {
+                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer);
+                    }
+                    else
+                    {
+                        await Buffer.WriteAsync(offset, writeBuffer);
+                    }
+
+                    return true;
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+        }
+
+        return false;
+    }
+    #endregion
+
+    private CharacterSet GetCharacterSet(ColumnSide column)
+    {
+        return column switch
+        {
+            ColumnSide.Left => Configuration.LeftCharacterSet,
+            ColumnSide.Right => Configuration.RightCharacterSet,
+            _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
+        };
     }
 
     private bool ValidateCaret(Caret caret)
@@ -297,11 +439,6 @@ public class Document
             ColumnSide.Right => Configuration.RightCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
-    }
-
-    public void Deselect()
-    {
-        Select(null);
     }
 
     internal ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
@@ -383,10 +520,10 @@ public class Document
         if (offset < Caret.Offset)
         {
             caretState = Caret with { };
-            Caret = Caret with {Nibble = 0};
+            Caret = Caret with { Nibble = 0 };
         }
 
-        Selection? selectionState = null;
+        Selection? selectionState = Selection is null ? null : Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
@@ -424,10 +561,10 @@ public class Document
         // Don't move caret to the right for single byte inserts, this usually means a user is typing
         if (bytes.Length >= 2)
         {
-            Caret = Caret with {Offset = offset + bytes.Length, Nibble = 0};
+            Caret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
         }
 
-        Selection? selectionState = null;
+        Selection? selectionState = Selection is null ? null : Selection with { };
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
@@ -445,8 +582,9 @@ public class Document
 
     private DocumentState ApplyWriteModification(long offset, byte[] bytes)
     {
+        var selectionState = Selection.HasValue ? Selection with { } : null;
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
-        return new DocumentState(Array.Empty<MarkerState>(), CaretState: caretState);
+        return new DocumentState(Array.Empty<MarkerState>(), selectionState, caretState);
     }
 
     private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset,
@@ -537,7 +675,7 @@ public class Document
 
         var capturedMemory = _capturedMarkers.AsMemory(0, InternalMarkers.Count);
         _capturedState = new CapturedState(
-            Offset, 
+            Offset,
             Length,
             Selection is { } selection ? selection with { } : null,
             Caret with { },

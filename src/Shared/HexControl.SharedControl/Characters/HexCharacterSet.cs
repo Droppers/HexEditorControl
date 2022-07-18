@@ -1,6 +1,9 @@
-﻿namespace HexControl.SharedControl.Characters;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text;
 
-public sealed class HexCharacterSet : CharacterSet
+namespace HexControl.SharedControl.Characters;
+
+public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConvertible
 {
     private static readonly char[] Characters =
     {
@@ -69,6 +72,55 @@ public sealed class HexCharacterSet : CharacterSet
         return true;
     }
 
+    public bool TryParse(string value, Span<byte> buffer, out int length)
+    {
+        value = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? value[2..] : value;
+        value = string.Join("", value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        length = 0;
+
+        if (value.Length % 2 is not 0)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < value.Length; i += 2)
+        {
+            var lower = value[i];
+            var upper = value[i + 1];
+
+            if (!CharIsHexadecinal(lower) || !CharIsHexadecinal(upper))
+            {
+                return false;
+            }
+
+            buffer[length] = Convert.ToByte($"{upper}{lower}", 16);
+
+            length++;
+        }
+
+        return true;
+    }
+
+    public string ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
+    {
+        var sb = new StringBuilder();
+        var currentOffset = info.Offset;
+
+        foreach(var @byte in buffer)
+        {
+            sb.Append(Characters[@byte * 2]).Append(Characters[@byte * 2 + 1]);
+
+            if(currentOffset is not 0 && (currentOffset + 1) % (info.Configuration.GroupSize) is 0)
+            {
+                sb.Append(' ');
+            }
+
+            currentOffset++;
+        }
+
+        return sb.ToString();
+    }
+
     private static int CharToHex(char @char)
     {
         return @char switch
@@ -77,5 +129,10 @@ public sealed class HexCharacterSet : CharacterSet
             >= 'a' and <= 'z' => @char - 87,
             _ => @char - 48
         };
+    }
+
+    private static bool CharIsHexadecinal(char @char)
+    {
+        return @char is (>= 'A' and <= 'F') or (>= 'a' and <= 'f') or (>= '0' and <= '9');
     }
 }

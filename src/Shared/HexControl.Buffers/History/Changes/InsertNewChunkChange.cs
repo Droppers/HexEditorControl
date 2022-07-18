@@ -18,7 +18,7 @@ public class InsertNewChunkChange : IBufferChange
         // Cloning is important, otherwise the chunk that will be reverted can be modified which results in an invalid state.
         var chunk = _chunk.Clone();
 
-        if (contextNode == null)
+        if (contextNode is null)
         {
             buffer.Chunks.AddFirst(chunk);
         }

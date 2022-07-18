@@ -67,7 +67,7 @@ internal class EditorColumn : VisualElement
     public EditorColumn(SharedHexControl control)
     {
         _control = control;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset);
+        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
         _renderState = new EditorRendererState(this);
 
         _readBuffer = new byte[8];
@@ -115,7 +115,7 @@ internal class EditorColumn : VisualElement
             : 0);
 
     public long Offset { get; set; }
-    private bool CanModify => Document?.Buffer.IsReadOnly == true || Document?.Buffer.Locked == true;
+    private bool CanModify => Document?.Buffer.IsReadOnly == false && Document?.Buffer.Locked == false;
 
     private int RowHeight => _control.RowHeight;
     private int CharacterWidth => _control.CharacterWidth;
@@ -157,7 +157,7 @@ internal class EditorColumn : VisualElement
     private void OnDocumentChanged()
     {
         var oldCalculator = _calculator;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset);
+        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
         oldCalculator.Dispose();
     }
 
@@ -179,7 +179,7 @@ internal class EditorColumn : VisualElement
         }
 
         var state = Document.CapturedState;
-        var calculator = new EditorCalculator(_control, state.Configuration, _horizontalOffset);
+        var calculator = new EditorCalculator(_control, state.Configuration, _horizontalOffset, true);
         new EditorRenderer(
             _control,
             this,
@@ -397,6 +397,7 @@ internal class EditorColumn : VisualElement
         var caret = Document.Caret;
         var selection = Document.Selection;
         var ctrlPressed = (e.Modifiers & HostKeyModifier.Control) is not 0;
+        var shitPressed = (e.Modifiers & HostKeyModifier.Shift) is not 0;
         if (e.Key is HostKey.Left or HostKey.Up or HostKey.Down or HostKey.Right)
         {
             if (!_keyboardSelectMode)
@@ -406,19 +407,33 @@ internal class EditorColumn : VisualElement
 
             HandleArrowKeys(Document, e.Key, !ctrlPressed);
         }
+        else if (ctrlPressed && e.Key is HostKey.C)
+        {
+            _ = await Document.TryCopyAsync();
+        }
+        else if (ctrlPressed && e.Key is HostKey.V && CanModify)
+        {
+            _ = await Document.TryPasteAsync();
+        }
         else if (ctrlPressed && e.Key is HostKey.A)
         {
             _startSelectionOffset = 0;
             Select(Document.Length, _activeColumn);
             _startSelectionOffset = null;
         }
-        else if (ctrlPressed && e.Key is HostKey.Z && !CanModify && Document.Buffer.CanUndo)
+        else if (((ctrlPressed && e.Key is HostKey.Y) || (ctrlPressed && shitPressed && e.Key is HostKey.Z)) && CanModify)
         {
-            await Document.Buffer.UndoAsync();
+            if (Document.Buffer.CanRedo)
+            {
+                await Document.Buffer.RedoAsync();
+            }
         }
-        else if (ctrlPressed && e.Key is HostKey.Y && !CanModify && Document.Buffer.CanRedo)
+        else if (ctrlPressed && e.Key is HostKey.Z && CanModify)
         {
-            await Document.Buffer.RedoAsync();
+            if (Document.Buffer.CanUndo)
+            {
+                await Document.Buffer.UndoAsync();
+            }
         }
         else if (e.Key is HostKey.Shift)
         {
@@ -428,13 +443,13 @@ internal class EditorColumn : VisualElement
                 caret.Offset;
             _keyboardSelectMode = true;
         }
-        else if (selection.HasValue && e.Key is HostKey.Back or HostKey.Delete && !CanModify)
+        else if (e.Key is HostKey.Back or HostKey.Delete && CanModify && selection.HasValue)
         {
             await Document.Buffer.DeleteAsync(selection.Value.Start, selection.Value.End - selection.Value.Start);
             SetCaretOffset(selection.Value.Start);
             Deselect();
         }
-        else if (caret.Nibble is 0 && !CanModify)
+        else if (caret.Nibble is 0 && CanModify)
         {
             switch (e.Key)
             {
@@ -479,7 +494,7 @@ internal class EditorColumn : VisualElement
 
     private async ValueTask HandleWriteKey(char @char)
     {
-        if (Document is null || CanModify)
+        if (Document is null || !CanModify)
         {
             return;
         }

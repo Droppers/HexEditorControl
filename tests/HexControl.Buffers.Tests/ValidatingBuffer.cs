@@ -18,24 +18,24 @@ public class ValidatingBuffer : MemoryBuffer
         _previousChunks = new Stack<List<IChunk>>();
     }
     
-    public void ValidateWrite(long writeOffset, byte value, ExpectsDelegate? expects = null)
+    public void ValidateWrite(long offset, byte @byte, ExpectsDelegate? expects = null)
     {
-        Wrap(() => Write(writeOffset, value), expects);
+        Wrap(() => Write(offset, @byte), expects);
     }
 
-    public void ValidateWrite(long writeOffset, byte[] writeBuffer, ExpectsDelegate? expects = null)
+    public void ValidateWrite(long offset, byte[] bytes, ExpectsDelegate? expects = null)
     {
-        Wrap(() => Write(writeOffset, writeBuffer), expects);
+        Wrap(() => Write(offset, bytes), expects);
     }
 
-    public void ValidateInsert(long insertOffset, byte[] insertBuffer, ExpectsDelegate? expects = null)
+    public void ValidateInsert(long offset, byte[] bytes, ExpectsDelegate? expects = null)
     {
-        Wrap(() => Insert(insertOffset, insertBuffer), expects);
+        Wrap(() => Insert(offset, bytes), expects);
     }
 
-    public void ValidateDelete(long deleteOffset, long deleteLength, ExpectsDelegate? expects = null)
+    public void ValidateDelete(long offset, long length, ExpectsDelegate? expects = null)
     {
-        Wrap(() => Delete(deleteOffset, deleteLength), expects);
+        Wrap(() => Delete(offset, length), expects);
     }
 
     private void Wrap(Action modificationAction, ExpectsDelegate? expects)

@@ -157,6 +157,22 @@ public partial class ByteBufferTests
     }
 
     [Fact]
+    public void Write_AtStartReplaceChunk()
+    {
+        var bytes = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+        var expectedBytes = bytes.Concat(bytes).ToArray();
+
+        _buffer.Write(16, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 });
+        _buffer.ValidateWrite(0, bytes, expects =>
+            expects
+                .Length(546)
+                .Memory(expectedBytes)
+                .Immutable(514, 32));
+
+        _buffer.ValidateUndoRedo();
+    }
+
+    [Fact]
     public void Write_ALotOfSingleBytes()
     {
         _buffer.Write(969, new byte[] {160});

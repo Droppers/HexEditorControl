@@ -10,9 +10,12 @@ public partial class Form1 : Form
 
         var fileName = @"..\..\..\..\..\files\sample-binary";
         var bytes = File.ReadAllBytes(fileName);
-        var config = new DocumentConfiguration();
-        config.WriteInsert = true;
-        config.OffsetBase = NumberBase.Decimal;
+        var config = new DocumentConfiguration
+        {
+            WriteMode = WriteMode.Insert,
+            OffsetBase = NumberBase.Decimal,
+            ColumnsVisible = VisibleColumns.Text
+        };
         var document = Document.FromBytes(bytes, configuration: config);
         hexEditorControl1.Document = document;
     }

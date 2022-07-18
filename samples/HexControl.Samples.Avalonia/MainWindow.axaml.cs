@@ -27,20 +27,20 @@ public class MainWindow : Window
 
         var config = new DocumentConfiguration
         {
-            OffsetBase = NumberBase.Decimal
+            OffsetBase = NumberBase.Decimal,
+            ColumnsVisible = VisibleColumns.HexText
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
-
         Document = Document.FromBytes(bytes, configuration: config);
 
         for (var i = 0; i < 100_000; i++)
         {
-            Document.AddMarker(new Marker(i * 12_000, 10_000)
+            Document.AddMarker(new Marker(i * 20000, 10000)
             {
-                Background = Color.FromArgb(120, 200, 0, 123),
-                Column = ColumnSide.Both,
+                Background = Color.FromArgb(255, 0, 0, 0),
+                Column = MarkerColumn.Text,
                 BehindText = true,
-                Foreground = Color.Green
+                Foreground = Color.White
             });
         }
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);

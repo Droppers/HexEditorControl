@@ -1,5 +1,8 @@
-﻿namespace HexControl.SharedControl.Documents.Events;
+﻿using JetBrains.Annotations;
 
+namespace HexControl.SharedControl.Documents.Events;
+
+[PublicAPI]
 public class SelectionChangedEventArgs
 {
     public SelectionChangedEventArgs(Selection? oldArea, Selection? newArea, bool requestCenter)

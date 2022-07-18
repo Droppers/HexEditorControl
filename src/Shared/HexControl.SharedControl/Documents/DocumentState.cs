@@ -1,6 +1,6 @@
 ﻿namespace HexControl.SharedControl.Documents;
 
 internal record DocumentState(
-    IReadOnlyList<MarkerState> MarkerStates,
-    Selection? SelectionState = null,
-    Caret? CaretState = null);
+    IReadOnlyDictionary<Guid, MarkerState> MarkerStates,
+    Selection? Selection,
+    Caret? Caret);

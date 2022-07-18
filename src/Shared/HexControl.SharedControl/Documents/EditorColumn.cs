@@ -1,8 +1,7 @@
 ﻿namespace HexControl.SharedControl.Documents;
 
-public enum ColumnSide
+internal enum EditorColumn
 {
-    Both,
     Left,
     Right
 }

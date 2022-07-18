@@ -7,14 +7,14 @@ using DocumentConfiguration = HexControl.SharedControl.Documents.DocumentConfigu
 
 namespace HexControl.SharedControl.Control.Elements;
 
-internal class OffsetColumn : VisualElement
+internal class OffsetElement : VisualElement
 {
     private readonly char[] _characterBuffer = new char[20];
     private readonly SharedHexControl _control;
     private long _length;
     private int _zeroPadCount;
 
-    public OffsetColumn(SharedHexControl control)
+    public OffsetElement(SharedHexControl control)
     {
         _control = control;
     }

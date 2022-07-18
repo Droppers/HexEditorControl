@@ -10,7 +10,7 @@ using HexControl.SharedControl.Documents;
 
 namespace HexControl.SharedControl.Control.Elements;
 
-internal class EditorColumn : VisualElement
+internal class EditorElement : VisualElement
 {
     private const int SPACING_BETWEEN_COLUMNS = 2;
 
@@ -20,11 +20,10 @@ internal class EditorColumn : VisualElement
     private readonly SharedHexControl _control;
     private readonly EditorRendererState _renderState;
 
-    private ColumnSide _activeColumn = ColumnSide.Left;
+    private EditorColumn _activeColumn = EditorColumn.Left;
     private DocumentConfiguration _configuration = DocumentConfiguration.Default;
 
     private Document? _document;
-
 
     private bool _keyboardSelectMode;
     private bool _mouseSelectMode;
@@ -36,17 +35,12 @@ internal class EditorColumn : VisualElement
 
     public byte[] Bytes
     {
-        get => _bytes; set
-        {
-            _bytes = value;
-        }
+        set => _bytes = value;
     }
+
     public long BytesLength
     {
-        get => _bytesLength; set
-        {
-            _bytesLength = value;
-        }
+        set => _bytesLength = value;
     }
 
     public int HorizontalOffset
@@ -64,7 +58,7 @@ internal class EditorColumn : VisualElement
 
     private EditorCalculator _calculator;
 
-    public EditorColumn(SharedHexControl control)
+    public EditorElement(SharedHexControl control)
     {
         _control = control;
         _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
@@ -109,9 +103,9 @@ internal class EditorColumn : VisualElement
     }
 
     public int TotalWidth =>
-        _calculator.GetColumnCharacterCount(ColumnSide.Left) +
+        _calculator.GetColumnCharacterCount(EditorColumn.Left) +
         (Configuration.ColumnsVisible is VisibleColumns.HexText
-            ? _calculator.GetColumnCharacterCount(ColumnSide.Right) + SPACING_BETWEEN_COLUMNS
+            ? _calculator.GetColumnCharacterCount(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
             : 0);
 
     public long Offset { get; set; }
@@ -156,9 +150,7 @@ internal class EditorColumn : VisualElement
 
     private void OnDocumentChanged()
     {
-        var oldCalculator = _calculator;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
-        oldCalculator.Dispose();
+        _calculator.Configuration = _configuration;
     }
 
     protected override unsafe void Render(IRenderContext context)
@@ -192,24 +184,24 @@ internal class EditorColumn : VisualElement
             _bytesLength).Render(modifications);
     }
 
-    private (ColumnSide column, SharedPoint) GetPointRelativeToColumn(SharedPoint point)
+    private (EditorColumn column, SharedPoint) GetPointRelativeToColumn(SharedPoint point)
     {
-        var leftWidth = _calculator.GetColumnCharacterCount(ColumnSide.Left) * CharacterWidth;
-        var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, ColumnSide.Left);
+        var leftWidth = _calculator.GetColumnCharacterCount(EditorColumn.Left) * CharacterWidth;
+        var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, EditorColumn.Left);
 
-        var column = ColumnSide.Left;
+        var column = EditorColumn.Left;
         var x = leftOffset + Math.Max(0, point.X);
         if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.HexText)
         {
-            x = Math.Min(_calculator.GetColumnCharacterCount(ColumnSide.Right) * CharacterWidth,
+            x = Math.Min(_calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth,
                 x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
-            column = ColumnSide.Right;
+            column = EditorColumn.Right;
         }
 
         return (column, new SharedPoint(x, point.Y - _control.HeaderHeight));
     }
 
-    private (ColumnSide side, long offset, int nibble) GetOffsetFromPoint(SharedPoint point)
+    private (EditorColumn side, long offset, int nibble) GetOffsetFromPoint(SharedPoint point)
     {
         var (column, relativePoint) = GetPointRelativeToColumn(point);
         var characterSet = _calculator.GetCharacterSetForColumn(column);
@@ -265,7 +257,8 @@ internal class EditorColumn : VisualElement
         var (column, offset, nibble) = GetOffsetFromPoint(e.PointRelativeTo(this));
         if (_mouseDownPosition is not null)
         {
-            SetCaretOffset(column, offset, nibble);
+            var activeColumn = MapToActiveColumn(column);
+            SetCaretOffset(activeColumn, offset, nibble);
             Deselect();
         }
 
@@ -284,7 +277,7 @@ internal class EditorColumn : VisualElement
         SetCaretOffset(Document.Caret.Column, offset, nibble, scrollToCaret);
     }
 
-    private void SetCaretOffset(ColumnSide column, long offset, int nibble = 0, bool scrollToCaret = false)
+    private void SetCaretOffset(ActiveColumn column, long offset, int nibble = 0, bool scrollToCaret = false)
     {
         if (Document is null)
         {
@@ -297,8 +290,8 @@ internal class EditorColumn : VisualElement
 
     private bool IsPointInEditableArea(SharedPoint point)
     {
-        var leftWidth = _calculator.GetVisibleColumnWidth(ColumnSide.Left);
-        var rightWidth = _calculator.GetVisibleColumnWidth(ColumnSide.Right);
+        var leftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
+        var rightWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Right);
 
         var inLeftColumn = point.X < leftWidth;
         var pastHeader = point.Y > _control.HeaderHeight;
@@ -351,7 +344,7 @@ internal class EditorColumn : VisualElement
 
         _mouseDownPosition = null;
         _mouseSelectMode = true;
-        Select(offset, _activeColumn);
+        Select(offset, MapToActiveColumn(_activeColumn));
     }
 
     private void OnMouseLeave(object? sender, HandledEventArgs e)
@@ -359,7 +352,7 @@ internal class EditorColumn : VisualElement
         Cursor = null;
     }
 
-    private void Select(long newOffset, ColumnSide column)
+    private void Select(long newOffset, ActiveColumn column)
     {
         if (_startSelectionOffset is null || Document is null)
         {
@@ -418,10 +411,10 @@ internal class EditorColumn : VisualElement
         else if (ctrlPressed && e.Key is HostKey.A)
         {
             _startSelectionOffset = 0;
-            Select(Document.Length, _activeColumn);
+            Select(Document.Length, MapToActiveColumn(_activeColumn));
             _startSelectionOffset = null;
         }
-        else if (((ctrlPressed && e.Key is HostKey.Y) || (ctrlPressed && shitPressed && e.Key is HostKey.Z)) && CanModify)
+        else if ((ctrlPressed && e.Key is HostKey.Y || (ctrlPressed && shitPressed && e.Key is HostKey.Z)) && CanModify)
         {
             if (Document.Buffer.CanRedo)
             {
@@ -446,8 +439,6 @@ internal class EditorColumn : VisualElement
         else if (e.Key is HostKey.Back or HostKey.Delete && CanModify && selection.HasValue)
         {
             await Document.Buffer.DeleteAsync(selection.Value.Start, selection.Value.End - selection.Value.Start);
-            SetCaretOffset(selection.Value.Start);
-            Deselect();
         }
         else if (caret.Nibble is 0 && CanModify)
         {
@@ -455,7 +446,6 @@ internal class EditorColumn : VisualElement
             {
                 case HostKey.Back:
                     await Document.Buffer.DeleteAsync(caret.Offset - 1, 1);
-                    SetCaretOffset(caret.Offset - 1);
                     break;
                 case HostKey.Delete:
                     await Document.Buffer.DeleteAsync(caret.Offset, 1);
@@ -500,9 +490,10 @@ internal class EditorColumn : VisualElement
         }
 
         var caret = Document.Caret;
+        var caretColumn = MapFromActiveColumn(caret.Column);
         var endOfDocument = caret.Offset >= Document.Length;
 
-        var characterSet = _calculator.GetCharacterSetForColumn(caret.Column);
+        var characterSet = _calculator.GetCharacterSetForColumn(caretColumn);
         var oldByte = (byte)0;
 
         if (!endOfDocument)
@@ -527,7 +518,7 @@ internal class EditorColumn : VisualElement
             await Document.Buffer.ReplaceAsync(selection.Start, selection.Length, newByte);
             Document.ChangeCaret(selection.Start);
         }
-        else if (endOfDocument || Configuration.WriteInsert && caret.Nibble is 0)
+        else if (endOfDocument || Configuration.WriteMode is WriteMode.Insert && caret.Nibble is 0)
         {
             await Document.Buffer.InsertAsync(caret.Offset, newByte);
         }
@@ -568,7 +559,7 @@ internal class EditorColumn : VisualElement
         var nibble = document.Caret.Nibble;
 
         // Allow for nibble level control when not selecting and byte level when selecting.
-        var charset = _calculator.GetCharacterSetForColumn(document.Caret.Column);
+        var charset = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(document.Caret.Column));
         switch (key)
         {
             case HostKey.Right when nibble == charset.Width - 1 || _keyboardSelectMode || jumpByte:
@@ -604,7 +595,7 @@ internal class EditorColumn : VisualElement
             SetCaretOffset(offset, nibble, true);
         }
 
-        Select(offset, _activeColumn);
+        Select(offset, MapToActiveColumn(_activeColumn));
     }
 
     private void Deselect()
@@ -613,5 +604,39 @@ internal class EditorColumn : VisualElement
         _keyboardSelectMode = false;
 
         Document?.Deselect();
+    }
+
+    private ActiveColumn MapToActiveColumn(EditorColumn column)
+    {
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            throw new InvalidOperationException(
+                "Cannot map target column column when right column is not enabled.");
+        }
+
+        return column switch
+        {
+            EditorColumn.Left => _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+                ? ActiveColumn.Hex
+                : ActiveColumn.Text,
+            EditorColumn.Right => _configuration.ColumnsVisible is VisibleColumns.HexText
+                ? ActiveColumn.Text
+                : default!,
+            _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
+        };
+    }
+
+    private EditorColumn MapFromActiveColumn(ActiveColumn column)
+    {
+        return column switch
+        {
+            ActiveColumn.Hex => _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+                ? EditorColumn.Left
+                : EditorColumn.Right,
+            ActiveColumn.Text => _configuration.ColumnsVisible is VisibleColumns.HexText
+                ? EditorColumn.Right
+                : default!,
+            _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
+        };
     }
 }

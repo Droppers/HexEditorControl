@@ -204,7 +204,12 @@ public abstract class ByteBuffer
             changes.SetStartAtPrevious();
             changes.Add(new InsertToMemoryChange(relativeOffset + previousChunk.Length, bytes).Apply(this, node, previousChunk));
         }
-        else if (offset == 0)
+        else if (currentOffset == offset && node.Previous?.Value is IImmutableChunk)
+        {
+            changes.SetStartAtPrevious();
+            changes.Add(InsertChunk(node.Previous, new MemoryChunk(this, bytes)));
+        }
+        else if (offset is 0)
         {
             changes.Add(InsertChunk(node, new MemoryChunk(this, bytes), true));
         }
@@ -288,8 +293,14 @@ public abstract class ByteBuffer
 
     private void InternalUndo()
     {
+        var oldLength = Length;
         var modifications = _changes.Undo();
         OnModified(modifications, ModificationSource.Undo);
+
+        if (oldLength != Length)
+        {
+            OnLengthChanged(oldLength, Length);
+        }
     }
 
     public async Task RedoAsync()
@@ -306,8 +317,14 @@ public abstract class ByteBuffer
 
     private void InternalRedo()
     {
+        var oldLength = Length;
         var modifications = _changes.Redo();
         OnModified(modifications, ModificationSource.Redo);
+        
+        if (oldLength != Length)
+        {
+            OnLengthChanged(oldLength, Length);
+        }
     }
 
     public long Read(Span<byte> buffer,

@@ -2,7 +2,6 @@
 using HexControl.Buffers.Events;
 using HexControl.Buffers.Modifications;
 using HexControl.Framework.Clipboard;
-using HexControl.Framework.Observable;
 using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
@@ -16,8 +15,12 @@ public class Document
 {
     private const int CLIPBOARD_LIMIT = 1024 * 1024 * 32;
 
-    private readonly Stack<DocumentState> _redoStates;
-    private readonly Stack<DocumentState> _undoStates;
+    private static readonly IReadOnlyDictionary<Guid, MarkerState> EmptyMarkerStateDictionary =
+        new Dictionary<Guid, MarkerState>();
+
+
+    private readonly Stack<(DocumentState Undo, DocumentState Redo)> _redoStates;
+    private readonly Stack<(DocumentState Undo, DocumentState Redo)> _undoStates;
 
     private DocumentConfiguration _configuration;
     private long _offset;
@@ -27,32 +30,38 @@ public class Document
     private int _markersVersion;
     private int _capturedMarkersVersion = -1;
 
+    private Caret _caret;
+    private Selection? _selection;
+
     public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
         Buffer = ReplaceBuffer(buffer);
 
         Configuration = _configuration = configuration ?? new DocumentConfiguration();
 
-        _undoStates = new Stack<DocumentState>();
-        _redoStates = new Stack<DocumentState>();
+        _undoStates = new Stack<(DocumentState Undo, DocumentState Redo)>();
+        _redoStates = new Stack<(DocumentState Undo, DocumentState Redo)>();
 
         InternalMarkers = new List<IDocumentMarker>();
         _capturedMarkers = new IDocumentMarker[1000];
 
-        Caret = new Caret(0, 0, ColumnSide.Left);
+        Caret = new Caret(0, 0, ActiveColumn.Hex);
     }
-
-    public Caret Caret { get; private set; }
 
     public DocumentConfiguration Configuration
     {
         get => _configuration;
         set
         {
-            _configuration.PropertyChanged -= OnPropertyChanged;
-            _configuration = value ?? throw new ArgumentNullException(nameof(value));
-            _configuration.PropertyChanged += OnPropertyChanged;
-            OnPropertyChanged(this, new PropertyChangedEventArgs());
+            if (value == _configuration)
+            {
+                return;
+            }
+
+            var oldConfiguration = _configuration;
+            _configuration = value;
+            var changes = _configuration.DetectChanges(oldConfiguration);
+            OnConfigurationChanged(oldConfiguration, value, changes);
         }
     }
 
@@ -73,7 +82,7 @@ public class Document
         get => _offset;
         set
         {
-            var newOffset = (long)Math.Floor(value / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
+            var newOffset = (long)Math.Floor(value / (double)Configuration.BytesPerRow) * Configuration.BytesPerRow;
             newOffset = Math.Max(0, Math.Min(newOffset, MaximumOffset));
             var oldOffset = _offset;
             if (oldOffset == newOffset)
@@ -86,24 +95,57 @@ public class Document
         }
     }
 
-    public Selection? Selection { get; private set; }
-
-    // Maximum possible offset taking into account 'Configuration.BytesPerRow'
-    public long MaximumOffset
+        public Caret Caret
     {
-        get
+        get => _caret;
+        set
         {
-            return (long)Math.Floor(Length / (float)Configuration.BytesPerRow) * Configuration.BytesPerRow;
+            if (!IsVisibleColumn(value.Column, out var visibleColumn))
+            {
+                _caret = value with
+                {
+                    Column = visibleColumn
+                };
+            }
+            else
+            {
+                _caret = value;
+            }
         }
     }
 
-    public event EventHandler<PropertyChangedEventArgs>? ConfigurationChanged;
+    public Selection? Selection
+    {
+        get => _selection;
+        set
+        {
+            if (value is { } val && !IsVisibleColumn(val.Column, out var visibleColumn))
+            {
+                _selection = val with
+                {
+                    Column = visibleColumn
+                };
+            }
+            else
+            {
+                _selection = value;
+            }
+        }
+    }
+
+    // Maximum possible offset taking into account 'Configuration.BytesPerRow'
+    public long MaximumOffset =>
+        (long)Math.Floor(Length / (double)Configuration.BytesPerRow) * Configuration.BytesPerRow
+        - (Length % Configuration.BytesPerRow is 0 ? Configuration.BytesPerRow : 0);
+
+    public event EventHandler<ConfigurationChangedEventArgs>? ConfigurationChanged;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
     public event EventHandler<CaretChangedEventArgs>? CaretChanged;
     public event EventHandler<OffsetChangedEventArgs>? OffsetChanged;
     public event EventHandler<LengthChangedEventArgs>? LengthChanged;
     public event EventHandler<EventArgs>? MarkersChanged;
     public event EventHandler<EventArgs>? Saved;
+    public event EventHandler<ModifiedEventArgs>? Modified;
 
     private void BufferOnLengthChanged(object? sender, LengthChangedEventArgs e)
     {
@@ -119,15 +161,15 @@ public class Document
                 case ModificationSource.Undo:
                     var undoState = _undoStates.Pop();
                     _redoStates.Push(undoState);
-                    ApplyDocumentState(undoState);
+                    ApplyDocumentState(undoState.Undo);
                     break;
                 case ModificationSource.Redo:
                     var redoState = _redoStates.Pop();
                     _undoStates.Push(redoState);
-                    ApplyDocumentState(redoState);
+                    ApplyDocumentState(redoState.Redo);
                     break;
                 case ModificationSource.User:
-                    var userState = modification switch
+                    var (newUndoState, newRedoState) = modification switch
                     {
                         DeleteModification(var offset, var length) => ApplyDeleteModification(offset, length),
                         InsertModification(var offset, var bytes) => ApplyInsertModification(offset, bytes),
@@ -135,11 +177,13 @@ public class Document
                         _ => throw new InvalidOperationException(
                             $"Modification with type '{modification.GetType().Name}' is not yet supported.")
                     };
-                    _undoStates.Push(userState);
+                    _undoStates.Push((newUndoState, newRedoState));
                     _redoStates.Clear();
                     break;
             }
         }
+
+        OnModified(e.Modifications, e.Source);
     }
 
     private void BufferOnSaved(object? sender, EventArgs e)
@@ -152,40 +196,26 @@ public class Document
 
     private void ApplyDocumentState(DocumentState state)
     {
-        for (var i = 0; i < InternalMarkers.Count; i++)
+        var count = InternalMarkers.Count;
+        var span = CollectionsMarshal.AsSpan(InternalMarkers);
+        for (var i = 0; i < count; i++)
         {
-            var marker = InternalMarkers[i];
-            for (var j = 0; j < state.MarkerStates.Count; j++)
+            var marker = span[i];
+            if (!state.MarkerStates.TryGetValue(marker.Id, out var markerState))
             {
-                var markerState = state.MarkerStates[j];
-                if (marker.Id != markerState.Marker.Id)
-                {
-                    continue;
-                }
-
-                ChangeMarkerOffsetAndLength(marker, markerState.Offset, markerState.Length);
-                break;
+                continue;
             }
+
+            ChangeMarkerOffsetAndLength(marker, markerState.Offset, markerState.Length);
+            break;
         }
 
-        Selection = state.SelectionState;
+        Selection = state.Selection;
 
-        if (state.CaretState is { } caretState)
+        if (state.Caret is { } caretState)
         {
             Caret = caretState;
         }
-    }
-
-    protected void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // Reset the horizontal offset (scroll) when changing the columns or character sets
-        if (e.Property is nameof(Configuration.ColumnsVisible) or nameof(Configuration.LeftCharacterSet)
-            or nameof(Configuration.RightCharacterSet))
-        {
-            HorizontalOffset = 0;
-        }
-
-        ConfigurationChanged?.Invoke(sender, e);
     }
 
     public static Document FromFile(string fileName, FileOpenMode openMode = FileOpenMode.ReadWrite,
@@ -207,7 +237,7 @@ public class Document
         ChangeCaret(Caret.Column, offset, nibble, scrollToCaret);
     }
 
-    public void ChangeCaret(ColumnSide column, long offset, int nibble, bool scrollToCaret = false)
+    public void ChangeCaret(ActiveColumn column, long offset, int nibble, bool scrollToCaret = false)
     {
         var newCaret = new Caret(offset, nibble, column);
         if (!ValidateCaret(newCaret))
@@ -224,7 +254,7 @@ public class Document
         }
     }
 
-    public void Select(long startOffset, long endOffset, ColumnSide column,
+    public void Select(long startOffset, long endOffset, ActiveColumn column,
         NewCaretLocation newCaretLocation = NewCaretLocation.Current,
         bool requestCenter = false)
     {
@@ -289,13 +319,9 @@ public class Document
         return await TryCopyAsync(offset, length, null, cancellationToken);
     }
 
-    public async Task<bool> TryCopyAsync(long offset, long length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    public async Task<bool> TryCopyAsync(long offset, long length, ActiveColumn? column, CancellationToken cancellationToken = default)
     {
-        columnSide ??= Caret.Column;
-        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
-        {
-            return false;
-        }
+        column ??= Caret.Column;
 
         if (length > CLIPBOARD_LIMIT)
         {
@@ -308,7 +334,7 @@ public class Document
         {
             await Buffer.ReadAsync(readBuffer.AsMemory(0, (int)length), offset, null, cancellationToken);
 
-            var characterSet = GetCharacterSet(Caret.Column);
+            var characterSet = GetCharacterSet(column.Value);
             if (characterSet is IStringConvertible convertible)
             {
                 var value = convertible.ToString(readBuffer.AsSpan(0, (int)length), new FormatInfo(offset, Configuration));
@@ -343,9 +369,9 @@ public class Document
         return await TryPasteAsync(offset, null, null, cancellationToken);
     }
 
-    public async Task<bool> TryPasteAsync(long offset, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    public async Task<bool> TryPasteAsync(long offset, ActiveColumn? column, CancellationToken cancellationToken = default)
     {
-        return await TryPasteAsync(offset, null, columnSide, cancellationToken);
+        return await TryPasteAsync(offset, null, column, cancellationToken);
     }
 
     public async Task<bool> TryPasteAsync(long offset, long? length, CancellationToken cancellationToken = default)
@@ -353,13 +379,9 @@ public class Document
         return await TryPasteAsync(offset, length, null, cancellationToken);
     }
 
-    public async Task<bool> TryPasteAsync(long offset, long? length, ColumnSide? columnSide, CancellationToken cancellationToken = default)
+    public async Task<bool> TryPasteAsync(long offset, long? length, ActiveColumn? column, CancellationToken cancellationToken = default)
     {
-        columnSide ??= Caret.Column;
-        if (columnSide is ColumnSide.Right && Configuration.ColumnsVisible is not VisibleColumns.HexText)
-        {
-            return false;
-        }
+        column ??= Caret.Column;
 
         var (success, content) = await Clipboard.Instance.TryReadAsync(cancellationToken);
         if (!success || string.IsNullOrEmpty(content))
@@ -376,7 +398,7 @@ public class Document
 
         try
         {
-            var characterSet = GetCharacterSet(Caret.Column);
+            var characterSet = GetCharacterSet(column.Value);
             if (characterSet is IStringParsable parsable)
             {
                 if (parsable.TryParse(content, tempBuffer.AsSpan(), out var parsedLength))
@@ -390,7 +412,7 @@ public class Document
                     }
                     else
                     {
-                        await Buffer.WriteAsync(offset, writeBuffer);
+                        await Buffer.InsertAsync(offset, writeBuffer);
                     }
 
                     return true;
@@ -406,12 +428,12 @@ public class Document
     }
     #endregion
 
-    private CharacterSet GetCharacterSet(ColumnSide column)
+    private CharacterSet GetCharacterSet(ActiveColumn column)
     {
         return column switch
         {
-            ColumnSide.Left => Configuration.LeftCharacterSet,
-            ColumnSide.Right => Configuration.RightCharacterSet,
+            ActiveColumn.Hex => Configuration.HexCharacterSet,
+            ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
     }
@@ -431,12 +453,12 @@ public class Document
         return true;
     }
 
-    private CharacterSet GetCharacterSetForColumn(ColumnSide column)
+    private CharacterSet GetCharacterSetForColumn(ActiveColumn column)
     {
         return column switch
         {
-            ColumnSide.Left => Configuration.LeftCharacterSet,
-            ColumnSide.Right => Configuration.RightCharacterSet,
+            ActiveColumn.Hex => Configuration.HexCharacterSet,
+            ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
     }
@@ -471,6 +493,7 @@ public class Document
         return Buffer = newBuffer;
     }
 
+    #region Events
     protected virtual void OnCaretChanged(Caret oldCaret, Caret newCaret, bool scrollToCaret)
     {
         CaretChanged?.Invoke(this, new CaretChangedEventArgs(oldCaret, newCaret, scrollToCaret));
@@ -501,9 +524,59 @@ public class Document
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
-    private DocumentState ApplyDeleteModification(long offset, long length)
+    protected virtual void OnConfigurationChanged(DocumentConfiguration oldConfiguration,
+        DocumentConfiguration newConfiguration, IEnumerable<string> changes)
     {
-        var markerStates = new List<MarkerState>();
+        var changesArray = changes.ToArray();
+
+        // Reset the horizontal offset (scroll) when changing the columns or character sets
+        if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible) or nameof(Configuration.HexCharacterSet)
+                or nameof(Configuration.TextCharacterSet)))
+        {
+            HorizontalOffset = 0;
+        }
+
+        // Ensure that invisible columns cannot be active
+        if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible)))
+        {
+            if (Selection is { } selection)
+            {
+                Selection = selection with { };
+            }
+
+            Caret = Caret with { };
+        }
+
+        ConfigurationChanged?.Invoke(this, new ConfigurationChangedEventArgs(oldConfiguration, newConfiguration, changesArray));
+    }
+
+    protected virtual void OnModified(IReadOnlyList<BufferModification> modifications, ModificationSource source)
+    {
+        Modified?.Invoke(this, new ModifiedEventArgs(modifications, source));
+    }
+    #endregion
+
+    private bool IsVisibleColumn(ActiveColumn column, out ActiveColumn visibleColumn)
+    {
+        if (Configuration.ColumnsVisible is VisibleColumns.HexText)
+        {
+            visibleColumn = column;
+            return true;
+        }
+
+        visibleColumn = column switch
+        {
+            ActiveColumn.Hex when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
+            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Hex => ActiveColumn.Hex,
+            _ => column
+        };
+        return false;
+    }
+
+    private (DocumentState Undo, DocumentState Redo) ApplyDeleteModification(long offset, long length)
+    {
+        var undoMarkerStates = new Dictionary<Guid, MarkerState>();
+        var redoMarkerStates = new Dictionary<Guid, MarkerState>();
 
         for (var i = 0; i < InternalMarkers.Count; i++)
         {
@@ -511,37 +584,47 @@ public class Document
             var (newOffset, newLength) = DeleteFromRange(marker.Offset, marker.Length, offset, length);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
-                markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
+                undoMarkerStates.Add(marker.Id, new MarkerState(marker.Offset, marker.Length)); 
+                redoMarkerStates.Add(marker.Id, new MarkerState(newOffset, newLength));
                 ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
             }
         }
 
-        Caret? caretState = null;
+        Caret? undoCaret = Caret with { };
+        Caret? redoCaret = Caret with { };
         if (offset < Caret.Offset)
         {
-            caretState = Caret with { };
-            Caret = Caret with { Nibble = 0 };
+            redoCaret = Caret = Caret with
+            {
+                Offset = Caret.Offset - length,
+                Nibble = 0
+            };
         }
 
-        Selection? selectionState = Selection is null ? null : Selection with { };
+        var undoSelection = Selection.HasValue ? Selection with { } : null;
+        Selection? redoSelection = null;
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
                 DeleteFromRange(selection.Start, selection.Length, offset, length);
-            selectionState = Selection;
-            Selection = newLength <= 0 ? null : selection with
+            undoSelection = Selection;
+            Selection = redoSelection = newLength <= 0 ? null : selection with
             {
                 Start = newOffset,
                 Length = newLength
             };
         }
 
-        return new DocumentState(markerStates, selectionState, caretState);
+        var undoState = new DocumentState(undoMarkerStates, undoSelection, undoCaret);
+        var redoState = new DocumentState(redoMarkerStates, redoSelection, redoCaret);
+
+        return (undoState, redoState);
     }
 
-    private DocumentState ApplyInsertModification(long offset, byte[] bytes)
+    private (DocumentState Undo, DocumentState Redo) ApplyInsertModification(long offset, byte[] bytes)
     {
-        var markerStates = new List<MarkerState>();
+        var undoMarkerStates = new Dictionary<Guid, MarkerState>();
+        var redoMarkerStates = new Dictionary<Guid, MarkerState>();
 
         for (var i = 0; i < InternalMarkers.Count; i++)
         {
@@ -551,40 +634,46 @@ public class Document
                 InsertIntoRange(marker.Offset, marker.Length, offset, bytes.Length);
             if (newOffset != marker.Offset || newLength != marker.Length)
             {
-                markerStates.Add(new MarkerState(marker, marker.Offset, marker.Length));
+                undoMarkerStates.Add(marker.Id, new MarkerState(marker.Offset, marker.Length));
+                redoMarkerStates.Add(marker.Id, new MarkerState(newOffset, newLength));
                 ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
             }
         }
 
-        var caretState = Caret with { };
+        var undoCaret = Caret with { };
+        var redoCaret = undoCaret;
 
         // Don't move caret to the right for single byte inserts, this usually means a user is typing
         if (bytes.Length >= 2)
         {
-            Caret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
+            Caret = redoCaret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
         }
 
-        Selection? selectionState = Selection is null ? null : Selection with { };
+        var undoSelection = Selection.HasValue ? Selection with { } : null;
+        Selection? redoSelection = null;
         if (Selection is { } selection)
         {
             var (newOffset, newLength) =
                 InsertIntoRange(selection.Start, selection.Length, offset, bytes.Length);
-            selectionState = Selection;
-            Selection = selection with
+            undoSelection = Selection;
+            Selection = redoSelection = selection with
             {
                 Start = newOffset,
                 Length = newLength
             };
         }
 
-        return new DocumentState(markerStates, selectionState, caretState);
+        var undoState = new DocumentState(undoMarkerStates, undoSelection, undoCaret);
+        var redoState = new DocumentState(redoMarkerStates, redoSelection, redoCaret);
+        return (undoState, redoState);
     }
 
-    private DocumentState ApplyWriteModification(long offset, byte[] bytes)
+    private (DocumentState Undo, DocumentState Redo) ApplyWriteModification(long offset, byte[] bytes)
     {
         var selectionState = Selection.HasValue ? Selection with { } : null;
         var caretState = new Caret(Caret.Offset, Caret.Nibble, Caret.Column);
-        return new DocumentState(Array.Empty<MarkerState>(), selectionState, caretState);
+        var state = new DocumentState(EmptyMarkerStateDictionary, selectionState, caretState);
+        return (state, state);
     }
 
     private static (long Offset, long Length) DeleteFromRange(long offset, long length, long deleteOffset,

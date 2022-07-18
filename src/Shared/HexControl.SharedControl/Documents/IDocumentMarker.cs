@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Documents;
 
@@ -13,7 +14,15 @@ public interface IDocumentMarker
     public Color? Border { get; set; }
     public Color? Foreground { get; set; }
     public bool BehindText { get; set; }
-    public ColumnSide Column { get; set; }
+    public MarkerColumn Column { get; set; }
 
     public bool IsVisible(long offset, long length);
+}
+
+[PublicAPI]
+public enum MarkerColumn
+{
+    Hex,
+    Text,
+    HexText
 }

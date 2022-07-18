@@ -12,6 +12,7 @@ public sealed class Marker : IDocumentMarker
     {
         _offset = offset;
         _length = length;
+        Id = Guid.NewGuid();
     }
 
     public Guid Id { get; set; }
@@ -24,7 +25,7 @@ public sealed class Marker : IDocumentMarker
     public Color? Border { get; set; }
     public Color? Foreground { get; set; }
     public bool BehindText { get; set; }
-    public ColumnSide Column { get; set; }
+    public MarkerColumn Column { get; set; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsVisible(long offset, long length)

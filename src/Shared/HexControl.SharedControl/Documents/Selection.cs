@@ -5,7 +5,7 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public record struct Selection
 {
-    public Selection(long start, long end, ColumnSide column)
+    public Selection(long start, long end, ActiveColumn column)
     {
         if (end < start)
         {
@@ -23,5 +23,5 @@ public record struct Selection
 
     public long End => Start + Length;
 
-    public ColumnSide Column { get; init; }
+    public ActiveColumn Column { get; init; }
 }

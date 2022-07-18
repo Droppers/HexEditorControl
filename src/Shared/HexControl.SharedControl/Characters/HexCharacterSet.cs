@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text;
 
 namespace HexControl.SharedControl.Characters;
 
@@ -73,6 +74,7 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
 
     public bool TryParse(string value, Span<byte> buffer, out int length)
     {
+        value = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? value[2..] : value;
         value = string.Join("", value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         length = 0;
 

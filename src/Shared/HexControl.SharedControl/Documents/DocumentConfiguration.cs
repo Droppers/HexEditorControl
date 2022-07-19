@@ -1,95 +1,69 @@
-﻿using HexControl.Framework.Observable;
-using HexControl.SharedControl.Characters;
+﻿using HexControl.SharedControl.Characters;
 using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Documents;
 
 [PublicAPI]
-public enum NumberBase
-{
-    Hexadecimal = 16,
-    Decimal = 10,
-    Octal = 8
-}
-
-[PublicAPI]
-public enum VisibleColumns
-{
-    HexText,
-    Hex,
-    Text
-}
-
-[PublicAPI]
-public class DocumentConfiguration : ObservableObject
+public record DocumentConfiguration
 {
     public static readonly DocumentConfiguration Default = new();
 
-    private static readonly int[] ValidBytesPerRowValues = {8, 16, 24, 32, 48, 64, 128, 256, 512, 1024};
+    public bool OffsetsVisible { get; init; } = true;
 
-    private bool _offsetsVisible = true;
-    public bool OffsetsVisible
-    {
-        get => Get(ref _offsetsVisible);
-        set => Set(ref _offsetsVisible, value);
-    }
+    public VisibleColumns ColumnsVisible { get; init; } = VisibleColumns.HexText;
 
-    private VisibleColumns _columnsVisible = VisibleColumns.HexText;
-    public VisibleColumns ColumnsVisible
-    {
-        get => Get(ref _columnsVisible);
-        set => Set(ref _columnsVisible, value);
-    }
+    public NumberBase OffsetBase { get; init; } = NumberBase.Hexadecimal;
 
-    private NumberBase _offsetBase = NumberBase.Hexadecimal;
-    public NumberBase OffsetBase
-    {
-        get => Get(ref _offsetBase);
-        set => Set(ref _offsetBase, value);
-    }
+    public int BytesPerRow { get; init; } = 16;
 
-    private int _bytesPerRow = 16;
-    public int BytesPerRow
+    public int GroupSize { get; init; } = 4;
+
+    public CharacterSet HexCharacterSet { get; init; } = new HexCharacterSet();
+
+    public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(CharacterEncoding.Windows);
+
+    public WriteMode WriteMode { get; init; } = WriteMode.Overwrite;
+
+    public IEnumerable<string> DetectChanges(DocumentConfiguration other)
     {
-        get => Get(ref _bytesPerRow);
-        set
+        if (OffsetsVisible != other.OffsetsVisible)
         {
-            if (!ValidBytesPerRowValues.Contains(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value),
-                    $"Configuration 'BytesPerRow' must be a value of: {string.Join(',', ValidBytesPerRowValues)}.");
-            }
-
-            Set(ref _bytesPerRow, value);
+            yield return nameof(OffsetsVisible);
         }
-    }
+        
+        if (ColumnsVisible != other.ColumnsVisible)
+        {
+            yield return nameof(ColumnsVisible);
+        }
 
-    private int _groupSize = 4;
-    public int GroupSize
-    {
-        get => Get(ref _groupSize);
-        set => Set(ref _groupSize, value);
-    }
+        if (OffsetBase != other.OffsetBase)
+        {
+            yield return nameof(OffsetBase);
+        }
 
-    private CharacterSet _leftCharacterSet = new HexCharacterSet();
+        if (BytesPerRow != other.BytesPerRow)
+        {
+            yield return nameof(BytesPerRow);
+        }
 
-    public CharacterSet LeftCharacterSet
-    {
-        get => Get(ref _leftCharacterSet);
-        set => Set(ref _leftCharacterSet, value);
-    }
+        if (GroupSize != other.GroupSize)
+        {
+            yield return nameof(GroupSize);
+        }
 
-    private CharacterSet _rightCharacterSet = new TextCharacterSet(CharacterEncoding.Windows);
-    public CharacterSet RightCharacterSet
-    {
-        get => Get(ref _rightCharacterSet);
-        set => Set(ref _rightCharacterSet, value);
-    }
+        if (HexCharacterSet != other.HexCharacterSet)
+        {
+            yield return nameof(HexCharacterSet);
+        }
 
-    private bool _writeInsert;
-    public bool WriteInsert
-    {
-        get => Get(ref _writeInsert);
-        set => Set(ref _writeInsert, value);
+        if (TextCharacterSet != other.TextCharacterSet)
+        {
+            yield return nameof(TextCharacterSet);
+        }
+
+        if (WriteMode != other.WriteMode)
+        {
+            yield return nameof(WriteMode);
+        }
     }
 }

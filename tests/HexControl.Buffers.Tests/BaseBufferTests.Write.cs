@@ -160,7 +160,7 @@ public partial class ByteBufferTests
     public void Write_AtStartReplaceChunk()
     {
         var bytes = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
-        var expectedBytes = bytes.Concat(bytes).ToArray();
+        var expectedBytes = Combine(bytes, bytes);
 
         _buffer.Write(16, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 });
         _buffer.ValidateWrite(0, bytes, expects =>

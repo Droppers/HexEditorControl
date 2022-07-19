@@ -1,10 +1,9 @@
 ﻿using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents;
-using HexControl.Framework.Observable;
 
 namespace HexControl.SharedControl.Control.Elements;
 
-internal class EditorCalculator : IDisposable
+internal class EditorCalculator
 {
     private readonly SharedHexControl _control;
     private DocumentConfiguration _configuration = DocumentConfiguration.Default;
@@ -18,10 +17,7 @@ internal class EditorCalculator : IDisposable
     {
         set
         {
-            _configuration.PropertyChanged -= OnPropertyChanged;
             _configuration = value;
-            _configuration.PropertyChanged += OnPropertyChanged;
-
             OnConfigurationChanged();
         }
     }
@@ -31,30 +27,21 @@ internal class EditorCalculator : IDisposable
         get => _horizontalOffset;
         set
         {
-            _horizontalOffset = Math.Max(0, Math.Min(value, GetColumnCharacterCount(ColumnSide.Left) + GetColumnCharacterCount(ColumnSide.Right) - 1));
+            var maxHorizontalOffset = GetColumnCharacterCount(EditorColumn.Left) +
+                (_configuration.ColumnsVisible is VisibleColumns.HexText ? GetColumnCharacterCount(EditorColumn.Right) : 0) - 1;
+            _horizontalOffset = Math.Max(0, Math.Min(value, maxHorizontalOffset));
             _horizontalCharacterOffset = GetFirstVisibleColumnIndex();
         }
     }
 
-    public int HorizontalCharacterOffset
-    {
-        get => _horizontalCharacterOffset;
-        set => _horizontalCharacterOffset = value;
-    }
+    public int HorizontalCharacterOffset => _horizontalCharacterOffset;
 
-    public CharacterSet LeftCharacterSet
-    {
-        get => _leftCharacterSet;
-        set => _leftCharacterSet = value;
-    }
+    public CharacterSet LeftCharacterSet => _leftCharacterSet;
 
-    public CharacterSet? RightCharacterSet
-    {
-        get => _rightCharacterSet;
-        set => _rightCharacterSet = value;
-    }
+    public CharacterSet? RightCharacterSet => _rightCharacterSet;
 
-    public EditorCalculator(SharedHexControl control, DocumentConfiguration configuration, int horizontalOffset, bool shortLifeSpan)
+    public EditorCalculator(SharedHexControl control, DocumentConfiguration configuration, int horizontalOffset,
+        bool shortLifeSpan)
     {
         _control = control;
         if (shortLifeSpan)
@@ -70,10 +57,15 @@ internal class EditorCalculator : IDisposable
         HorizontalOffset = horizontalOffset;
     }
 
-    public int GetVisibleColumnWidth(ColumnSide column)
+    public int GetVisibleColumnWidth(EditorColumn column)
     {
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        {
+            return 0;
+        }
+
         var startColumn = 0;
-        if (column is ColumnSide.Left)
+        if (column is EditorColumn.Left)
         {
             startColumn = _horizontalCharacterOffset;
         }
@@ -85,7 +77,7 @@ internal class EditorCalculator : IDisposable
         return GetColumnCharacterCount(column) * _control.CharacterWidth - GetLeft(Math.Max(0, startColumn), column);
     }
 
-    public int GetColumnCharacterCount(ColumnSide column)
+    public int GetColumnCharacterCount(EditorColumn column)
     {
         var characterSet = GetCharacterSetForColumn(column);
         if (!characterSet.Groupable)
@@ -97,7 +89,7 @@ internal class EditorCalculator : IDisposable
                1;
     }
 
-    public int GetLeft(int offsetFromLeft, ColumnSide column, bool excludeLastGroup = false)
+    public int GetLeft(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
     {
         var isLastOfGroup = offsetFromLeft % _configuration.GroupSize is 0;
         var characterSet = GetCharacterSetForColumn(column);
@@ -106,14 +98,14 @@ internal class EditorCalculator : IDisposable
         return (offsetFromLeft * characterSet.Width + groups) * _control.CharacterWidth;
     }
 
-    public int GetLeftRelativeToColumn(int offsetFromLeft, ColumnSide column, bool excludeLastGroup = false)
+    public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
     {
         switch (column)
         {
-            case ColumnSide.Left:
+            case EditorColumn.Left:
                 return GetLeft(offsetFromLeft, column, excludeLastGroup) -
                        Math.Max(0, GetLeft(_horizontalCharacterOffset, column));
-            case ColumnSide.Right:
+            case EditorColumn.Right:
                 var leftOffset = _horizontalCharacterOffset > _configuration.BytesPerRow
                     ? GetLeft(_horizontalCharacterOffset - _configuration.BytesPerRow, column)
                     : 0;
@@ -122,10 +114,10 @@ internal class EditorCalculator : IDisposable
                 throw new ArgumentException("This column type is not supported.", nameof(column));
         }
     }
-
-    public CharacterSet GetCharacterSetForColumn(ColumnSide column)
+    
+    public CharacterSet GetCharacterSetForColumn(EditorColumn column)
     {
-        if (column is ColumnSide.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
         {
             throw new InvalidOperationException(
                 "Cannot get character set of right column when right column is not enabled.");
@@ -133,11 +125,9 @@ internal class EditorCalculator : IDisposable
 
         return column switch
         {
-            ColumnSide.Left => _leftCharacterSet,
-            ColumnSide.Right => _rightCharacterSet!,
-            ColumnSide.Both => throw new ArgumentException(
-                "Only a character set for either left or right columns can be determined.", nameof(column)),
-            _ => throw new NotSupportedException("This column type is not supported.")
+            EditorColumn.Left => _leftCharacterSet,
+            EditorColumn.Right => _rightCharacterSet!,
+            _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
     }
 
@@ -151,7 +141,7 @@ internal class EditorCalculator : IDisposable
             return Math.Min((horizontalOffset - groups) / characterSet.Width, _configuration.BytesPerRow);
         }
 
-        var leftCharacterCount = GetColumnCharacterCount(ColumnSide.Left);
+        var leftCharacterCount = GetColumnCharacterCount(EditorColumn.Left);
         if (_rightCharacterSet is null)
         {
             return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet);
@@ -159,15 +149,6 @@ internal class EditorCalculator : IDisposable
 
         return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) + Math.Max(0,
             GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, _rightCharacterSet));
-    }
-
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.Property is nameof(DocumentConfiguration.ColumnsVisible) or nameof(DocumentConfiguration.LeftCharacterSet)
-            or nameof(DocumentConfiguration.RightCharacterSet))
-        {
-            UpdateCharacterSets();
-        }
     }
 
     private void OnConfigurationChanged()
@@ -178,16 +159,11 @@ internal class EditorCalculator : IDisposable
     private void UpdateCharacterSets()
     {
         _leftCharacterSet = _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
-            ? _configuration.LeftCharacterSet
-            : _configuration.RightCharacterSet;
+            ? _configuration.HexCharacterSet
+            : _configuration.TextCharacterSet;
 
         _rightCharacterSet = _configuration.ColumnsVisible is VisibleColumns.HexText
-            ? _configuration.RightCharacterSet
+            ? _configuration.TextCharacterSet
             : null;
-    }
-
-    public void Dispose()
-    {
-        _configuration.PropertyChanged -= OnPropertyChanged;
     }
 }

@@ -45,8 +45,8 @@ internal class SharedHexControl : VisualElement
     public const string HorizontalScrollBarName = "HorizontalScrollBar";
     public const string FakeTextBoxName = "FakeTextBox";
 
-    private readonly EditorColumn _editorColumn;
-    private readonly OffsetColumn _offsetColumn;
+    private readonly EditorElement _editorElement;
+    private readonly OffsetElement _offsetElement;
     private long _lastRefreshLength;
 
     private byte[] _displayBuffer = Array.Empty<byte>();
@@ -57,6 +57,8 @@ internal class SharedHexControl : VisualElement
     private IRenderContext? _renderContext;
     private bool _requireTypefaceUpdate = true;
     private bool _scrollToCaret;
+
+    private long _bytesLength;
     
     public SharedHexControl() : base(true)
     {
@@ -66,11 +68,11 @@ internal class SharedHexControl : VisualElement
         MouseUp += OnMouseUp;
 
         // Create child elements
-        _offsetColumn = new OffsetColumn(this);
-        AddChild(_offsetColumn);
+        _offsetElement = new OffsetElement(this);
+        AddChild(_offsetElement);
 
-        _editorColumn = new EditorColumn(this);
-        AddChild(_editorColumn);
+        _editorElement = new EditorElement(this);
+        AddChild(_editorElement);
     }
 
 #region Mapped properties
@@ -309,14 +311,14 @@ internal class SharedHexControl : VisualElement
 
             newViewport = Height / RowHeight;
             newMaximum = Math.Max(1, Math.Min(1000, documentLength / Configuration.BytesPerRow));
-            visible = HeaderHeight + documentLength / Configuration.BytesPerRow * RowHeight > _editorColumn.Height;
+            visible = HeaderHeight + documentLength / Configuration.BytesPerRow * RowHeight > _editorElement.Height;
         }
         else
         {
-            var visibleWidth = (int)(_editorColumn.Width / CharacterWidth) - 1;
+            var visibleWidth = (int)(_editorElement.Width / CharacterWidth) - 1;
             newViewport = Math.Max(1, visibleWidth);
-            newMaximum = _editorColumn.TotalWidth - Math.Min(visibleWidth, _editorColumn.TotalWidth);
-            visible = _editorColumn.TotalWidth * CharacterWidth > _editorColumn.Width;
+            newMaximum = _editorElement.TotalWidth - Math.Min(visibleWidth, _editorElement.TotalWidth);
+            visible = _editorElement.TotalWidth * CharacterWidth > _editorElement.Width;
         }
 
         hostScrollBar.Minimum = 0;
@@ -344,8 +346,8 @@ internal class SharedHexControl : VisualElement
             Document.SelectionChanged -= DocumentOnSelectionChanged;
             Document.CaretChanged -= DocumentOnCaretChanged;
             Document.ConfigurationChanged -= DocumentOnConfigurationChanged;
-
-            Document.Buffer.Modified -= BufferOnModified;
+            
+            Document.Modified -= BufferOnModified;
             Document.Saved += DocumentOnSaved;
             Document.LengthChanged -= DocumentOnLengthChanged;
         }
@@ -357,15 +359,15 @@ internal class SharedHexControl : VisualElement
             newDocument.CaretChanged += DocumentOnCaretChanged;
             newDocument.ConfigurationChanged += DocumentOnConfigurationChanged;
 
-            newDocument.Buffer.Modified += BufferOnModified;
+            newDocument.Modified += BufferOnModified;
             newDocument.Saved += DocumentOnSaved;
             newDocument.LengthChanged += DocumentOnLengthChanged;
 
             Document = newDocument;
-            _offsetColumn.Configuration = newDocument.Configuration;
-            _offsetColumn.Document = newDocument;
-            _editorColumn.Configuration = newDocument.Configuration;
-            _editorColumn.Document = newDocument;
+            _offsetElement.Configuration = newDocument.Configuration;
+            _offsetElement.Document = newDocument;
+            _editorElement.Configuration = newDocument.Configuration;
+            _editorElement.Document = newDocument;
 
             ApplyConfiguration();
             await InitDocument();
@@ -389,7 +391,7 @@ internal class SharedHexControl : VisualElement
             RequestScrollToCaret();
         }
         
-        _editorColumn.AddDirtyRect(new SharedRectangle(0, 0, Width, _offsetColumn.Width + _editorColumn.Width + Margin));
+        _editorElement.AddDirtyRect(new SharedRectangle(0, 0, Width, _offsetElement.Width + _editorElement.Width + Margin));
         Invalidate();
     }
 
@@ -414,14 +416,14 @@ internal class SharedHexControl : VisualElement
         }
 
         _scrollToCaret = false;
-
-        if (Document.Caret.Offset < Document.Offset)
+        
+        if (Document.Caret.Offset <= Document.Offset)
         {
             Document.Offset = Document.Caret.Offset;
         }
-        else if (Document.Caret.Offset > _editorColumn.MaxVisibleOffset)
+        else if (Document.Caret.Offset > _editorElement.MaxVisibleOffset && (_bytesLength / Configuration.BytesPerRow) >= _editorElement.VisibleRows)
         {
-            Document.Offset = Document.Caret.Offset - (_editorColumn.MaxVisibleOffset - Document.Offset) +
+            Document.Offset = Document.Caret.Offset - (_editorElement.MaxVisibleOffset - Document.Offset) +
                               Configuration.BytesPerRow;
         }
     }
@@ -432,12 +434,8 @@ internal class SharedHexControl : VisualElement
         {
             return;
         }
-
-        if (e.Modifications.All(m => m.Offset + m.Length < Document.Offset ||
-                                     m.Offset > Document.Offset + _editorColumn.MaxVisibleOffset))
-        {
-            return;
-        }
+        
+        ScrollToCaret();
 
         await RefreshDocument();
     }
@@ -449,7 +447,7 @@ internal class SharedHexControl : VisualElement
 
     private void DocumentOnLengthChanged(object? sender, LengthChangedEventArgs e)
     {
-        _offsetColumn.Length = Document?.Length ?? 0;
+        _offsetElement.Length = Document?.Length ?? 0;
 
         UpdateChildDimensions();
         UpdateScrollBars();
@@ -457,7 +455,7 @@ internal class SharedHexControl : VisualElement
 
     private void ApplyConfiguration()
     {
-        _offsetColumn.Visible = Configuration.OffsetsVisible;
+        _offsetElement.Visible = Configuration.OffsetsVisible;
     }
 
     private void UpdateTypeface()
@@ -523,10 +521,10 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        _offsetColumn.TextBuilder = context.PreferTextLayout
+        _offsetElement.TextBuilder = context.PreferTextLayout
             ? new TextLayoutBuilder(Typeface, FontSize)
             : new GlyphRunBuilder(Typeface, FontSize, CharacterWidth);
-        _editorColumn.TextBuilder = context.PreferTextLayout
+        _editorElement.TextBuilder = context.PreferTextLayout
             ? new TextLayoutBuilder(Typeface, FontSize)
             : new GlyphRunBuilder(Typeface, FontSize, CharacterWidth);
     }
@@ -541,30 +539,33 @@ internal class SharedHexControl : VisualElement
         }
     }
 
-    private async void DocumentOnConfigurationChanged(object? sender, PropertyChangedEventArgs e)
+    private async void DocumentOnConfigurationChanged(object? sender, ConfigurationChangedEventArgs e)
     {
-        switch (e.Property)
+        foreach (var property in e.Changes)
         {
-            case nameof(DocumentConfiguration.OffsetsVisible):
-                _offsetColumn.Visible = Configuration.OffsetsVisible;
-                break;
-            case nameof(DocumentConfiguration.BytesPerRow):
-                await RefreshDocument();
-                break;
+            switch (property)
+            {
+                case nameof(DocumentConfiguration.OffsetsVisible):
+                    _offsetElement.Visible = Configuration.OffsetsVisible;
+                    break;
+                case nameof(DocumentConfiguration.BytesPerRow):
+                    await RefreshDocument();
+                    break;
+            }
         }
+
+        _editorElement.Configuration = e.NewConfiguration;
 
         UpdateScrollBars();
 
-        if (e.Property is not nameof(DocumentConfiguration.BytesPerRow))
-        {
-            Invalidate();
-        }
+        AddDirtyRect(new SharedRectangle(0, 0, Width, Height));
+        Invalidate();
     }
 
     private async ValueTask InitDocument()
     {
-        _editorColumn.HorizontalOffset = Document?.HorizontalOffset ?? 0;
-        _offsetColumn.Length = Document?.Length ?? 0;
+        _editorElement.HorizontalOffset = Document?.HorizontalOffset ?? 0;
+        _offsetElement.Length = Document?.Length ?? 0;
 
         await RefreshDocument();
 
@@ -591,7 +592,7 @@ internal class SharedHexControl : VisualElement
     {
         if (Document is null || BytesToRead <= 0)
         {
-            _editorColumn.Bytes = Array.Empty<byte>();
+            _editorElement.Bytes = Array.Empty<byte>();
             return;
         }
 
@@ -609,18 +610,17 @@ internal class SharedHexControl : VisualElement
         }
 
         _readModifications.Clear();
-        var actualRead =
-            await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
+        _bytesLength = await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
 
         // Swap read and display buffers
         (_readBuffer, _displayBuffer) = (_displayBuffer, _readBuffer);
         (_readModifications, _displayModifications) = (_displayModifications, _readModifications);
 
-        _offsetColumn.Offset = Document.Offset;
-        _editorColumn.Offset = Document.Offset;
-        _editorColumn.BytesLength = actualRead;
-        _editorColumn.Bytes = _displayBuffer;
-        _editorColumn.Modifications = _displayModifications;
+        _offsetElement.Offset = Document.Offset;
+        _editorElement.Offset = Document.Offset;
+        _editorElement.BytesLength = _bytesLength;
+        _editorElement.Bytes = _displayBuffer;
+        _editorElement.Modifications = _displayModifications;
 
         queue.StopIOTask();
 
@@ -630,10 +630,10 @@ internal class SharedHexControl : VisualElement
             ScrollToCaret();
         }
 
-        var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
-        var width = _editorColumn.Left + editorWidth - _offsetColumn.Left;
+        var editorWidth = _editorElement.TotalWidth * CharacterWidth;
+        var width = _editorElement.Left + editorWidth - _offsetElement.Left;
         AddDirtyRect(
-            new SharedRectangle(_offsetColumn.Left, _editorColumn.Top + HeaderHeight, width, _editorColumn.Height),
+            new SharedRectangle(_offsetElement.Left, _editorElement.Top + HeaderHeight, width, _editorElement.Height),
             CharacterWidth);
         Invalidate();
     }
@@ -667,11 +667,11 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        _editorColumn.HorizontalOffset = (int)scrollValue;
+        _editorElement.HorizontalOffset = (int)scrollValue;
         Document.HorizontalOffset = (int)scrollValue;
 
         AddDirtyRect(
-            new SharedRectangle(_editorColumn.Left, _editorColumn.Top, _editorColumn.Width, _editorColumn.Height),
+            new SharedRectangle(_editorElement.Left, _editorElement.Top, _editorElement.Width, _editorElement.Height),
             CharacterWidth);
         Invalidate();
     }
@@ -707,24 +707,24 @@ internal class SharedHexControl : VisualElement
 
     private void UpdateChildDimensions()
     {
-        _offsetColumn.Top = Margin;
-        _editorColumn.Top = Margin;
-        _offsetColumn.Left = Margin;
+        _offsetElement.Top = Margin;
+        _editorElement.Top = Margin;
+        _offsetElement.Left = Margin;
 
-        var editorWidth = _editorColumn.TotalWidth * CharacterWidth;
+        var editorWidth = _editorElement.TotalWidth * CharacterWidth;
 
-        if (_offsetColumn.Visible)
+        if (_offsetElement.Visible)
         {
-            _editorColumn.Width = Width - _offsetColumn.Width - Margin;
-            _editorColumn.Left = Math.Min(editorWidth, (int)_offsetColumn.Width + _offsetColumn.Left);
+            _editorElement.Width = Width - _offsetElement.Width - Margin;
+            _editorElement.Left = Math.Min(editorWidth, (int)_offsetElement.Width + _offsetElement.Left);
         }
         else
         {
-            _editorColumn.Left = Margin;
-            _editorColumn.Width = Math.Min(editorWidth, Width - Margin);
+            _editorElement.Left = Margin;
+            _editorElement.Width = Math.Min(editorWidth, Width - Margin);
         }
 
-        _offsetColumn.Height = Height - Margin;
-        _editorColumn.Height = Height - Margin;
+        _offsetElement.Height = Height - Margin;
+        _editorElement.Height = Height - Margin;
     }
 }

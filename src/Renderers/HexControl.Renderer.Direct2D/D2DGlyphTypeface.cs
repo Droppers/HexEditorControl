@@ -58,20 +58,18 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
         throw new ArgumentOutOfRangeException(nameof(fontFamilyName),
             $"Could not find font family '{fontFamilyName}'.");
     }
-
-    // TODO: Implement
+    
     public override double GetCapHeight(double size)
     {
-        var metrics = Typeface.Metrics;
+        var metrics = _typeface!.Metrics;
         var ratio = size / metrics.DesignUnitsPerEm;
         return metrics.CapHeight * ratio;
     }
-
-    // TODO: Implement
+    
     public override double GetWidth(double size)
     {
-        var metrics = Typeface.GetDesignGlyphMetrics(new[] {(short)'W'}, false)[0];
-        var metrics2 = Typeface.Metrics;
+        var metrics = _typeface!.GetDesignGlyphMetrics(new[] {(short)'W'}, false)[0];
+        var metrics2 = _typeface!.Metrics;
         var ratio = size / metrics2.DesignUnitsPerEm;
         return Math.Ceiling(metrics.AdvanceWidth * ratio);
     }
@@ -93,7 +91,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
             throw new NotSupportedException($"TextAlignment {alignment} is not yet supported.");
         }
 
-        var metrics = Typeface.Metrics;
+        var metrics = _typeface!.Metrics;
         var ratio = size / metrics.DesignUnitsPerEm;
         var descent = metrics.Descent * ratio;
         return -descent;
@@ -101,7 +99,7 @@ internal class D2DGlyphTypeface : CachedGlyphTypeface<FontFace>
 
     protected override bool TryGetGlyphIndexInternal(int codePoint, out ushort glyphIndex)
     {
-        var indices = Typeface.GetGlyphIndices(new[] {codePoint});
+        var indices = _typeface!.GetGlyphIndices(new[] {codePoint});
         glyphIndex = (ushort)indices[0];
         return true;
     }

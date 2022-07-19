@@ -18,7 +18,7 @@ internal class D2DRenderContext : RenderContext<Brush, D2DPen>
     private readonly Stack<PushedType> _pushedTypes;
 
     private readonly ObjectCache<PenStyle, StrokeStyle> _strokeStyles;
-    private readonly ObjectCache<(string fontFamily, float fontSize), TextFormat> _textFormats;
+    private readonly ObjectCacheSlim<(string fontFamily, float fontSize), TextFormat> _textFormats;
 
     private readonly Stack<RawMatrix3x2> _transforms;
     private D2DFactory _d2dFactory;
@@ -36,7 +36,7 @@ internal class D2DRenderContext : RenderContext<Brush, D2DPen>
         _pushedTypes = new Stack<PushedType>();
 
         _strokeStyles = new ObjectCache<PenStyle, StrokeStyle>(Convert);
-        _textFormats = new ObjectCache<(string fontFamily, float fontSize), TextFormat>(item =>
+        _textFormats = new ObjectCacheSlim<(string fontFamily, float fontSize), TextFormat>(item =>
             new TextFormat(_dwFactory,
                 item.fontFamily, FontWeight.Regular, FontStyle.Normal, FontStretch.Normal,
                 item.fontSize));
@@ -239,12 +239,12 @@ internal class D2DRenderContext : RenderContext<Brush, D2DPen>
         var format = _textFormats[(fontFamily, Convert(sharedLayout.Size))];
 
         // Simple mode
-        if (sharedLayout.BrushRanges.Count == 0)
+        if (sharedLayout.BrushRanges.Count is 0)
         {
+            var x = (int)(sharedLayout.Position.X * Dpi);
+            var y = (int)(sharedLayout.Position.Y * Dpi);
             _context.DrawText(sharedLayout.Text, format,
-                new RawRectangleF((int)(sharedLayout.Position.X * Dpi), (int)(sharedLayout.Position.Y * Dpi),
-                    int.MaxValue,
-                    int.MaxValue), brush, DrawTextOptions.None, MeasuringMode.GdiClassic);
+                new RawRectangleF(x, y, short.MaxValue, y + (int)(sharedLayout.Size * 2)), brush, DrawTextOptions.None, MeasuringMode.GdiClassic);
             return;
         }
 

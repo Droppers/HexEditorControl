@@ -3,4 +3,8 @@
 namespace HexControl.SharedControl.Documents;
 
 [PublicAPI]
-public record struct Caret(long Offset, int Nibble, ActiveColumn Column);
+public enum WriteMode
+{
+    Overwrite,
+    Insert
+}

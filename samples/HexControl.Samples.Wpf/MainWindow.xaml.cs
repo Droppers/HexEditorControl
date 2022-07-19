@@ -11,6 +11,11 @@ public partial class MainWindow
         DataContext = this;
 
         Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        Document.Configuration = new DocumentConfiguration()
+        {
+            WriteMode = WriteMode.Insert,
+            OffsetBase = NumberBase.Decimal
+        };
     }
 
     public Document Document { get; set; }

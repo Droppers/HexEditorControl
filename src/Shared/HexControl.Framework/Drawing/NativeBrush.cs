@@ -11,12 +11,17 @@ internal abstract class NativeBrush<TNative> : ISharedBrush where TNative : notn
 
     public bool Equals(ISharedBrush? other)
     {
-        if (!ReferenceEquals(this, other) || other is not NativeBrush<TNative> otherNativeBrush)
+        if (other is null)
         {
             return false;
         }
 
-        return otherNativeBrush.Brush.Equals(Brush);
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        return other is NativeBrush<TNative> otherNativeBrush && otherNativeBrush.Brush.Equals(Brush);
     }
 
     public override bool Equals(object? other)

@@ -12,14 +12,13 @@ namespace HexControl.Buffers;
 [PublicAPI]
 public abstract class ByteBuffer
 {
-    private readonly ChangeTracker _changes;
+    private readonly ChangeTracker _changeTracker;
     private readonly SemaphoreSlim _lock;
 
     protected ByteBuffer(ChangeTracking changeTracking)
     {
-        ChangeTracking = changeTracking;
         Chunks = new LinkedList<IChunk>();
-        _changes = new ChangeTracker(this);
+        _changeTracker = new ChangeTracker(this, changeTracking);
         _lock = new SemaphoreSlim(1, 1);
     }
 
@@ -35,10 +34,14 @@ public abstract class ByteBuffer
 
     public long OriginalLength { get; private set; } = -1;
 
-    public ChangeTracking ChangeTracking { get; }
+    public ChangeTracking ChangeTracking
+    {
+        get => _changeTracker.ChangeTracking;
+        set => _changeTracker.ChangeTracking = value;
+    }
 
-    public bool CanUndo => _changes.CanUndo;
-    public bool CanRedo => _changes.CanRedo;
+    public bool CanUndo => _changeTracker.CanUndo;
+    public bool CanRedo => _changeTracker.CanRedo;
 
     public bool Locked { get; set; }
 
@@ -105,16 +108,14 @@ public abstract class ByteBuffer
     private void InternalWrite(long offset, byte[] bytes)
     {
         BeforeModification();
-
-        var oldLength = Length;
-        var changes = ChangeCollection.Write(offset, bytes);
+        
+        using var scope = ChangeScope.Write(this, offset, bytes);
 
         var (node, currentOffset) = GetNodeAt(offset);
 
         if (node is null)
         {
-            changes.Add(InsertChunk(null, new MemoryChunk(this, bytes)));
-            PushChanges(changes, oldLength);
+            scope.Changes.Add(InsertChunk(null, new MemoryChunk(this, bytes)));
             return;
         }
 
@@ -122,35 +123,33 @@ public abstract class ByteBuffer
         var chunk = node.Value;
         if (chunk is MemoryChunk memoryChunk)
         {
-            WriteToMemoryChunk(changes, node, relativeOffset, bytes, memoryChunk);
+            WriteToMemoryChunk(scope.Changes, node, relativeOffset, bytes, memoryChunk);
         }
         else if (offset == currentOffset && node.Previous?.Value is MemoryChunk previousMemoryChunk)
         {
-            changes.SetStartAtPrevious();
-            WriteToMemoryChunk(changes, node.Previous, previousMemoryChunk.Length, bytes, previousMemoryChunk);
+            scope.Changes.SetStartAtPrevious();
+            WriteToMemoryChunk(scope.Changes, node.Previous, previousMemoryChunk.Length, bytes, previousMemoryChunk);
         }
         else if (offset + bytes.Length >= currentOffset + chunk.Length &&
                  node.Next?.Value is MemoryChunk nextMemoryChunk)
         {
-            WriteToMemoryChunk(changes, node.Next, -(currentOffset + chunk.Length - offset), bytes,
+            WriteToMemoryChunk(scope.Changes, node.Next, -(currentOffset + chunk.Length - offset), bytes,
                 nextMemoryChunk);
         }
         else if (offset == currentOffset && node.Previous is null)
         {
-            changes.Add(InsertChunk(node, new MemoryChunk(this, bytes), true));
+            scope.Changes.Add(InsertChunk(node, new MemoryChunk(this, bytes), true));
             if (node.Previous is null)
             {
                 throw new InvalidOperationException("Previous change should have created a new previous node.");
             }
 
-            RemoveAfter(changes, node.Previous, bytes.Length);
+            RemoveAfter(scope.Changes, node.Previous, bytes.Length);
         }
         else
         {
-            WriteCreateNewMemoryChunk(node, relativeOffset, bytes, changes);
+            WriteCreateNewMemoryChunk(node, relativeOffset, bytes, scope.Changes);
         }
-
-        PushChanges(changes, oldLength);
     }
 
     // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
@@ -182,42 +181,45 @@ public abstract class ByteBuffer
     private void InternalInsert(long offset, byte[] bytes)
     {
         BeforeModification();
-
-        var oldLength = Length;
-
+        
         var (node, currentOffset) = GetNodeAt(offset);
         if (node is null)
         {
             return;
         }
 
-        var changes = ChangeCollection.Insert(offset, bytes);
+        using var scope = ChangeScope.Insert(this, offset, bytes);
 
         var relativeOffset = offset - currentOffset;
         var chunk = node.Value;
         if (chunk is MemoryChunk memoryChunk)
-        {
-            changes.Add(new InsertToMemoryChange(relativeOffset, bytes).Apply(this, node, memoryChunk));
+        { 
+            scope.Changes.Add(new InsertToMemoryChange(relativeOffset, bytes).Apply(this, node, memoryChunk));
         }
         else if (currentOffset == offset && node.Previous?.Value is MemoryChunk previousChunk)
         {
-            changes.SetStartAtPrevious();
-            changes.Add(new InsertToMemoryChange(relativeOffset + previousChunk.Length, bytes).Apply(this, node, previousChunk));
+            scope.Changes.SetStartAtPrevious();
+            scope.Changes.Add(
+                new InsertToMemoryChange(relativeOffset + previousChunk.Length, bytes)
+                    .Apply(this, node, previousChunk));
         }
-        else if (offset == 0)
+        else if (currentOffset == offset && node.Previous?.Value is IImmutableChunk)
         {
-            changes.Add(InsertChunk(node, new MemoryChunk(this, bytes), true));
+            scope.Changes.SetStartAtPrevious();
+            scope.Changes.Add(InsertChunk(node.Previous, new MemoryChunk(this, bytes)));
+        }
+        else if (offset is 0)
+        {
+            scope.Changes.Add(InsertChunk(node, new MemoryChunk(this, bytes), true));
         }
         else if (offset == Length)
         {
-            changes.Add(InsertChunk(node, new MemoryChunk(this, bytes)));
+            scope.Changes.Add(InsertChunk(node, new MemoryChunk(this, bytes)));
         }
         else
         {
-            InsertInMiddleOfChunk(node, relativeOffset, new MemoryChunk(this, bytes), changes);
+            InsertInMiddleOfChunk(node, relativeOffset, new MemoryChunk(this, bytes), scope.Changes);
         }
-
-        PushChanges(changes, oldLength);
     }
 
     public async Task DeleteAsync(long offset, long length)
@@ -237,16 +239,14 @@ public abstract class ByteBuffer
     {
         BeforeModification();
 
-        var oldLength = Length;
+        using var scope = ChangeScope.Delete(this, offset, length);
+
         var (node, currentOffset) = GetNodeAt(offset);
-
-        var changes = ChangeCollection.Delete(offset, length);
-
+        
         if (node?.Value is IImmutableChunk && offset - currentOffset + length < node.Value.Length &&
             offset - currentOffset is not 0)
         {
-            DeleteInMiddleOfChunk(changes, node, offset - currentOffset, length);
-            PushChanges(changes, oldLength);
+            DeleteInMiddleOfChunk(scope.Changes, node, offset - currentOffset, length);
             return;
         }
 
@@ -259,19 +259,17 @@ public abstract class ByteBuffer
 
             var relativeOffset = offset + (length - bytesToDelete) - currentOffset;
             var deleteLength = Math.Min(bytesToDelete, chunk.Length - relativeOffset);
-            RemoveFromChunk(changes, node, relativeOffset, deleteLength);
+            RemoveFromChunk(scope.Changes, node, relativeOffset, deleteLength);
 
             if (Chunks.First is null)
             {
-                changes.Add(InsertChunk(null, new MemoryChunk(this, Array.Empty<byte>())));
+                scope.Changes.Add(InsertChunk(null, new MemoryChunk(this, Array.Empty<byte>())));
             }
 
             bytesToDelete -= deleteLength;
             currentOffset += chunkLength;
             node = nextNode;
         }
-
-        PushChanges(changes, oldLength);
     }
 
     public async Task UndoAsync()
@@ -288,8 +286,19 @@ public abstract class ByteBuffer
 
     private void InternalUndo()
     {
-        var modifications = _changes.Undo();
+        if (!_changeTracker.CanUndo)
+        {
+            return;
+        }
+
+        var oldLength = Length;
+        var modifications = _changeTracker.Undo();
         OnModified(modifications, ModificationSource.Undo);
+
+        if (oldLength != Length)
+        {
+            OnLengthChanged(oldLength, Length);
+        }
     }
 
     public async Task RedoAsync()
@@ -306,8 +315,19 @@ public abstract class ByteBuffer
 
     private void InternalRedo()
     {
-        var modifications = _changes.Redo();
+        if (!_changeTracker.CanRedo)
+        {
+            return;
+        }
+
+        var oldLength = Length;
+        var modifications = _changeTracker.Redo();
         OnModified(modifications, ModificationSource.Redo);
+        
+        if (oldLength != Length)
+        {
+            OnLengthChanged(oldLength, Length);
+        }
     }
 
     public long Read(Span<byte> buffer,
@@ -334,7 +354,7 @@ public abstract class ByteBuffer
         {
             if (node.Value is MemoryChunk)
             {
-                modifications?.Add(new ModifiedRange(offset, buffer.Length));
+                modifications?.Add(new ModifiedRange(offset, offset + buffer.Length));
             }
 
             return node.Value.Read(buffer[..buffer.Length], offset - currentOffset);
@@ -398,7 +418,7 @@ public abstract class ByteBuffer
         {
             if (node.Value is MemoryChunk)
             {
-                modifications?.Add(new ModifiedRange(offset, buffer.Length));
+                modifications?.Add(new ModifiedRange(offset, offset + buffer.Length));
             }
             
             return await node.Value.ReadAsync(buffer, offset - currentOffset, cancellationToken);
@@ -510,32 +530,21 @@ public abstract class ByteBuffer
 
     private void GroupChanges(Action action)
     {
-        _changes.Start();
+        var oldLength = Length;
+        _changeTracker.Start();
 
         action();
 
-        var collections = _changes.End();
+        var collections = _changeTracker.End();
         var modifications = collections.Select(c => c.Modification).ToArray();
         OnModified(modifications, ModificationSource.User);
-    }
-
-    private void PushChanges(ChangeCollection changes, long oldLength)
-    {
-        Version++;
-
-        _changes.Push(changes);
-
-        if (!_changes.IsGroup)
-        {
-            OnModified(new[] {changes.Modification}, ModificationSource.User);
-        }
 
         if (oldLength != Length)
         {
             OnLengthChanged(oldLength, Length);
         }
     }
-
+    
     protected virtual void OnLengthChanged(long oldLength, long newLength)
     {
         LengthChanged?.Invoke(this, new LengthChangedEventArgs(oldLength, newLength));
@@ -604,7 +613,7 @@ public abstract class ByteBuffer
     {
         // Reset
         Chunks.Clear();
-        _changes.Clear();
+        _changeTracker.Clear();
         Version = 0;
 
         // Initialize
@@ -879,7 +888,7 @@ public abstract class ByteBuffer
     public bool HasStructureChanged()
     {
         return IsModified &&
-               _changes.UndoStack.Any(group =>
+               _changeTracker.UndoStack.Any(group =>
                    group.Collections.Any(collection =>
                        collection.Modification is InsertModification or DeleteModification));
     }
@@ -899,5 +908,53 @@ public abstract class ByteBuffer
         }
 
         _firstChunk = Chunks.First?.Value;
+    }
+
+    private ref struct ChangeScope
+    {
+        private readonly ByteBuffer _buffer;
+        private readonly long _oldLength;
+
+        public ChangeScope(ByteBuffer buffer, ChangeCollection changes)
+        {
+            _buffer = buffer;
+            Changes = changes;
+            _oldLength = buffer.Length;
+        }
+
+        public ChangeCollection Changes { get; }
+
+        public static ChangeScope Delete(ByteBuffer buffer, long offset, long length)
+        {
+            return new ChangeScope(buffer, new ChangeCollection(new DeleteModification(offset, length), offset));
+        }
+
+        public static ChangeScope Insert(ByteBuffer buffer, long offset, byte[] bytes)
+        {
+            return new ChangeScope(buffer, new ChangeCollection(new InsertModification(offset, bytes), offset));
+        }
+
+        public static ChangeScope Write(ByteBuffer buffer, long offset, byte[] bytes)
+        {
+            return new ChangeScope(buffer, new ChangeCollection(new WriteModification(offset, bytes), offset));
+        }
+
+        public void Dispose()
+        {
+            _buffer.Version++;
+            _buffer._changeTracker.Push(Changes);
+
+            if (_buffer._changeTracker.IsGroup)
+            {
+                return;
+            }
+
+            _buffer.OnModified(new[] {Changes.Modification}, ModificationSource.User);
+
+            if (_oldLength != _buffer.Length)
+            {
+                _buffer.OnLengthChanged(_oldLength, _buffer.Length);
+            }
+        }
     }
 }

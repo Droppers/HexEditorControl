@@ -8,19 +8,19 @@ internal abstract class RenderContext<TNativeBrush, TNativePen> : IRenderContext
     where TNativeBrush : class
     where TNativePen : class
 {
-    private readonly ObjectCache<ISharedBrush, TNativeBrush?> _brushes;
+    private readonly ObjectCacheSlim<ISharedBrush, TNativeBrush?> _brushes;
     private readonly RenderFactory<TNativeBrush, TNativePen> _factory;
     private readonly LinkedList<IDisposable> _garbage;
-    private readonly ObjectCache<ISharedPen, TNativePen?> _pens;
+    private readonly ObjectCacheSlim<ISharedPen, TNativePen?> _pens;
 
     private IRenderStateProvider? _stateProvider;
 
     protected RenderContext(RenderFactory<TNativeBrush, TNativePen> factory)
     {
         _factory = factory;
-        _brushes = new ObjectCache<ISharedBrush, TNativeBrush?>(brush =>
+        _brushes = new ObjectCacheSlim<ISharedBrush, TNativeBrush?>(brush =>
             _factory.CreateBrush(brush));
-        _pens = new ObjectCache<ISharedPen, TNativePen?>(pen => _factory.CreatePen(pen));
+        _pens = new ObjectCacheSlim<ISharedPen, TNativePen?>(pen => _factory.CreatePen(pen));
 
         _garbage = new LinkedList<IDisposable>();
     }

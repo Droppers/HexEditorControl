@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace HexControl.SharedControl.Documents;
 
-public sealed class Marker : IDocumentMarker
+public sealed class Marker
 {
     private long _offset;
     private long _length;
@@ -12,6 +12,7 @@ public sealed class Marker : IDocumentMarker
     {
         _offset = offset;
         _length = length;
+        Id = Guid.NewGuid();
     }
 
     public Guid Id { get; set; }
@@ -24,11 +25,23 @@ public sealed class Marker : IDocumentMarker
     public Color? Border { get; set; }
     public Color? Foreground { get; set; }
     public bool BehindText { get; set; }
-    public ColumnSide Column { get; set; }
+    public MarkerColumn Column { get; set; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsVisible(long offset, long length)
     {
         return unchecked(_offset + _length) > offset && _offset < unchecked(offset + length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ChangeMarkerOffsetAndLength(long newOffset, long newLength)
+    {
+        if (_offset == newOffset && _length == newLength)
+        {
+            return;
+        }
+
+        _offset = newOffset;
+        _length = newLength;
     }
 }

@@ -153,9 +153,8 @@ public class ValidatingBuffer : MemoryBuffer
             strings.Add(chunk switch
             {
                 MemoryChunk memory =>
-                    $"Memory({memory.Bytes.Length})", //$"Memory(new [] {{{string.Join(",", memory.Bytes)}}})",
-                FileChunk file => $"Immutable({file.Length}, {file.SourceOffset})",
-                IImmutableChunk _ => "Virtual()",
+                    $"Memory({memory.Bytes.Length})",
+                IImmutableChunk immutable => $"Immutable({immutable.Length}, {immutable.SourceOffset})",
                 _ => throw new InvalidOperationException("Chunk type is not supported.")
             });
         }

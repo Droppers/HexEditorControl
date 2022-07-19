@@ -2,7 +2,7 @@
 
 internal static class SemaphoreSlimExtensions
 {
-    public static async Task<SemaphoreLock> LockAsync(this SemaphoreSlim semaphore)
+    public static async ValueTask<SemaphoreLock> LockAsync(this SemaphoreSlim semaphore)
     {
         await semaphore.WaitAsync();
         return new SemaphoreLock(semaphore);

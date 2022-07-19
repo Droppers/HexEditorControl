@@ -1,4 +1,5 @@
-﻿using HexControl.SharedControl.Documents;
+﻿using HexControl.Buffers;
+using HexControl.SharedControl.Documents;
 
 namespace HexControl.Samples.WinForms;
 
@@ -15,7 +16,7 @@ public partial class Form1 : Form
             WriteMode = WriteMode.Insert,
             OffsetBase = NumberBase.Decimal
         };
-        var document = Document.FromBytes(bytes, configuration: config);
+        var document = Document.FromBytes(bytes, configuration: config, changeTracking: ChangeTracking.Undo);
         hexEditorControl1.Document = document;
     }
 }

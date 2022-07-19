@@ -105,9 +105,9 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     {
         get
         {
-            Entry[] entries = _entries;
+            var entries = _entries;
 
-            for (int i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
+            for (var i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
                  (uint)i < (uint)entries.Length;
                  i = entries[i].next)
             {
@@ -139,9 +139,9 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     /// <returns>Whether or not the key was present in the dictionary.</returns>
     public bool ContainsKey(TKey key)
     {
-        Entry[] entries = _entries;
+        var entries = _entries;
 
-        for (int i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
+        for (var i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
              (uint)i < (uint)entries.Length;
              i = entries[i].next)
         {
@@ -162,9 +162,9 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     /// <returns>Whether or not the key was present.</returns>
     public bool TryGetValue(TKey key, out TValue? value)
     {
-        Entry[] entries = _entries;
+        var entries = _entries;
 
-        for (int i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
+        for (var i = _buckets[key.GetHashCode() & (_buckets.Length - 1)] - 1;
              (uint)i < (uint)entries.Length;
              i = entries[i].next)
         {
@@ -195,14 +195,14 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     /// <returns>Whether or not the key was present.</returns>
     public bool TryRemove(TKey key, out TValue? result)
     {
-        Entry[] entries = _entries;
-        int bucketIndex = key.GetHashCode() & (_buckets.Length - 1);
-        int entryIndex = _buckets[bucketIndex] - 1;
-        int lastIndex = -1;
+        var entries = _entries;
+        var bucketIndex = key.GetHashCode() & (_buckets.Length - 1);
+        var entryIndex = _buckets[bucketIndex] - 1;
+        var lastIndex = -1;
 
         while (entryIndex != -1)
         {
-            Entry candidate = entries[entryIndex];
+            var candidate = entries[entryIndex];
 
             if (candidate.key.Equals(key))
             {
@@ -244,10 +244,10 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     /// <returns>Reference to the new or existing value</returns>
     public ref TValue? GetOrAddValueRef(TKey key)
     {
-        Entry[] entries = _entries;
-        int bucketIndex = key.GetHashCode() & (_buckets.Length - 1);
+        var entries = _entries;
+        var bucketIndex = key.GetHashCode() & (_buckets.Length - 1);
 
-        for (int i = _buckets[bucketIndex] - 1;
+        for (var i = _buckets[bucketIndex] - 1;
              (uint)i < (uint)entries.Length;
              i = entries[i].next)
         {
@@ -269,7 +269,7 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private ref TValue? AddKey(TKey key, int bucketIndex)
     {
-        Entry[] entries = _entries;
+        var entries = _entries;
         int entryIndex;
 
         if (_freeList != -1)
@@ -304,8 +304,8 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private Entry[] Resize()
     {
-        int count = _count;
-        int newSize = _entries.Length * 2;
+        var count = _count;
+        var newSize = _entries.Length * 2;
 
         if ((uint)newSize > int.MaxValue)
         {
@@ -320,7 +320,7 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
 
         while (count-- > 0)
         {
-            int bucketIndex = entries[count].key.GetHashCode() & (newBuckets.Length - 1);
+            var bucketIndex = entries[count].key.GetHashCode() & (newBuckets.Length - 1);
 
             entries[count].next = newBuckets[bucketIndex] - 1;
 
@@ -365,7 +365,7 @@ internal class DictionarySlim<TKey, TValue> : IDictionarySlim<TKey, TValue>
 
             _count--;
 
-            Entry[] entries = _entries;
+            var entries = _entries;
 
             while (entries[_index].next < -1)
             {

@@ -172,8 +172,9 @@ public class Document
                         var redoState = _redoStates.Pop();
                         _undoStates.Push(redoState);
 
-                        if(redoState.Redo is not null) {
-                        ApplyDocumentState(redoState.Redo);
+                        if (redoState.Redo is not null)
+                        {
+                            ApplyDocumentState(redoState.Redo);
                         }
                     }
                     break;
@@ -209,7 +210,6 @@ public class Document
             }
 
             marker.ChangeMarkerOffsetAndLength(markerState.Offset, markerState.Length);
-            break;
         }
 
         Selection = state.Selection;
@@ -780,10 +780,11 @@ public class Document
         AdjustSelectionDelegate adjustSelection,
         AdjustRangeDelegate? adjustRange = null)
     {
+        var trackMarkers = adjustRange is not null && Buffer.ChangeTracking is not ChangeTracking.None;
         var undoMarkerStates =
-            adjustRange is null ? new DictionarySlim<Guid, MarkerState>() : EmptyMarkerStateDictionary;
+            trackMarkers ? new DictionarySlim<Guid, MarkerState>() : EmptyMarkerStateDictionary;
         var redoMarkerStates =
-            adjustRange is null ? new DictionarySlim<Guid, MarkerState>() : EmptyMarkerStateDictionary;
+            trackMarkers ? new DictionarySlim<Guid, MarkerState>() : EmptyMarkerStateDictionary;
 
         if (adjustRange is not null)
         {
@@ -838,7 +839,7 @@ public class Document
             newLength = 0;
         }
 
-        if (deleteOffset < offset && deleteEnd < offset)
+        if (deleteOffset < offset && deleteEnd <= offset)
         {
             newOffset -= deleteLength;
         }

@@ -13,12 +13,17 @@ public class ColorBrush : ISharedBrush
 
     public bool Equals(ISharedBrush? other)
     {
-        if (!ReferenceEquals(this, other) || other is not ColorBrush otherColorBrush)
+        if (other is null)
         {
             return false;
         }
 
-        return Color.Equals(otherColorBrush.Color);
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        return other is ColorBrush otherColorBrush && Color.Equals(otherColorBrush.Color);
     }
 
     public override bool Equals(object? obj)

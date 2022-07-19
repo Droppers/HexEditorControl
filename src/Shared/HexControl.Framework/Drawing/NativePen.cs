@@ -1,6 +1,6 @@
 ﻿namespace HexControl.Framework.Drawing;
 
-internal abstract class NativePen<TNative> : ISharedPen, IEquatable<NativePen<TNative>> where TNative : class
+internal abstract class NativePen<TNative> : ISharedPen where TNative : class
 {
     protected NativePen(TNative pen)
     {
@@ -9,14 +9,19 @@ internal abstract class NativePen<TNative> : ISharedPen, IEquatable<NativePen<TN
 
     public TNative Pen { get; }
 
-    public bool Equals(NativePen<TNative>? other)
+    public bool Equals(ISharedPen? other)
     {
         if (other is null)
         {
             return false;
         }
 
-        return ReferenceEquals(this, other) || other.Pen.Equals(Pen);
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        return other is NativePen<TNative> otherNative && otherNative.Pen.Equals(Pen);
     }
 
     public abstract double Thickness { get; }

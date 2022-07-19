@@ -149,7 +149,7 @@ internal readonly ref struct EditorRenderer
     #endregion
 
     #region Markers
-    private void DrawMarkers(Func<IDocumentMarker, bool> condition)
+    private void DrawMarkers(Func<Marker, bool> condition)
     {
         if (_context.DirtyRect && ShouldAddMarkerDirtyRect())
         {
@@ -179,7 +179,7 @@ internal readonly ref struct EditorRenderer
         }
     }
 
-    private void DrawMarker(IDocumentMarker marker, Func<IDocumentMarker, bool> condition, bool checkVisibility)
+    private void DrawMarker(Marker marker, Func<Marker, bool> condition, bool checkVisibility)
     {
         if (!checkVisibility && !marker.IsVisible(_documentState.Offset, _bytesLength))
         {
@@ -201,7 +201,7 @@ internal readonly ref struct EditorRenderer
         _renderState.PreviousMarkers[marker] = new MarkerRange(marker.Offset, marker.Length);
     }
 
-    private void DrawLeftMarker(IDocumentMarker marker)
+    private void DrawLeftMarker(Marker marker)
     {
         if (_calculator.HorizontalCharacterOffset >= _documentState.Configuration.BytesPerRow ||
             marker.Column is not (MarkerColumn.Hex or MarkerColumn.HexText))
@@ -212,7 +212,7 @@ internal readonly ref struct EditorRenderer
         DrawMarkerArea(EditorColumn.Left, marker);
     }
 
-    private void DrawRightMarker(IDocumentMarker marker)
+    private void DrawRightMarker(Marker marker)
     {
         if (marker.Column is MarkerColumn.Hex)
         {
@@ -236,7 +236,7 @@ internal readonly ref struct EditorRenderer
         }
     }
 
-    private void DrawMarkerArea(EditorColumn column, IDocumentMarker marker)
+    private void DrawMarkerArea(EditorColumn column, Marker marker)
     {
         if (marker.Background is null && marker.Border is null)
         {
@@ -300,7 +300,7 @@ internal readonly ref struct EditorRenderer
         ISharedBrush? brush,
         ISharedPen? pen,
         EditorColumn column,
-        IDocumentMarker marker,
+        Marker marker,
         MarkerPosition position)
     {
         // TODO: fix funky rectangle borders, introduce a 'render flags' option in IRenderContext to determine how borders behave :)!
@@ -411,7 +411,7 @@ internal readonly ref struct EditorRenderer
         _context.DrawPolygon(brush, pen, points);
     }
 
-    private void UpdateMarkerBrushOverrides(IDocumentMarker marker)
+    private void UpdateMarkerBrushOverrides(Marker marker)
     {
         var rightOffset = _renderState.MarkerForegroundLookup.Length / 2;
         var foreground = marker.Foreground ?? (marker.BehindText ? DetermineTextColor(marker.Background) : null);
@@ -468,7 +468,7 @@ internal readonly ref struct EditorRenderer
         return false;
     }
 
-    private bool IsDirtyMarker(IDocumentMarker marker)
+    private bool IsDirtyMarker(Marker marker)
     {
         if (_renderState.PreviousMarkers.TryGetValue(marker, out var previousRange))
         {

@@ -28,7 +28,8 @@ public class MainWindow : Window
         var config = new DocumentConfiguration
         {
             OffsetBase = NumberBase.Decimal,
-            ColumnsVisible = VisibleColumns.HexText
+            ColumnsVisible = VisibleColumns.HexText,
+            WriteMode = WriteMode.Insert
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         Document = Document.FromBytes(bytes, configuration: config);

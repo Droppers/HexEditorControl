@@ -9,69 +9,35 @@ namespace HexControl.SharedControl.Control.Elements;
 
 internal class EditorRendererState
 {
-    private IDocumentMarker? _inactiveMarker;
-    private IDocumentMarker? _activeMarker;
-
-    private ISharedBrush?[] _markerForegroundLookup;
-
-    private readonly Dictionary<IDocumentMarker, MarkerRange> _previousMarkers;
-    private readonly ObjectCache<Color, ISharedBrush> _colorToBrushCache;
-
     private readonly SynchronizationContext? _syncContext;
     private readonly VisualElement _owner;
-    private bool _caretTick;
-    private long _previousCaretOffset;
     private readonly Timer? _caretTimer;
-    private bool _caretUpdated;
 
     public EditorRendererState(VisualElement owner)
     {
         _syncContext = SynchronizationContext.Current;
         _caretTimer = CreateCaretTimer();
         _owner = owner;
-        _previousMarkers = new Dictionary<IDocumentMarker, MarkerRange>(50);
-        _colorToBrushCache = new ObjectCache<Color, ISharedBrush>(color => new ColorBrush(color));
-        _markerForegroundLookup = Array.Empty<ISharedBrush?>();
+        PreviousMarkers = new Dictionary<Marker, MarkerRange>(50);
+        ColorToBrushCache = new ObjectCacheSlim<Color, ISharedBrush>(color => new ColorBrush(color));
+        MarkerForegroundLookup = Array.Empty<ISharedBrush?>();
     }
 
-    public IDocumentMarker? ActiveMarker
-    {
-        get => _activeMarker;
-        set => _activeMarker = value;
-    }
+    public Marker? ActiveMarker { get; set; }
 
-    public IDocumentMarker? InactiveMarker
-    {
-        get => _inactiveMarker;
-        set => _inactiveMarker = value;
-    }
+    public Marker? InactiveMarker { get; set; }
 
-    internal Dictionary<IDocumentMarker, MarkerRange> PreviousMarkers => _previousMarkers;
-    internal ObjectCache<Color, ISharedBrush> ColorToBrushCache => _colorToBrushCache;
+    internal Dictionary<Marker, MarkerRange> PreviousMarkers { get; }
 
-    public ISharedBrush?[] MarkerForegroundLookup
-    {
-        get => _markerForegroundLookup;
-        set => _markerForegroundLookup = value;
-    }
+    internal ObjectCacheSlim<Color, ISharedBrush> ColorToBrushCache { get; }
 
-    public bool CaretUpdated
-    {
-        get => _caretUpdated;
-        set => _caretUpdated = value;
-    }
+    public ISharedBrush?[] MarkerForegroundLookup { get; set; }
 
-    public long PreviousCaretOffset
-    {
-        get => _previousCaretOffset;
-        set => _previousCaretOffset = value;
-    }
+    public bool CaretUpdated { get; set; }
 
-    public bool CaretTick
-    {
-        get => _caretTick;
-        set => _caretTick = value;
-    }
+    public long PreviousCaretOffset { get; set; }
+
+    public bool CaretTick { get; set; }
 
     private Timer CreateCaretTimer()
     {

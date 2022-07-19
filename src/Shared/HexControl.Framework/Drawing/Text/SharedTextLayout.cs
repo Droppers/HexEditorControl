@@ -1,7 +1,9 @@
 ﻿using HexControl.Framework.Host;
+using JetBrains.Annotations;
 
 namespace HexControl.Framework.Drawing.Text;
 
+[PublicAPI]
 internal class SharedTextLayout
 {
     private SharedPoint _position;
@@ -21,6 +23,7 @@ internal class SharedTextLayout
     }
 
     public IGlyphTypeface Typeface { get; }
+
     public double Size { get; }
 
     public SharedPoint Position

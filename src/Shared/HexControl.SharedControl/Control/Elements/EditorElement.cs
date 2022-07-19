@@ -14,7 +14,6 @@ internal class EditorElement : VisualElement
 {
     private const int SPACING_BETWEEN_COLUMNS = 2;
 
-    private readonly byte[] _readBuffer;
     private int _horizontalOffset;
 
     private readonly SharedHexControl _control;
@@ -56,15 +55,13 @@ internal class EditorElement : VisualElement
 
     public ITextBuilder? TextBuilder { get; set; }
 
-    private EditorCalculator _calculator;
+    private readonly EditorCalculator _calculator;
 
     public EditorElement(SharedHexControl control)
     {
         _control = control;
         _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
         _renderState = new EditorRendererState(this);
-
-        _readBuffer = new byte[8];
 
         Configuration = new DocumentConfiguration();
         Modifications = Array.Empty<ModifiedRange>();
@@ -79,6 +76,16 @@ internal class EditorElement : VisualElement
             var offset = (long)rows * Configuration.BytesPerRow;
             offset = Offset + Math.Min(offset, _bytesLength);
             return (long)(Math.Ceiling(offset / (double)Configuration.BytesPerRow) * Configuration.BytesPerRow);
+        }
+    }
+
+    public int VisibleRows
+    {
+        get
+        {
+
+            var height = Height - _control.HeaderHeight;
+            return (int)(height / _control.RowHeight);
         }
     }
 
@@ -484,75 +491,13 @@ internal class EditorElement : VisualElement
 
     private async ValueTask HandleWriteKey(char @char)
     {
-        if (Document is null || !CanModify)
-        {
-            return;
-        }
-
-        var caret = Document.Caret;
-        var caretColumn = MapFromActiveColumn(caret.Column);
-        var endOfDocument = caret.Offset >= Document.Length;
-
-        var characterSet = _calculator.GetCharacterSetForColumn(caretColumn);
-        var oldByte = (byte)0;
-
-        if (!endOfDocument)
-        {
-            var readByte = await ReadCaretByte(caret);
-            if (readByte is null)
-            {
-                return;
-            }
-
-            oldByte = readByte.Value;
-        }
-
-        // Write to byte and validate if it is possible to write this character
-        if (!characterSet.TryWrite(oldByte, @char, caret.Nibble, out var newByte))
-        {
-            return;
-        }
-
-        if (Document.Selection is { } selection)
-        {
-            await Document.Buffer.ReplaceAsync(selection.Start, selection.Length, newByte);
-            Document.ChangeCaret(selection.Start);
-        }
-        else if (endOfDocument || Configuration.WriteMode is WriteMode.Insert && caret.Nibble is 0)
-        {
-            await Document.Buffer.InsertAsync(caret.Offset, newByte);
-        }
-        else
-        {
-            await Document.Buffer.WriteAsync(caret.Offset, newByte);
-        }
-
-        HandleArrowKeys(Document, HostKey.Right);
-    }
-
-    private async ValueTask<byte?> ReadCaretByte(Caret caret)
-    {
         if (Document is null)
         {
-            return null;
+            return;
         }
 
-        var relativeOffset = caret.Offset - Offset;
-        if (relativeOffset < _bytesLength)
-        {
-            return _bytes[relativeOffset];
-        }
-
-        // Allow for writing outside of current visible buffer
-        var readLength = await Document.Buffer.ReadAsync(_readBuffer, caret.Offset);
-        if (readLength <= 0)
-        {
-            return null;
-        }
-
-        return _readBuffer[0];
+        _ = await Document.TryTypeAtCaretAsync(@char);
     }
-
     private void HandleArrowKeys(Document document, HostKey key, bool jumpByte = false)
     {
         var offset = document.Caret.Offset;

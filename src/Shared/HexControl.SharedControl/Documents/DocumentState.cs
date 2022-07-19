@@ -1,6 +1,8 @@
-﻿namespace HexControl.SharedControl.Documents;
+﻿using HexControl.Framework.Collections;
+
+namespace HexControl.SharedControl.Documents;
 
 internal record DocumentState(
-    IReadOnlyDictionary<Guid, MarkerState> MarkerStates,
+    DictionarySlim<Guid, MarkerState> MarkerStates,
     Selection? Selection,
     Caret? Caret);

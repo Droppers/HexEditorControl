@@ -8,17 +8,33 @@ namespace HexControl.Buffers.History;
 internal class ChangeTracker
 {
     private readonly ByteBuffer _buffer;
+    private ChangeTracking _changeTracking;
     private readonly Stack<ChangeCollectionGroup> _redoStack;
     private readonly Stack<ChangeCollectionGroup> _undoStack;
-
     private readonly List<ChangeCollection> _group;
 
-    public ChangeTracker(ByteBuffer buffer)
+    public ChangeTracker(ByteBuffer buffer, ChangeTracking changeTracking)
     {
         _buffer = buffer;
+        _changeTracking = changeTracking;
         _undoStack = new Stack<ChangeCollectionGroup>();
         _redoStack = new Stack<ChangeCollectionGroup>();
         _group = new List<ChangeCollection>();
+    }
+
+    public ChangeTracking ChangeTracking
+    {
+        get => _changeTracking;
+        set
+        {
+            if (_changeTracking is not ChangeTracking.None)
+            {
+                throw new InvalidOperationException(
+                    "Cannot change change tracking when current change tracking is not none.");
+            }
+
+            _changeTracking = value;
+        }
     }
 
     public IReadOnlyCollection<ChangeCollectionGroup> UndoStack => _undoStack;
@@ -49,6 +65,11 @@ internal class ChangeTracker
 
     public void Push(ChangeCollection collection)
     {
+        if (ChangeTracking is ChangeTracking.None)
+        {
+            return;
+        }
+
         if (IsGroup)
         {
             _group.Add(collection);

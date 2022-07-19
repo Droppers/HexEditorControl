@@ -13,8 +13,7 @@ public partial class Form1 : Form
         var config = new DocumentConfiguration
         {
             WriteMode = WriteMode.Insert,
-            OffsetBase = NumberBase.Decimal,
-            ColumnsVisible = VisibleColumns.Text
+            OffsetBase = NumberBase.Decimal
         };
         var document = Document.FromBytes(bytes, configuration: config);
         hexEditorControl1.Document = document;

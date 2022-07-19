@@ -7,6 +7,7 @@ using HexControl.SharedControl.Documents.Events;
 using JetBrains.Annotations;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using HexControl.Framework.Collections;
 
 namespace HexControl.SharedControl.Documents;
 
@@ -15,9 +16,7 @@ public class Document
 {
     private const int CLIPBOARD_LIMIT = 1024 * 1024 * 32;
 
-    private static readonly IReadOnlyDictionary<Guid, MarkerState> EmptyMarkerStateDictionary =
-        new Dictionary<Guid, MarkerState>();
-
+    private static readonly DictionarySlim<Guid, MarkerState> EmptyMarkerStateDictionary = new();
 
     private readonly Stack<(DocumentState Undo, DocumentState Redo)> _redoStates;
     private readonly Stack<(DocumentState Undo, DocumentState Redo)> _undoStates;
@@ -25,7 +24,7 @@ public class Document
     private DocumentConfiguration _configuration;
     private long _offset;
 
-    private IDocumentMarker[] _capturedMarkers;
+    private Marker[] _capturedMarkers;
     private CapturedState? _capturedState;
     private int _markersVersion;
     private int _capturedMarkersVersion = -1;
@@ -42,8 +41,8 @@ public class Document
         _undoStates = new Stack<(DocumentState Undo, DocumentState Redo)>();
         _redoStates = new Stack<(DocumentState Undo, DocumentState Redo)>();
 
-        InternalMarkers = new List<IDocumentMarker>();
-        _capturedMarkers = new IDocumentMarker[1000];
+        InternalMarkers = new List<Marker>();
+        _capturedMarkers = new Marker[1000];
 
         Caret = new Caret(0, 0, ActiveColumn.Hex);
     }
@@ -67,10 +66,10 @@ public class Document
 
     public ByteBuffer Buffer { get; private set; }
 
-    public IReadOnlyList<IDocumentMarker> Markers => InternalMarkers;
+    public IReadOnlyList<Marker> Markers => InternalMarkers;
 
     // Used internally for faster access to underlying array entries
-    internal List<IDocumentMarker> InternalMarkers { get; }
+    internal List<Marker> InternalMarkers { get; }
 
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;
@@ -201,12 +200,14 @@ public class Document
         for (var i = 0; i < count; i++)
         {
             var marker = span[i];
-            if (!state.MarkerStates.TryGetValue(marker.Id, out var markerState))
+
+            ref MarkerState? markerState = ref state.MarkerStates.GetOrAddValueRef(marker.Id);
+            if (markerState is null)
             {
                 continue;
             }
 
-            ChangeMarkerOffsetAndLength(marker, markerState.Offset, markerState.Length);
+            marker.ChangeMarkerOffsetAndLength(markerState.Offset, markerState.Length);
             break;
         }
 
@@ -290,14 +291,14 @@ public class Document
         Select(null);
     }
 
-    public void AddMarker(IDocumentMarker marker)
+    public void AddMarker(Marker marker)
     {
         InternalMarkers.Add(marker);
         _markersVersion++;
         OnMarkersChanged();
     }
 
-    public void RemoveMarker(IDocumentMarker marker)
+    public void RemoveMarker(Marker marker)
     {
         InternalMarkers.Remove(marker);
         _markersVersion++;
@@ -493,6 +494,95 @@ public class Document
         return Buffer = newBuffer;
     }
 
+    #region Modifications
+
+    public bool CanModify => !Buffer.IsReadOnly && !Buffer.Locked;
+
+    public async Task<bool> TryTypeAtCaretAsync(char @char)
+    {
+        var endOfDocument = Caret.Offset >= Length;
+
+        var characterSet = GetCharacterSetForColumn(Caret.Column);
+        var oldByte = (byte)0;
+
+        if (!endOfDocument)
+        {
+            var readByte = await ReadCaretByte();
+            if (readByte is null)
+            {
+                return false;
+            }
+
+            oldByte = readByte.Value;
+        }
+
+        // Write to byte and validate if it is possible to write this character
+        if (!characterSet.TryWrite(oldByte, @char, Caret.Nibble, out var newByte))
+        {
+            return false;
+        }
+
+        var oldCaret = Caret with { };
+        var redoOffset = oldCaret.Offset;
+
+        if (Selection is { } selection)
+        {
+            await Buffer.ReplaceAsync(selection.Start, selection.Length, newByte);
+            redoOffset = selection.Start;
+        }
+        else if (endOfDocument || Configuration.WriteMode is WriteMode.Insert && Caret.Nibble is 0)
+        {
+            await Buffer.InsertAsync(Caret.Offset, newByte);
+        }
+        else
+        {
+            await Buffer.WriteAsync(Caret.Offset, newByte);
+        }
+
+        var advanceOffset = oldCaret.Nibble >= characterSet.Width - 1;
+        var redoCaret = Caret = oldCaret with
+        {
+            Offset = advanceOffset ? redoOffset + 1 : redoOffset,
+            Nibble = advanceOffset ? 0 : oldCaret.Nibble + 1
+        };
+
+        // Typing is the only modification that can advance a nibble. 
+        // Therefore, we need to replace the caret in the change tracker,
+        // since the change tracker does not understand the concept of typing (and it should not).
+        if (Buffer.ChangeTracking is not ChangeTracking.None)
+        {
+            var (undo, redo) = _undoStates.Pop();
+            _undoStates.Push((undo, redo with
+            {
+                Caret = redoCaret
+            }));
+        }
+
+        return true;
+    }
+
+    private async ValueTask<byte?> ReadCaretByte()
+    {
+        var readBuffer = ArrayPool<byte>.Shared.Rent(1);
+
+        try
+        {
+            var readLength = await Buffer.ReadAsync(readBuffer.AsMemory(0, 1), Caret.Offset);
+            if (readLength <= 0)
+            {
+                return null;
+            }
+
+            return readBuffer[0];
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(readBuffer);
+        }
+    }
+
+    #endregion
+
     #region Events
     protected virtual void OnCaretChanged(Caret oldCaret, Caret newCaret, bool scrollToCaret)
     {
@@ -575,18 +665,26 @@ public class Document
 
     private (DocumentState Undo, DocumentState Redo) ApplyDeleteModification(long offset, long length)
     {
-        var undoMarkerStates = new Dictionary<Guid, MarkerState>();
-        var redoMarkerStates = new Dictionary<Guid, MarkerState>();
+        var undoMarkerStates = new DictionarySlim<Guid, MarkerState>();
+        var redoMarkerStates = new DictionarySlim<Guid, MarkerState>();
 
-        for (var i = 0; i < InternalMarkers.Count; i++)
+        var count = InternalMarkers.Count;
+        var span = CollectionsMarshal.AsSpan(InternalMarkers);
+        for (var i = 0; i < count; i++)
         {
-            var marker = InternalMarkers[i];
-            var (newOffset, newLength) = DeleteFromRange(marker.Offset, marker.Length, offset, length);
-            if (newOffset != marker.Offset || newLength != marker.Length)
+            var marker = span[i];
+            var markerOffset = marker.Offset;
+            var markerLength = marker.Length;
+
+            var (newOffset, newLength) = DeleteFromRange(markerOffset, markerLength, offset, length);
+
+            if (newOffset != markerOffset || newLength != markerLength)
             {
-                undoMarkerStates.Add(marker.Id, new MarkerState(marker.Offset, marker.Length)); 
-                redoMarkerStates.Add(marker.Id, new MarkerState(newOffset, newLength));
-                ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
+                ref var undoRef = ref undoMarkerStates.GetOrAddValueRef(marker.Id);
+                undoRef = new MarkerState(markerOffset, markerLength);
+                ref var redoRef = ref redoMarkerStates.GetOrAddValueRef(marker.Id);
+                redoRef = new MarkerState(newOffset, newLength);
+                marker.ChangeMarkerOffsetAndLength(newOffset, newLength);
             }
         }
 
@@ -623,30 +721,35 @@ public class Document
 
     private (DocumentState Undo, DocumentState Redo) ApplyInsertModification(long offset, byte[] bytes)
     {
-        var undoMarkerStates = new Dictionary<Guid, MarkerState>();
-        var redoMarkerStates = new Dictionary<Guid, MarkerState>();
+        var undoMarkerStates = new DictionarySlim<Guid, MarkerState>();
+        var redoMarkerStates = new DictionarySlim<Guid, MarkerState>();
 
-        for (var i = 0; i < InternalMarkers.Count; i++)
+        var count = InternalMarkers.Count;
+        var span = CollectionsMarshal.AsSpan(InternalMarkers);
+        for (var i = 0; i < count; i++)
         {
-            var marker = InternalMarkers[i];
+            var marker = span[i];
+            var markerOffset = marker.Offset;
+            var markerLength = marker.Length;
 
             var (newOffset, newLength) =
-                InsertIntoRange(marker.Offset, marker.Length, offset, bytes.Length);
-            if (newOffset != marker.Offset || newLength != marker.Length)
+                InsertIntoRange(markerOffset, markerLength, offset, bytes.Length);
+            if (newOffset != markerOffset || newLength != markerLength)
             {
-                undoMarkerStates.Add(marker.Id, new MarkerState(marker.Offset, marker.Length));
-                redoMarkerStates.Add(marker.Id, new MarkerState(newOffset, newLength));
-                ChangeMarkerOffsetAndLength(marker, newOffset, newLength);
+                ref var undoRef = ref undoMarkerStates.GetOrAddValueRef(marker.Id);
+                undoRef = new MarkerState(markerOffset, markerLength);
+                ref var redoRef = ref redoMarkerStates.GetOrAddValueRef(marker.Id);
+                redoRef = new MarkerState(newOffset, newLength);
+                marker.ChangeMarkerOffsetAndLength(newOffset, newLength);
             }
         }
 
         var undoCaret = Caret with { };
-        var redoCaret = undoCaret;
+        Caret? redoCaret = null;
 
-        // Don't move caret to the right for single byte inserts, this usually means a user is typing
-        if (bytes.Length >= 2)
+        if (Caret.Offset <= offset)
         {
-            Caret = redoCaret = Caret with { Offset = offset + bytes.Length, Nibble = 0 };
+            redoCaret = Caret = Caret with {Offset = offset + bytes.Length, Nibble = 0};
         }
 
         var undoSelection = Selection.HasValue ? Selection with { } : null;
@@ -733,25 +836,13 @@ public class Document
         return (newOffset, newLength);
     }
 
-    private void ChangeMarkerOffsetAndLength(IDocumentMarker marker, long newOffset, long newLength)
-    {
-        if (marker.Offset == newOffset && marker.Length == newLength)
-        {
-            return;
-        }
-
-        _markersVersion++;
-        marker.Offset = newOffset;
-        marker.Length = newLength;
-    }
-
     internal CapturedState CapturedState => _capturedState ??= CaptureState();
 
     internal CapturedState CaptureState()
     {
         if (InternalMarkers.Count > _capturedMarkers.Length)
         {
-            _capturedMarkers = new IDocumentMarker[InternalMarkers.Count * 2];
+            _capturedMarkers = new Marker[InternalMarkers.Count * 2];
         }
 
         if (_markersVersion != _capturedMarkersVersion)
@@ -774,4 +865,4 @@ public class Document
     }
 }
 
-internal readonly record struct CapturedState(long Offset, long Length, Selection? Selection, Caret Caret, Memory<IDocumentMarker> Markers, DocumentConfiguration Configuration);
+internal readonly record struct CapturedState(long Offset, long Length, Selection? Selection, Caret Caret, Memory<Marker> Markers, DocumentConfiguration Configuration);

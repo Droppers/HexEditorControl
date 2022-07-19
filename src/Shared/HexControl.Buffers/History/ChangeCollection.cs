@@ -3,7 +3,7 @@ using HexControl.Buffers.Modifications;
 
 namespace HexControl.Buffers.History;
 
-public class ChangeCollection
+internal class ChangeCollection
 {
     private readonly List<IChange> _changes;
     private bool? _startAtPrevious;
@@ -34,15 +34,6 @@ public class ChangeCollection
 
     public BufferModification Modification { get; }
     public long ChangeOffset { get; }
-
-    public static ChangeCollection Delete(long offset, long length) =>
-        new(new DeleteModification(offset, length), offset);
-
-    public static ChangeCollection Insert(long offset, byte[] bytes) =>
-        new(new InsertModification(offset, bytes), offset);
-
-    public static ChangeCollection Write(long offset, byte[] bytes) =>
-        new(new WriteModification(offset, bytes), offset);
 
     public void SetStartAtPrevious(bool startAtPrevious = true)
     {

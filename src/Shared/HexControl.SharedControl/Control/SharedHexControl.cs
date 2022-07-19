@@ -57,6 +57,8 @@ internal class SharedHexControl : VisualElement
     private IRenderContext? _renderContext;
     private bool _requireTypefaceUpdate = true;
     private bool _scrollToCaret;
+
+    private long _bytesLength;
     
     public SharedHexControl() : base(true)
     {
@@ -414,12 +416,12 @@ internal class SharedHexControl : VisualElement
         }
 
         _scrollToCaret = false;
-
+        
         if (Document.Caret.Offset <= Document.Offset)
         {
             Document.Offset = Document.Caret.Offset;
         }
-        else if (Document.Caret.Offset > _editorElement.MaxVisibleOffset)
+        else if (Document.Caret.Offset > _editorElement.MaxVisibleOffset && (_bytesLength / Configuration.BytesPerRow) >= _editorElement.VisibleRows)
         {
             Document.Offset = Document.Caret.Offset - (_editorElement.MaxVisibleOffset - Document.Offset) +
                               Configuration.BytesPerRow;
@@ -608,8 +610,7 @@ internal class SharedHexControl : VisualElement
         }
 
         _readModifications.Clear();
-        var actualRead =
-            await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
+        _bytesLength = await Document.Buffer.ReadAsync(_readBuffer.AsMemory(0, BytesToRead), Document.Offset, _readModifications);
 
         // Swap read and display buffers
         (_readBuffer, _displayBuffer) = (_displayBuffer, _readBuffer);
@@ -617,7 +618,7 @@ internal class SharedHexControl : VisualElement
 
         _offsetElement.Offset = Document.Offset;
         _editorElement.Offset = Document.Offset;
-        _editorElement.BytesLength = actualRead;
+        _editorElement.BytesLength = _bytesLength;
         _editorElement.Bytes = _displayBuffer;
         _editorElement.Modifications = _displayModifications;
 

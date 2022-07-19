@@ -1,8 +1,8 @@
 ﻿using System.Buffers;
-using System.ComponentModel;
 using System.Text;
-#if DEBUG
 using System.Runtime.InteropServices;
+#if DEBUG
+using System.ComponentModel;
 #endif
 
 namespace HexControl.Framework.Clipboard;

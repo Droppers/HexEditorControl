@@ -83,12 +83,6 @@ internal class TextLayoutBuilder : ITextBuilder
         _builders.Clear();
         _index = 0;
 
-        //var alignedY = point.Y + alignment switch
-        //{
-        //    TextAlignment.Top => Typeface.GetTextOffsetY(alignment, Size),
-        //    _ => throw new NotSupportedException($"TextAlignment {alignment} is not supported.")
-        //};
-
         _startPosition = point;
     }
 

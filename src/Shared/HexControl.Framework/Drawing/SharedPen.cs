@@ -1,13 +1,6 @@
 ﻿namespace HexControl.Framework.Drawing;
 
-public enum PenStyle
-{
-    Solid,
-    Dashed,
-    Dotted
-}
-
-public class SharedPen : ISharedPen, IEquatable<SharedPen>
+public class SharedPen : ISharedPen 
 {
     public SharedPen(ISharedBrush brush, double thickness, PenStyle style = PenStyle.Solid)
     {
@@ -20,7 +13,7 @@ public class SharedPen : ISharedPen, IEquatable<SharedPen>
 
     public ISharedBrush Brush { get; }
 
-    public bool Equals(SharedPen? other)
+    public bool Equals(ISharedPen? other)
     {
         if (other is null)
         {
@@ -32,7 +25,7 @@ public class SharedPen : ISharedPen, IEquatable<SharedPen>
             return true;
         }
 
-        return Brush.Equals(other.Brush) && Thickness.Equals(other.Thickness) && Style.Equals(other.Style);
+        return other is SharedPen otherSharedPen && Brush.Equals(otherSharedPen.Brush) && Thickness.Equals(otherSharedPen.Thickness) && Style.Equals(otherSharedPen.Style);
     }
 
     public double Thickness { get; }

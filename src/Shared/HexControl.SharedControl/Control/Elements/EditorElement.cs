@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;
@@ -335,8 +334,7 @@ internal class EditorElement : VisualElement
         }
 
         var (column, offset, nibble) = GetOffsetFromPoint(position);
-
-        var origOffset = offset;
+        
         // Allow selecting from middle of character rather than entire character
         var characterSet = _calculator.GetCharacterSetForColumn(column);
         if (nibble >= characterSet.Width / 2)

@@ -2,7 +2,7 @@
 
 #pragma warning disable CS8634
 
-namespace HexControl.Framework.Optimizations;
+namespace HexControl.Framework.Caching;
 
 internal class ObjectCacheSlim<TKey, TValue> : IDisposable
     where TKey : IEquatable<TKey>

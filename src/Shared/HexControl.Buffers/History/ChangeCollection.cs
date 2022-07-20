@@ -1,4 +1,5 @@
-﻿using HexControl.Buffers.History.Changes;
+﻿using HexControl.Buffers.Chunks;
+using HexControl.Buffers.History.Changes;
 using HexControl.Buffers.Modifications;
 
 namespace HexControl.Buffers.History;
@@ -8,10 +9,11 @@ internal class ChangeCollection
     private readonly List<IChange> _changes;
     private bool? _startAtPrevious;
 
-    public ChangeCollection(BufferModification modification, long changeOffset)
+    public ChangeCollection(BufferModification modification, long changeOffset, IChunk? firstChunk)
     {
         Modification = modification;
         ChangeOffset = changeOffset;
+        FirstChunk = firstChunk;
 
         _changes = new List<IChange>(3);
     }
@@ -27,7 +29,10 @@ internal class ChangeCollection
     public IReadOnlyList<IChange> Changes => _changes;
 
     public BufferModification Modification { get; }
+
     public long ChangeOffset { get; }
+
+    public IChunk? FirstChunk { get; }
 
     public void SetStartAtPrevious(bool startAtPrevious = true)
     {

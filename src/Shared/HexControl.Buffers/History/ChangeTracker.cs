@@ -1,7 +1,9 @@
-﻿using System.Diagnostics;
-using HexControl.Buffers.Chunks;
+﻿using HexControl.Buffers.Chunks;
 using HexControl.Buffers.History.Changes;
 using HexControl.Buffers.Modifications;
+#if DEBUG
+using System.Diagnostics;
+#endif
 
 namespace HexControl.Buffers.History;
 
@@ -101,30 +103,9 @@ internal class ChangeTracker
         {
             throw new InvalidOperationException("Undo stack is empty.");
         }
-        
-        Debug.WriteLine("");
-        Debug.WriteLine($"Current undo stack ({_undoStack.Count}):");
-        
-        foreach (var debugGroup in _undoStack.Reverse())
-        {
-            foreach (var collection in debugGroup.Collections.Reverse())
-            {
-                switch (collection.Modification)
-                {
-                    case InsertModification insert:
-                        Debug.WriteLine(
-                            $"_buffer.Insert({insert.Offset}, new byte[] {{ {string.Join(", ", insert.Bytes)} }});");
-                        break;
-                    case WriteModification write:
-                        Debug.WriteLine(
-                            $"_buffer.Write({write.Offset}, new byte[] {{ {string.Join(", ", write.Bytes)} }});");
-                        break;
-                    case DeleteModification delete:
-                        Debug.WriteLine($"_buffer.Delete({delete.Offset}, {delete.Length});");
-                        break;
-                }
-            }
-        }
+
+        // Debug utility
+        WriteUndoStack();
 
         var group = _undoStack.Pop();
         var modifications = new BufferModification[group.Collections.Count];
@@ -276,5 +257,46 @@ internal class ChangeTracker
         {
             change.Apply(_buffer, currentNode, chunk);
         }
+    }
+
+    private void WriteUndoStack()
+    {
+#if DEBUG
+        Debug.WriteLine("-----------------------------------------");
+        Debug.WriteLine($"Current undo stack ({_undoStack.Count}):");
+
+        foreach (var debugGroup in _undoStack.Reverse())
+        {
+            if (debugGroup.Collections.Count > 1)
+            {
+                Debug.WriteLine("// Start group");
+            }
+
+            foreach (var collection in debugGroup.Collections)
+            {
+                switch (collection.Modification)
+                {
+                    case InsertModification insert:
+                        Debug.WriteLine(
+                            $"_buffer.Insert({insert.Offset}, new byte[] {{ {string.Join(", ", insert.Bytes)} }});");
+                        break;
+                    case WriteModification write:
+                        Debug.WriteLine(
+                            $"_buffer.Write({write.Offset}, new byte[] {{ {string.Join(", ", write.Bytes)} }});");
+                        break;
+                    case DeleteModification delete:
+                        Debug.WriteLine($"_buffer.Delete({delete.Offset}, {delete.Length});");
+                        break;
+                }
+            }
+
+            if (debugGroup.Collections.Count > 1)
+            {
+                Debug.WriteLine("// End group");
+            }
+        }
+
+        Debug.WriteLine("-----------------------------------------");
+#endif
     }
 }

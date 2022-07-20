@@ -1,6 +1,6 @@
-﻿using HexControl.Framework.Drawing;
+﻿using HexControl.Framework.Caching;
+using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
-using HexControl.Framework.Optimizations;
 using SharpDX.Direct2D1;
 using SharpDX.DirectWrite;
 using SharpDX.Mathematics.Interop;

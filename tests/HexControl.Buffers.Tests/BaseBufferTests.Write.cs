@@ -132,10 +132,10 @@ public partial class ByteBufferTests
     {
         var bytes = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-        _buffer.ValidateWrite(546, bytes, expects =>
+        _buffer.ValidateWrite(546 - bytes.Length, bytes, expects =>
             expects
-                .Length(556)
-                .Immutable(546, 0)
+                .Length(546)
+                .Immutable(536, 0)
                 .Memory(bytes));
         _buffer.ValidateUndoRedo();
     }
@@ -175,48 +175,48 @@ public partial class ByteBufferTests
     [Fact]
     public void Write_ALotOfSingleBytes()
     {
-        _buffer.Write(969, new byte[] {160});
-        _buffer.Write(969, new byte[] {171});
-        _buffer.Write(970, new byte[] {192});
-        _buffer.Write(970, new byte[] {205});
-        _buffer.Write(971, new byte[] {224});
-        _buffer.Write(971, new byte[] {237});
-        _buffer.Write(972, new byte[] {240});
-        _buffer.Write(972, new byte[] {255});
-        _buffer.Write(932, new byte[] {97});
-        _buffer.Write(933, new byte[] {97});
-        _buffer.Write(934, new byte[] {97});
-        _buffer.Write(935, new byte[] {97});
-        _buffer.Write(936, new byte[] {97});
-        _buffer.Write(937, new byte[] {97});
-        _buffer.Write(938, new byte[] {97});
-        _buffer.Write(939, new byte[] {97});
-        _buffer.Write(940, new byte[] {97});
-        _buffer.Write(941, new byte[] {97});
-        _buffer.Write(942, new byte[] {97});
-        _buffer.Write(943, new byte[] {97});
-        _buffer.Write(944, new byte[] {97});
-        _buffer.Write(945, new byte[] {97});
-        _buffer.Write(946, new byte[] {97});
-        _buffer.Write(947, new byte[] {97});
-        _buffer.Write(948, new byte[] {97});
-        _buffer.Write(949, new byte[] {97});
-        _buffer.Write(950, new byte[] {97});
-        _buffer.Write(951, new byte[] {97});
-        _buffer.Write(952, new byte[] {97});
-        _buffer.Write(953, new byte[] {97});
-        _buffer.Write(954, new byte[] {97});
-        _buffer.Write(955, new byte[] {97});
-        _buffer.Write(956, new byte[] {97});
-        _buffer.Write(957, new byte[] {97});
-        _buffer.Write(958, new byte[] {97});
-        _buffer.Write(959, new byte[] {97});
-        _buffer.Write(960, new byte[] {97});
-        _buffer.Write(961, new byte[] {97});
-        _buffer.Write(962, new byte[] {97});
-        _buffer.Write(963, new byte[] {97});
-        _buffer.Write(964, new byte[] {97});
-        _buffer.Write(965, new byte[] {97});
+        _buffer.Write(169, new byte[] {160});
+        _buffer.Write(169, new byte[] {171});
+        _buffer.Write(170, new byte[] {192});
+        _buffer.Write(170, new byte[] {205});
+        _buffer.Write(171, new byte[] {224});
+        _buffer.Write(171, new byte[] {237});
+        _buffer.Write(172, new byte[] {240});
+        _buffer.Write(172, new byte[] {255});
+        _buffer.Write(132, new byte[] {97});
+        _buffer.Write(133, new byte[] {97});
+        _buffer.Write(134, new byte[] {97});
+        _buffer.Write(135, new byte[] {97});
+        _buffer.Write(136, new byte[] {97});
+        _buffer.Write(137, new byte[] {97});
+        _buffer.Write(138, new byte[] {97});
+        _buffer.Write(139, new byte[] {97});
+        _buffer.Write(140, new byte[] {97});
+        _buffer.Write(141, new byte[] {97});
+        _buffer.Write(142, new byte[] {97});
+        _buffer.Write(143, new byte[] {97});
+        _buffer.Write(144, new byte[] {97});
+        _buffer.Write(145, new byte[] {97});
+        _buffer.Write(146, new byte[] {97});
+        _buffer.Write(147, new byte[] {97});
+        _buffer.Write(148, new byte[] {97});
+        _buffer.Write(149, new byte[] {97});
+        _buffer.Write(150, new byte[] {97});
+        _buffer.Write(151, new byte[] {97});
+        _buffer.Write(152, new byte[] {97});
+        _buffer.Write(153, new byte[] {97});
+        _buffer.Write(154, new byte[] {97});
+        _buffer.Write(155, new byte[] {97});
+        _buffer.Write(156, new byte[] {97});
+        _buffer.Write(157, new byte[] {97});
+        _buffer.Write(158, new byte[] {97});
+        _buffer.Write(159, new byte[] {97});
+        _buffer.Write(160, new byte[] {97});
+        _buffer.Write(161, new byte[] {97});
+        _buffer.Write(162, new byte[] {97});
+        _buffer.Write(163, new byte[] {97});
+        _buffer.Write(164, new byte[] {97});
+        _buffer.Write(165, new byte[] {97});
 
         _buffer.Undo();
     }

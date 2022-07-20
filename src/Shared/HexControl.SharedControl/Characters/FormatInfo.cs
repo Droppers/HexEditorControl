@@ -1,7 +1,9 @@
 ﻿using HexControl.SharedControl.Documents;
+using JetBrains.Annotations;
 
 namespace HexControl.SharedControl.Characters;
 
+[PublicAPI]
 public ref struct FormatInfo
 {
     public FormatInfo(long offset, DocumentConfiguration configuration)

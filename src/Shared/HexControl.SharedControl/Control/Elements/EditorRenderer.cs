@@ -62,13 +62,13 @@ internal readonly ref struct EditorRenderer
         if (_textBuilder is not null)
         {
             _textBuilder.Clear();
-            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText &&
+            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText &&
                 _calculator.LeftCharacterSet.Groupable)
             {
                 WriteHexOffsetHeader(_textBuilder);
             }
 
-            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Text or VisibleColumns.HexText)
+            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Text or VisibleColumns.DataText)
             {
                 WriteTextHeader(_textBuilder);
             }
@@ -135,7 +135,7 @@ internal readonly ref struct EditorRenderer
         _renderState.ActiveMarker.Foreground = Color.White;
         _renderState.ActiveMarker.Background = Color.FromArgb(255, 21, 103, 210);
         _renderState.ActiveMarker.BehindText = true;
-        _renderState.ActiveMarker.Column = editorColumn is EditorColumn.Left ? MarkerColumn.Hex : MarkerColumn.Text;
+        _renderState.ActiveMarker.Column = editorColumn is EditorColumn.Left ? MarkerColumn.Data : MarkerColumn.Text;
 
         // Inactive
         _renderState.InactiveMarker ??= new Marker(selection.Start, selection.Length);
@@ -144,7 +144,7 @@ internal readonly ref struct EditorRenderer
         _renderState.InactiveMarker.Border = Color.FromArgb(255, 21, 103, 210);
         _renderState.InactiveMarker.Background = Color.FromArgb(100, 21, 103, 210);
         _renderState.InactiveMarker.BehindText = true;
-        _renderState.InactiveMarker.Column = editorColumn is EditorColumn.Right ? MarkerColumn.Hex : MarkerColumn.Text;
+        _renderState.InactiveMarker.Column = editorColumn is EditorColumn.Right ? MarkerColumn.Data : MarkerColumn.Text;
     }
     #endregion
 
@@ -204,7 +204,7 @@ internal readonly ref struct EditorRenderer
     private void DrawLeftMarker(Marker marker)
     {
         if (_calculator.HorizontalCharacterOffset >= _documentState.Configuration.BytesPerRow ||
-            marker.Column is not (MarkerColumn.Hex or MarkerColumn.HexText))
+            marker.Column is not (MarkerColumn.Data or MarkerColumn.DataText))
         {
             return;
         }
@@ -214,7 +214,7 @@ internal readonly ref struct EditorRenderer
 
     private void DrawRightMarker(Marker marker)
     {
-        if (marker.Column is MarkerColumn.Hex)
+        if (marker.Column is MarkerColumn.Data)
         {
             return;
         }
@@ -225,7 +225,7 @@ internal readonly ref struct EditorRenderer
             _context.PushTranslate(leftOffset, 0);
         }
 
-        if (_documentState.Configuration.ColumnsVisible is VisibleColumns.HexText)
+        if (_documentState.Configuration.ColumnsVisible is VisibleColumns.DataText)
         {
             DrawMarkerArea(EditorColumn.Right, marker);
         }
@@ -425,14 +425,14 @@ internal readonly ref struct EditorRenderer
             marker.Length - (marker.Offset < _documentState.Offset ? _documentState.Offset - marker.Offset : 0));
         for (var j = 0; j < length; j++)
         {
-            if (marker.Column is MarkerColumn.HexText)
+            if (marker.Column is MarkerColumn.DataText)
             {
                 _renderState.MarkerForegroundLookup[startOffset + j] = foregroundBrush;
                 _renderState.MarkerForegroundLookup[rightOffset + startOffset + j] = foregroundBrush;
             }
             else
             {
-                var offset = marker.Column is MarkerColumn.Hex ? 0 : rightOffset;
+                var offset = marker.Column is MarkerColumn.Data ? 0 : rightOffset;
                 _renderState.MarkerForegroundLookup[offset + startOffset + j] = foregroundBrush;
             }
         }
@@ -531,7 +531,7 @@ internal readonly ref struct EditorRenderer
 
     private void WriteTextHeader(ITextBuilder builder)
     {
-        var left = _documentState.Configuration.ColumnsVisible is VisibleColumns.HexText &&
+        var left = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText &&
                    _calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow
             ? _calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS * _control.CharacterWidth
             : 0;
@@ -559,7 +559,7 @@ internal readonly ref struct EditorRenderer
         var bytesPerRow = _documentState.Configuration.BytesPerRow;
         // Round content length to full row lengths for padding of final row
         var contentLength = (int)(Math.Ceiling(_bytesLength / (float)bytesPerRow) * bytesPerRow);
-        var maxBytesWritten = _documentState.Configuration.ColumnsVisible is not VisibleColumns.HexText
+        var maxBytesWritten = _documentState.Configuration.ColumnsVisible is not VisibleColumns.DataText
             ? bytesPerRow
             : bytesPerRow * 2;
 
@@ -712,7 +712,7 @@ internal readonly ref struct EditorRenderer
 
         DrawCaret(EditorColumn.Left);
 
-        if (_documentState.Configuration.ColumnsVisible is VisibleColumns.HexText)
+        if (_documentState.Configuration.ColumnsVisible is VisibleColumns.DataText)
         {
             DrawCaret(EditorColumn.Right);
         }
@@ -864,10 +864,10 @@ internal readonly ref struct EditorRenderer
     {
         return column switch
         {
-            ActiveColumn.Hex => _documentState.Configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+            ActiveColumn.Hex => _documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
                 ? EditorColumn.Left
                 : EditorColumn.Right,
-            ActiveColumn.Text => _documentState.Configuration.ColumnsVisible is VisibleColumns.HexText
+            ActiveColumn.Text => _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText
                 ? EditorColumn.Right
                 : default!,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)

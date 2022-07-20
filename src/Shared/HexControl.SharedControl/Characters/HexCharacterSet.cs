@@ -1,7 +1,9 @@
-﻿using System.Text;
+﻿using JetBrains.Annotations;
+using System.Text;
 
 namespace HexControl.SharedControl.Characters;
 
+[PublicAPI]
 public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConvertible
 {
     private static readonly char[] Characters =
@@ -109,7 +111,7 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
         {
             sb.Append(Characters[@byte * 2]).Append(Characters[@byte * 2 + 1]);
 
-            if(currentOffset is not 0 && (currentOffset + 1) % (info.Configuration.GroupSize) is 0)
+            if(currentOffset is not 0 && (currentOffset + 1) % info.Configuration.GroupSize is 0 || info.Configuration.GroupSize is 1)
             {
                 sb.Append(' ');
             }

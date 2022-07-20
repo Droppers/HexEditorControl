@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;
@@ -111,7 +112,7 @@ internal class EditorElement : VisualElement
 
     public int TotalWidth =>
         _calculator.GetColumnCharacterCount(EditorColumn.Left) +
-        (Configuration.ColumnsVisible is VisibleColumns.HexText
+        (Configuration.ColumnsVisible is VisibleColumns.DataText
             ? _calculator.GetColumnCharacterCount(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
             : 0);
 
@@ -198,7 +199,7 @@ internal class EditorElement : VisualElement
 
         var column = EditorColumn.Left;
         var x = leftOffset + Math.Max(0, point.X);
-        if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.HexText)
+        if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.DataText)
         {
             x = Math.Min(_calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth,
                 x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
@@ -291,7 +292,7 @@ internal class EditorElement : VisualElement
             return;
         }
 
-        _renderState.ResetCaretTick();
+        ResetCaretTick();
         Document.ChangeCaret(column, offset, nibble, scrollToCaret);
     }
 
@@ -306,7 +307,7 @@ internal class EditorElement : VisualElement
         var beforeEnd = point.Y < rowCount * _control.RowHeight + _control.HeaderHeight;
 
         // Only left column is visible, don't check right column
-        if (Configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (Configuration.ColumnsVisible is not VisibleColumns.DataText)
         {
             return inLeftColumn && pastHeader && beforeEnd;
         }
@@ -335,13 +336,14 @@ internal class EditorElement : VisualElement
 
         var (column, offset, nibble) = GetOffsetFromPoint(position);
 
+        var origOffset = offset;
         // Allow selecting from middle of character rather than entire character
         var characterSet = _calculator.GetCharacterSetForColumn(column);
         if (nibble >= characterSet.Width / 2)
         {
-            offset += characterSet.Width / 2;
+            offset += 1;
         }
-
+        
         // Check if user is initially dragging backwards (left or up)
         if (_mouseDownPosition is not null &&
             (position.X < _mouseDownPosition.Value.X || position.Y < _mouseDownPosition.Value.Y))
@@ -369,8 +371,15 @@ internal class EditorElement : VisualElement
         var startOffset = newOffset >= _startSelectionOffset ? _startSelectionOffset.Value : newOffset;
         var endOffset = newOffset >= _startSelectionOffset ? newOffset : _startSelectionOffset.Value;
 
+        ResetCaretTick();
+
         if (startOffset == endOffset)
         {
+            Document.Caret = Document.Caret with
+            {
+                Offset = newOffset,
+                Nibble = 0
+            };
             Document.Deselect();
         }
         else
@@ -535,7 +544,7 @@ internal class EditorElement : VisualElement
         offset = Math.Max(0, Math.Min(document.Length, offset));
         nibble = Math.Max(0, nibble);
 
-        if (document.Selection is null)
+        if (_keyboardSelectMode is false && document.Selection is null)
         {
             SetCaretOffset(offset, nibble, true);
         }
@@ -553,7 +562,7 @@ internal class EditorElement : VisualElement
 
     private ActiveColumn MapToActiveColumn(EditorColumn column)
     {
-        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.DataText)
         {
             throw new InvalidOperationException(
                 "Cannot map target column column when right column is not enabled.");
@@ -561,10 +570,10 @@ internal class EditorElement : VisualElement
 
         return column switch
         {
-            EditorColumn.Left => _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+            EditorColumn.Left => _configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
                 ? ActiveColumn.Hex
                 : ActiveColumn.Text,
-            EditorColumn.Right => _configuration.ColumnsVisible is VisibleColumns.HexText
+            EditorColumn.Right => _configuration.ColumnsVisible is VisibleColumns.DataText
                 ? ActiveColumn.Text
                 : default!,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
@@ -575,13 +584,18 @@ internal class EditorElement : VisualElement
     {
         return column switch
         {
-            ActiveColumn.Hex => _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
+            ActiveColumn.Hex => _configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
                 ? EditorColumn.Left
                 : EditorColumn.Right,
-            ActiveColumn.Text => _configuration.ColumnsVisible is VisibleColumns.HexText
+            ActiveColumn.Text => _configuration.ColumnsVisible is VisibleColumns.DataText
                 ? EditorColumn.Right
                 : default!,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
+    }
+
+    private void ResetCaretTick()
+    {
+        _renderState.ResetCaretTick();
     }
 }

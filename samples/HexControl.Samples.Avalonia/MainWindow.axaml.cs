@@ -28,7 +28,7 @@ public class MainWindow : Window
         var config = new DocumentConfiguration
         {
             OffsetBase = NumberBase.Decimal,
-            ColumnsVisible = VisibleColumns.HexText,
+            ColumnsVisible = VisibleColumns.DataText,
             WriteMode = WriteMode.Insert
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");

@@ -97,7 +97,7 @@ public class Document
     public Caret Caret
     {
         get => _caret;
-        set
+        internal set
         {
             if (!IsVisibleColumn(value.Column, out var visibleColumn))
             {
@@ -116,7 +116,7 @@ public class Document
     public Selection? Selection
     {
         get => _selection;
-        set
+        internal set
         {
             if (value is { } val && !IsVisibleColumn(val.Column, out var visibleColumn))
             {
@@ -440,7 +440,7 @@ public class Document
     {
         return column switch
         {
-            ActiveColumn.Hex => Configuration.HexCharacterSet,
+            ActiveColumn.Hex => Configuration.DataCharacterSet,
             ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
@@ -465,7 +465,7 @@ public class Document
     {
         return column switch
         {
-            ActiveColumn.Hex => Configuration.HexCharacterSet,
+            ActiveColumn.Hex => Configuration.DataCharacterSet,
             ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
@@ -508,11 +508,12 @@ public class Document
     public async Task<bool> TryTypeAtCaretAsync(char @char)
     {
         var endOfDocument = Caret.Offset >= Length;
+        var isNewByte = Selection.HasValue || endOfDocument || Configuration.WriteMode is WriteMode.Insert && Caret.Nibble is 0;
 
         var characterSet = GetCharacterSetForColumn(Caret.Column);
         var oldByte = (byte)0;
 
-        if (!endOfDocument)
+        if (!isNewByte)
         {
             var readByte = await ReadCaretByte();
             if (readByte is null)
@@ -628,7 +629,7 @@ public class Document
         var changesArray = changes.ToArray();
 
         // Reset the horizontal offset (scroll) when changing the columns or character sets
-        if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible) or nameof(Configuration.HexCharacterSet)
+        if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible) or nameof(Configuration.DataCharacterSet)
                 or nameof(Configuration.TextCharacterSet)))
         {
             HorizontalOffset = 0;
@@ -658,7 +659,7 @@ public class Document
 
     private bool IsVisibleColumn(ActiveColumn column, out ActiveColumn visibleColumn)
     {
-        if (Configuration.ColumnsVisible is VisibleColumns.HexText)
+        if (Configuration.ColumnsVisible is VisibleColumns.DataText)
         {
             visibleColumn = column;
             return true;
@@ -667,7 +668,7 @@ public class Document
         visibleColumn = column switch
         {
             ActiveColumn.Hex when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
-            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Hex => ActiveColumn.Hex,
+            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Data => ActiveColumn.Hex,
             _ => column
         };
         return false;

@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;
@@ -219,12 +220,19 @@ internal class EditorElement : VisualElement
             : 0;
 
         var byteColumn = (leftInCharacters - groupCount) / characterSet.Width;
-        var nibble = Math.Max(0, ((int)relativePoint.X - _calculator.GetLeft(byteColumn, column)) / _control.CharacterWidth);
-        
+        var nibble = Math.Max(0, ((int)relativePoint.X - _calculator.GetLeft(byteColumn, column)) / (double)_control.CharacterWidth);
+
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var offset = Offset + (byteRow * Configuration.BytesPerRow + byteColumn);
 
-        return (column, ClampOffset(offset), offset >= Document?.Length ? 0 : nibble);
+        if (characterSet.Width is 1 && nibble >= 0.5 || Math.Round(nibble) >= characterSet.Width)
+        {
+            offset++;
+            nibble = 0;
+        }
+
+        nibble = Math.Round(nibble);
+        return (column, ClampOffset(offset), offset >= Document?.Length ? 0 : (int)nibble);
     }
 
     private void OnMouseDown(object? sender, HostMouseButtonEventArgs e)
@@ -337,10 +345,10 @@ internal class EditorElement : VisualElement
         }
 
         var (column, offset, nibble) = GetOffsetFromPoint(position);
-        
+
         // Allow selecting from middle of character rather than entire character
         var characterSet = _calculator.GetCharacterSetForColumn(column);
-        if (nibble >= characterSet.Width / 2)
+        if (nibble >= 1 && nibble >= characterSet.Width / 2)
         {
             offset += 1;
         }

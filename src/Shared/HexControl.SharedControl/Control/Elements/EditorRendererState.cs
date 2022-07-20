@@ -78,8 +78,8 @@ internal class EditorRendererState
             return;
         }
 
-        CaretTick = true;
         _caretTimer.Stop();
         _caretTimer.Start();
+        CaretTick = true;
     }
 }

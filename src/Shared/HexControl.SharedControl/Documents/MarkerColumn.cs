@@ -5,7 +5,7 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public enum MarkerColumn
 {
-    Hex,
-    Text,
-    HexText
+    DataText,
+    Data,
+    Text
 }

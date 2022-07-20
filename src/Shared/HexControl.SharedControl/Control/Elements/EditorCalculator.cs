@@ -28,7 +28,7 @@ internal class EditorCalculator
         set
         {
             var maxHorizontalOffset = GetColumnCharacterCount(EditorColumn.Left) +
-                (_configuration.ColumnsVisible is VisibleColumns.HexText ? GetColumnCharacterCount(EditorColumn.Right) : 0) - 1;
+                (_configuration.ColumnsVisible is VisibleColumns.DataText ? GetColumnCharacterCount(EditorColumn.Right) : 0) - 1;
             _horizontalOffset = Math.Max(0, Math.Min(value, maxHorizontalOffset));
             _horizontalCharacterOffset = GetFirstVisibleColumnIndex();
         }
@@ -59,7 +59,7 @@ internal class EditorCalculator
 
     public int GetVisibleColumnWidth(EditorColumn column)
     {
-        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.DataText)
         {
             return 0;
         }
@@ -117,7 +117,7 @@ internal class EditorCalculator
     
     public CharacterSet GetCharacterSetForColumn(EditorColumn column)
     {
-        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.HexText)
+        if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.DataText)
         {
             throw new InvalidOperationException(
                 "Cannot get character set of right column when right column is not enabled.");
@@ -158,11 +158,11 @@ internal class EditorCalculator
 
     private void UpdateCharacterSets()
     {
-        _leftCharacterSet = _configuration.ColumnsVisible is VisibleColumns.Hex or VisibleColumns.HexText
-            ? _configuration.HexCharacterSet
+        _leftCharacterSet = _configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
+            ? _configuration.DataCharacterSet
             : _configuration.TextCharacterSet;
 
-        _rightCharacterSet = _configuration.ColumnsVisible is VisibleColumns.HexText
+        _rightCharacterSet = _configuration.ColumnsVisible is VisibleColumns.DataText
             ? _configuration.TextCharacterSet
             : null;
     }

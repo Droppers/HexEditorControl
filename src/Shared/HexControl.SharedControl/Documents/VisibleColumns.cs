@@ -5,7 +5,7 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public enum VisibleColumns
 {
-    HexText,
-    Hex,
+    DataText,
+    Data,
     Text
 }

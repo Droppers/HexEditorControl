@@ -13,19 +13,13 @@ internal class ChangeCollection
         Modification = modification;
         ChangeOffset = changeOffset;
 
-        _changes = new List<IChange>();
+        _changes = new List<IChange>(3);
     }
 
     public bool StartAtPrevious
     {
         get => _startAtPrevious ?? false;
-        private set
-        {
-            if (_startAtPrevious is null)
-            {
-                _startAtPrevious = value;
-            }
-        }
+        private set => _startAtPrevious ??= value;
     }
 
     public int Count => _changes.Count;

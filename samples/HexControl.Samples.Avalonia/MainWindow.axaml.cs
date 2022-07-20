@@ -28,15 +28,15 @@ public class MainWindow : Window
         var config = new DocumentConfiguration
         {
             OffsetBase = NumberBase.Decimal,
-            ColumnsVisible = VisibleColumns.HexText,
+            ColumnsVisible = VisibleColumns.DataText,
             WriteMode = WriteMode.Insert
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         Document = Document.FromBytes(bytes, configuration: config);
 
-        for (var i = 0; i < 100_000; i++)
+        for (var i = 0; i < 10_000; i++)
         {
-            Document.AddMarker(new Marker(i * 20000, 10000)
+            Document.AddMarker(new Marker(i * 200, 100)
             {
                 Background = Color.FromArgb(255, 0, 0, 0),
                 Column = MarkerColumn.Text,

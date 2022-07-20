@@ -1,7 +1,9 @@
-﻿using System.Text;
+﻿using JetBrains.Annotations;
+using System.Text;
 
 namespace HexControl.SharedControl.Characters;
 
+[PublicAPI]
 public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IStringParsable
 {
     private const char NULL_CHARACTER_REPLACEMENT = '�';
@@ -10,7 +12,7 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
 
     public TextCharacterSet(char[] characters)
     {
-        if (characters.Length != 256)
+        if (characters.Length is not 256)
         {
             throw new ArgumentOutOfRangeException(nameof(characters), "Expects an char array with length of 256.");
         }

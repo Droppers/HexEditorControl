@@ -10,7 +10,7 @@ public record DocumentConfiguration
 
     public bool OffsetsVisible { get; init; } = true;
 
-    public VisibleColumns ColumnsVisible { get; init; } = VisibleColumns.HexText;
+    public VisibleColumns ColumnsVisible { get; init; } = VisibleColumns.DataText;
 
     public NumberBase OffsetBase { get; init; } = NumberBase.Hexadecimal;
 
@@ -18,7 +18,7 @@ public record DocumentConfiguration
 
     public int GroupSize { get; init; } = 4;
 
-    public CharacterSet HexCharacterSet { get; init; } = new HexCharacterSet();
+    public CharacterSet DataCharacterSet { get; init; } = new HexCharacterSet();
 
     public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(CharacterEncoding.Windows);
 
@@ -51,9 +51,9 @@ public record DocumentConfiguration
             yield return nameof(GroupSize);
         }
 
-        if (HexCharacterSet != other.HexCharacterSet)
+        if (DataCharacterSet != other.DataCharacterSet)
         {
-            yield return nameof(HexCharacterSet);
+            yield return nameof(DataCharacterSet);
         }
 
         if (TextCharacterSet != other.TextCharacterSet)

@@ -1,4 +1,6 @@
-﻿using HexControl.Buffers.Chunks;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using HexControl.Buffers.Chunks;
 using HexControl.Buffers.Events;
 using HexControl.Buffers.Find;
 using HexControl.Buffers.Helpers;
@@ -13,13 +15,13 @@ namespace HexControl.Buffers;
 public abstract class ByteBuffer
 {
     private readonly ChangeTracker _changeTracker;
-    private readonly SemaphoreSlim _lock;
+    private readonly AsyncReaderWriterLock _lock;
 
     protected ByteBuffer(ChangeTracking changeTracking)
     {
         Chunks = new LinkedList<IChunk>();
         _changeTracker = new ChangeTracker(this, changeTracking);
-        _lock = new SemaphoreSlim(1, 1);
+        _lock = new AsyncReaderWriterLock();
     }
 
     internal LinkedList<IChunk> Chunks { get; }
@@ -49,27 +51,27 @@ public abstract class ByteBuffer
     public event EventHandler<ModifiedEventArgs>? Modified;
     public event EventHandler<EventArgs>? Saved;
 
-    public async Task ReplaceAsync(long offset, long length, byte @byte)
+    public async Task ReplaceAsync(long offset, long length, byte @byte, CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalReplace(offset, length, new[] {@byte});
     }
 
-    public async Task ReplaceAsync(long offset, long length, byte[] bytes)
+    public async Task ReplaceAsync(long offset, long length, byte[] bytes, CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalReplace(offset, length, bytes);
     }
 
     public void Replace(long offset, long length, byte @byte)
     {
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalReplace(offset, length, new[] {@byte});
     }
 
     public void Replace(long offset, long length, byte[] bytes)
     {
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalReplace(offset, length, bytes);
     }
 
@@ -82,14 +84,17 @@ public abstract class ByteBuffer
         });
     }
 
-    public async Task WriteAsync(long offset, byte value)
+    public async Task WriteAsync(long offset, byte value, CancellationToken cancellationToken = default)
     {
-        await WriteAsync(offset, new[] { value });
+        await WriteAsync(offset, new[] { value }, cancellationToken);
     }
 
-    public async Task WriteAsync(long offset, byte[] bytes)
+    public async Task WriteAsync(long offset, byte[] bytes, CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffsetAndLength(offset, bytes.Length);
+
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalWrite(offset, bytes);
     }
 
@@ -100,15 +105,15 @@ public abstract class ByteBuffer
 
     public void Write(long offset, byte[] bytes)
     {
-        using var _ = _lock.Lock();
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffsetAndLength(offset, bytes.Length);
+
+        using var _ = _lock.AcquireWriterLock();
         InternalWrite(offset, bytes);
     }
-
-    // TODO: fill gaps with zeros, e.g. writing at startOffset 300 when document is completely empty, or writing past the maxLength.
+    
     private void InternalWrite(long offset, byte[] bytes)
     {
-        BeforeModification();
-        
         using var scope = ChangeScope.Write(this, offset, bytes);
 
         var (node, currentOffset) = GetNodeAt(offset);
@@ -151,21 +156,21 @@ public abstract class ByteBuffer
             WriteCreateNewMemoryChunk(node, relativeOffset, bytes, scope.Changes);
         }
     }
-
-    // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
-    public async Task InsertAsync(long offset, byte @byte)
+    
+    public async Task InsertAsync(long offset, byte @byte, CancellationToken cancellationToken = default)
     {
-        await InsertAsync(offset, new[] { @byte });
+        await InsertAsync(offset, new[] { @byte }, cancellationToken);
     }
 
-    public async Task InsertAsync(long offset, byte[] bytes)
+    public async Task InsertAsync(long offset, byte[] bytes, CancellationToken cancellationToken = default)
     {
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffset(offset);
 
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalInsert(offset, bytes);
     }
-
-    // TODO: insert beyond the document Length, fill gap with 0's, and insert that buffer at 'Length'
+    
     public void Insert(long offset, byte @byte)
     {
         Insert(offset, new[] { @byte });
@@ -173,15 +178,15 @@ public abstract class ByteBuffer
 
     public void Insert(long offset, byte[] bytes)
     {
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffset(offset);
 
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalInsert(offset, bytes);
     }
 
     private void InternalInsert(long offset, byte[] bytes)
     {
-        BeforeModification();
-        
         var (node, currentOffset) = GetNodeAt(offset);
         if (node is null)
         {
@@ -222,23 +227,26 @@ public abstract class ByteBuffer
         }
     }
 
-    public async Task DeleteAsync(long offset, long length)
+    public async Task DeleteAsync(long offset, long length, CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffsetAndLength(offset, length);
+
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalDelete(offset, length);
     }
 
     public void Delete(long offset, long length)
     {
+        GuardAgainstInvalidState();
+        GuardAgainstInvalidOffsetAndLength(offset, length);
 
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalDelete(offset, length);
     }
 
     private void InternalDelete(long offset, long length)
     {
-        BeforeModification();
-
         using var scope = ChangeScope.Delete(this, offset, length);
 
         var (node, currentOffset) = GetNodeAt(offset);
@@ -272,15 +280,15 @@ public abstract class ByteBuffer
         }
     }
 
-    public async Task UndoAsync()
+    public async Task UndoAsync(CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalUndo();
     }
 
     public void Undo()
     {
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalUndo();
     }
 
@@ -301,15 +309,15 @@ public abstract class ByteBuffer
         }
     }
 
-    public async Task RedoAsync()
+    public async Task RedoAsync(CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireWriterLockAsync(cancellationToken);
         InternalRedo();
     }
 
     public void Redo()
     {
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireWriterLock();
         InternalRedo();
     }
 
@@ -334,7 +342,7 @@ public abstract class ByteBuffer
         long offset,
         List<ModifiedRange>? modifications = null)
     {
-        using var _ = _lock.Lock();
+        using var _ = _lock.AcquireReaderLock();
         return InternalRead(buffer, offset, modifications);
     }
 
@@ -396,7 +404,7 @@ public abstract class ByteBuffer
     List<ModifiedRange>? modifications = null,
     CancellationToken cancellationToken = default)
     {
-        using var _ = await _lock.LockAsync();
+        using var _ = await _lock.AcquireReaderLockAsync(cancellationToken);
         return await InternalReadAsync(buffer, offset, modifications, cancellationToken);
     }
 
@@ -467,55 +475,59 @@ public abstract class ByteBuffer
     public long Find(long startOffset, long? maxLength, bool backward, byte[] pattern,
         CancellationToken cancellationToken = default)
     {
-        var strategy = new KmpFindStrategy(pattern);
-        
-        var currentStartOffset = startOffset;
-        var didWrap = false;
+        using var _ = _lock.AcquireReaderLock(cancellationToken);
+        Locked = true;
 
-        var remainingMaxLength = maxLength ?? long.MaxValue;
-
-        while (true)
+        try
         {
-            var findOffset = currentStartOffset;
-            long findLength;
-            if (backward)
+            var strategy = new KmpFindStrategy(pattern);
+            var currentStartOffset = startOffset;
+            var didWrap = false;
+            var remainingMaxLength = maxLength ?? long.MaxValue;
+            while (true)
             {
-                findLength = didWrap
-                    ? currentStartOffset - startOffset + (pattern.Length - 1)
-                    : startOffset - (startOffset - currentStartOffset) + 1;
-            }
-            else
-            {
-                findLength = didWrap
-                    ? startOffset - findOffset + pattern.Length
-                    : Length - findOffset;
-            }
+                var findOffset = currentStartOffset;
+                long findLength;
+                if (backward)
+                {
+                    findLength = didWrap
+                        ? currentStartOffset - startOffset + (pattern.Length - 1)
+                        : startOffset - (startOffset - currentStartOffset) + 1;
+                }
+                else
+                {
+                    findLength = didWrap
+                        ? startOffset - findOffset + pattern.Length
+                        : Length - findOffset;
+                }
 
-            if (maxLength is not null)
-            {
-                findLength = Math.Min(findLength, remainingMaxLength);
-                remainingMaxLength -= findLength;
-            }
+                if (maxLength is not null)
+                {
+                    findLength = Math.Min(findLength, remainingMaxLength);
+                    remainingMaxLength -= findLength;
+                }
 
-            // Find without overhead when the buffer is not modified.
-            var foundOffset = IsModified
-                ? FindInMemory(strategy, findOffset, findLength, backward, cancellationToken)
-                : FindInImmutable(strategy, findOffset, findLength, backward, cancellationToken);
-            if (foundOffset is not -1)
-            {
-                return foundOffset;
-            }
+                // Find without overhead when the buffer is not modified.
+                var foundOffset = IsModified
+                    ? FindInMemory(strategy, findOffset, findLength, backward, cancellationToken)
+                    : FindInImmutable(strategy, findOffset, findLength, backward, cancellationToken);
+                if (foundOffset is not -1)
+                {
+                    return foundOffset;
+                }
 
-            if (!didWrap)
-            {
+                if (didWrap)
+                {
+                    return -1;
+                }
+
                 didWrap = true;
                 currentStartOffset = backward ? Length : 0;
-
             }
-            else
-            {
-                return -1;
-            }
+        }
+        finally
+        {
+            Locked = false;
         }
     }
 
@@ -726,7 +738,7 @@ public abstract class ByteBuffer
         if (length >= node.Value.Length)
         {
             changes.SetStartAtPrevious();
-            var removeChunkChange = new RemoveChunkChange(ReferenceEquals(node.Value, _firstChunk)).Apply(this, node);
+            var removeChunkChange = new RemoveChunkChange(ReferenceEquals(node.Value, changes.FirstChunk)).Apply(this, node);
             if (prependChange)
             {
                 changes.Prepend(removeChunkChange);
@@ -781,9 +793,12 @@ public abstract class ByteBuffer
 
     public ByteBufferStream AsStream() => new(this);
 
+    #region Saving
     public async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
-        BeforeModification();
+        GuardAgainstInvalidState();
+
+        await _lock.AcquireWriterLockAsync(cancellationToken);
 
         if (!IsModified)
         {
@@ -807,20 +822,14 @@ public abstract class ByteBuffer
 
     public async Task<bool> SaveToFileAsync(string fileName, CancellationToken cancellationToken = default)
     {
-        Locked = true;
-        try
-        {
-            await using var stream = File.Open(fileName, FileMode.OpenOrCreate);
-            return await SaveToFileAsync(stream, cancellationToken);
-        }
-        finally
-        {
-            Locked = false;
-        }
+        await using var stream = File.Open(fileName, FileMode.OpenOrCreate);
+        return await SaveToFileAsync(stream, cancellationToken);
     }
 
     public async Task<bool> SaveToFileAsync(FileStream fileStream, CancellationToken cancellationToken = default)
     {
+        using var _ = await _lock.AcquireReaderLockAsync(cancellationToken);
+
         Locked = true;
         try
         {
@@ -832,7 +841,7 @@ public abstract class ByteBuffer
         }
     }
 
-    private async Task<bool> InternalSaveToFileAsync(FileStream fileStream, CancellationToken cancellationToken = default)
+    private async Task<bool> InternalSaveToFileAsync(FileStream fileStream, CancellationToken cancellationToken)
     {
         const int flushSize = 256 * 1024 * 1024;
         const int chunkSize = 32 * 1024;
@@ -881,6 +890,8 @@ public abstract class ByteBuffer
         return true;
     }
 
+    #endregion
+
     /// <summary>
     ///     Check whether the structure of the buffer might have changed. This implies verifying if any insert of delete
     ///     modifications have been made.
@@ -893,9 +904,8 @@ public abstract class ByteBuffer
                        collection.Modification is InsertModification or DeleteModification));
     }
 
-    private IChunk? _firstChunk;
-
-    private void BeforeModification()
+    [StackTraceHidden]
+    private void GuardAgainstInvalidState()
     {
         if (Locked)
         {
@@ -906,8 +916,35 @@ public abstract class ByteBuffer
         {
             throw new InvalidOperationException("Modifications are not permitted, buffer is opened in readonly mode.");
         }
+    }
 
-        _firstChunk = Chunks.First?.Value;
+    [StackTraceHidden]
+    private void GuardAgainstInvalidOffset(
+        long offset,
+        [CallerArgumentExpression("offset")] string? offsetExpression = null)
+    {
+        if (offset < 0 || offset > Length)
+        {
+            throw new ArgumentOutOfRangeException(offsetExpression, offset, "Offset is not between 0 and length of buffer.");
+        }
+    }
+
+    [StackTraceHidden]
+    private void GuardAgainstInvalidOffsetAndLength(
+        long offset, 
+        long length, 
+        [CallerArgumentExpression("offset")] string? offsetExpression = null, 
+        [CallerArgumentExpression("length")] string? lengthExpression = null)
+    {
+        if (offset < 0 || offset > Length - 1)
+        {
+            throw new ArgumentOutOfRangeException(offsetExpression, offset, "Offset is not between 0 and length of buffer.");
+        }
+
+        if (offset + length > Length)
+        {
+            throw new ArgumentOutOfRangeException(lengthExpression, length, "Combination of offset and length exceeds length of buffer.");
+        }
     }
 
     private ref struct ChangeScope
@@ -926,17 +963,17 @@ public abstract class ByteBuffer
 
         public static ChangeScope Delete(ByteBuffer buffer, long offset, long length)
         {
-            return new ChangeScope(buffer, new ChangeCollection(new DeleteModification(offset, length), offset));
+            return new ChangeScope(buffer, new ChangeCollection(new DeleteModification(offset, length), offset, buffer.Chunks.First?.Value));
         }
 
         public static ChangeScope Insert(ByteBuffer buffer, long offset, byte[] bytes)
         {
-            return new ChangeScope(buffer, new ChangeCollection(new InsertModification(offset, bytes), offset));
+            return new ChangeScope(buffer, new ChangeCollection(new InsertModification(offset, bytes), offset, buffer.Chunks.First?.Value));
         }
 
         public static ChangeScope Write(ByteBuffer buffer, long offset, byte[] bytes)
         {
-            return new ChangeScope(buffer, new ChangeCollection(new WriteModification(offset, bytes), offset));
+            return new ChangeScope(buffer, new ChangeCollection(new WriteModification(offset, bytes), offset, buffer.Chunks.First?.Value));
         }
 
         public void Dispose()

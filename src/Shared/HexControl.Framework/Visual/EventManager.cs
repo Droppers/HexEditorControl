@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using HexControl.Framework.Optimizations;
+using HexControl.Framework.Caching;
 using JetBrains.Annotations;
 
 namespace HexControl.Framework.Visual;

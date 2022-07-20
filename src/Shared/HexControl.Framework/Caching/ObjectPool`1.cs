@@ -1,4 +1,4 @@
-﻿namespace HexControl.Framework.Optimizations;
+﻿namespace HexControl.Framework.Caching;
 
 internal sealed class ObjectPool<TObject> : IDisposable
     where TObject : new()

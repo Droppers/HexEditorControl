@@ -1,6 +1,6 @@
 ﻿using System.Text;
+using HexControl.Framework.Caching;
 using HexControl.Framework.Host;
-using HexControl.Framework.Optimizations;
 
 namespace HexControl.Framework.Drawing.Text;
 

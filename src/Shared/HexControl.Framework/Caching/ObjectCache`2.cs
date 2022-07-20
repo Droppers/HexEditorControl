@@ -1,4 +1,4 @@
-﻿namespace HexControl.Framework.Optimizations;
+﻿namespace HexControl.Framework.Caching;
 
 internal class ObjectCache<TKey, TValue> : IDisposable
     where TKey : notnull

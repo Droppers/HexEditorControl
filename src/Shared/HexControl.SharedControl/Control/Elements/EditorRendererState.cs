@@ -1,5 +1,5 @@
-﻿using HexControl.Framework.Drawing;
-using HexControl.Framework.Optimizations;
+﻿using HexControl.Framework.Caching;
+using HexControl.Framework.Drawing;
 using HexControl.Framework.Visual;
 using HexControl.SharedControl.Documents;
 using System.Drawing;

@@ -302,7 +302,10 @@ internal class EditorElement : VisualElement
 
         var inLeftColumn = point.X < leftWidth;
         var pastHeader = point.Y > _control.HeaderHeight;
-        var rowCount = Math.Ceiling(_bytesLength / (float)Configuration.BytesPerRow);
+
+        // When the final row is completely filled, add a row to allow for inserting at the end
+        var insertAtNextRow = _bytesLength % Configuration.BytesPerRow is 0; 
+        var rowCount = Math.Ceiling(_bytesLength / (float)Configuration.BytesPerRow) + (insertAtNextRow ? 1 : 0);
         var beforeEnd = point.Y < rowCount * _control.RowHeight + _control.HeaderHeight;
 
         // Only left column is visible, don't check right column

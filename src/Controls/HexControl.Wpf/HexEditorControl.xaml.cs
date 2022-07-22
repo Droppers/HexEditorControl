@@ -44,7 +44,7 @@ public partial class HexEditorControl
             { "FakeTextBox", new WpfTextBox(FakeTextBox)}
         };
 #else
-        _host = new WpfD2DHost(HostContainer, new D2DControl(HostContainer))
+        _host = new WpfD2DHost(HostContainer, new D2DControl2(HostContainer))
         {
             {"VerticalScrollBar", new WpfScrollBar(VerticalScrollBar)},
             {"HorizontalScrollBar", new WpfScrollBar(HorizontalScrollBar)},

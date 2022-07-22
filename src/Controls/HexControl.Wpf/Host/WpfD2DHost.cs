@@ -13,14 +13,14 @@ namespace HexControl.Wpf.Host;
 
 internal class WpfD2DHost : WpfControl
 {
-    private readonly D2DControl _d2dControl;
+    private readonly D2DControl2 _d2dControl;
     private readonly Grid _hostContainer;
 
     private float _dpi = 1;
     private D2DRenderFactory? _factory;
     private WpfD2DRenderContext? _renderContext;
 
-    public WpfD2DHost(Grid hostContainer, D2DControl d2dControl) : base(hostContainer)
+    public WpfD2DHost(Grid hostContainer, D2DControl2 d2dControl) : base(hostContainer)
     {
         _hostContainer = hostContainer;
 
@@ -33,11 +33,11 @@ internal class WpfD2DHost : WpfControl
         hostContainer.Children.Add(_d2dControl);
     }
 
-    public ResizeMode ResizeMode
-    {
-        get => _d2dControl.ResizeMode;
-        set => _d2dControl.ResizeMode = value;
-    }
+    public ResizeMode ResizeMode { get; set; }
+    //{
+    //    get => _d2dControl.ResizeMode;
+    //    set => _d2dControl.ResizeMode = value;
+    //}
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -81,23 +81,21 @@ internal class WpfD2DHost : WpfControl
     {
         if (e.Mode is PowerModes.Resume)
         {
-            _d2dControl.CreateAndBindTargets();
+            //_d2dControl.CreateAndBindTargets();
             Invalidate();
         }
     }
 
-    private void OnRender(Factory factory, RenderTarget renderTarget, bool newSurface)
+    private void OnRender(Direct2DImageSurface surface, Factory factory, RenderTarget renderTarget, bool newSurface)
     {
         if (newSurface || _factory is null || _renderContext is null)
         {
             Disposer.SafeDispose(ref _renderContext);
 
             _factory = new WpfD2DRenderFactory(renderTarget);
-            _renderContext = new WpfD2DRenderContext(_factory, factory, renderTarget, _d2dControl);
-            _renderContext.AttachStateProvider(_d2dControl);
+            _renderContext = new WpfD2DRenderContext(_factory, surface, renderTarget);
         }
 
-        _renderContext.Dpi = _dpi;
         RaiseRender(_renderContext, newSurface);
     }
 

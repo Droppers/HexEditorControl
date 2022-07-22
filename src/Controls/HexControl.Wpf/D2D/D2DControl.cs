@@ -1,4 +1,5 @@
 ﻿#if !SKIA_RENDER
+using System.Diagnostics;
 using System.Timers;
 using System.Windows;
 using System.Windows.Media;
@@ -32,7 +33,8 @@ internal class D2DControl : Image, IRenderStateProvider
     private Device? _device;
     private float _dpi = 1;
 
-    private Texture2D? _renderTarget;
+    private Texture2D? _renderTexture;
+    private Texture2D? _displayTexture;
 
     public D2DControl(FrameworkElement parent)
     {
@@ -172,7 +174,8 @@ internal class D2DControl : Image, IRenderStateProvider
         Disposer.SafeDispose(ref _d2dRenderTarget);
         Disposer.SafeDispose(ref _d2dFactory);
         Disposer.SafeDispose(ref _d3dSurface);
-        Disposer.SafeDispose(ref _renderTarget);
+        Disposer.SafeDispose(ref _renderTexture);
+        Disposer.SafeDispose(ref _displayTexture);
         Disposer.SafeDispose(ref _device);
     }
 
@@ -192,8 +195,31 @@ internal class D2DControl : Image, IRenderStateProvider
         _device.ImmediateContext.Flush();
 
         Disposer.SafeDispose(ref _d2dFactory);
-        Disposer.SafeDispose(ref _renderTarget);
+        Disposer.SafeDispose(ref _renderTexture);
+        Disposer.SafeDispose(ref _displayTexture);
         Disposer.SafeDispose(ref _d2dRenderTarget);
+
+        _renderTexture = CreateTexture(width, height);
+        _displayTexture = CreateTexture(width, height);
+
+        using var surface = _renderTexture.QueryInterface<Surface>();
+
+        _d2dFactory = new Factory();
+        var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
+        _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
+
+        _d3dSurface.ClearRenderTarget();
+        _d3dSurface.SetRenderTarget(_displayTexture);
+
+        _device.ImmediateContext.Rasterizer.SetViewport(0, 0, width, height);
+
+        CanRender = true;
+
+        OnRender(true);
+    }
+
+    private Texture2D CreateTexture(int width, int height)
+    {
 
         var renderDesc = new Texture2DDescription
         {
@@ -208,22 +234,7 @@ internal class D2DControl : Image, IRenderStateProvider
             CpuAccessFlags = CpuAccessFlags.None,
             ArraySize = 1
         };
-        _renderTarget = new Texture2D(_device, renderDesc);
-
-        using var surface = _renderTarget.QueryInterface<Surface>();
-
-        _d2dFactory = new Factory();
-        var rtp = new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
-        _d2dRenderTarget = new RenderTarget(_d2dFactory, surface, rtp);
-
-        _d3dSurface.ClearRenderTarget();
-        _d3dSurface.SetRenderTarget(_renderTarget);
-
-        _device.ImmediateContext.Rasterizer.SetViewport(0, 0, width, height);
-
-        CanRender = true;
-
-        OnRender(true);
+        return new Texture2D(_device, renderDesc);
     }
 
     private void OnRender(bool newSurface = false)
@@ -243,8 +254,15 @@ internal class D2DControl : Image, IRenderStateProvider
 
     public void InvalidateImage(SharedRectangle? dirtyRect)
     {
-        _device?.ImmediateContext.Flush();
-        _d3dSurface?.InvalidateD3DImage(dirtyRect);
+        if (_device is null || _d3dSurface is null)
+        {
+            return;
+        }
+
+        _device.ImmediateContext.ResolveSubresource(_renderTexture, 0, _displayTexture, 0, Format.B8G8R8A8_UNorm);
+        _device.ImmediateContext.Flush();
+
+        _d3dSurface.InvalidateD3DImage(dirtyRect);
     }
 }
 #endif

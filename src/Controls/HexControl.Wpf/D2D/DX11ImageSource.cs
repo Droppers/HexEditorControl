@@ -35,37 +35,41 @@ internal class Dx11ImageSource : D3DImage, IDisposable
 
     public void InvalidateD3DImage(SharedRectangle? dirtyRect)
     {
-        if (_renderTarget is null || dirtyRect is not { } rect)
+        if (_renderTarget is null)// || dirtyRect is not { } rect)
         {
             return;
         }
 
-        if (rect.X > PixelWidth || rect.Y > PixelHeight)
+        //if (rect.X > PixelWidth || rect.Y > PixelHeight)
+        //{
+        //    return;
+        //}
+
+        //var width = rect.Width;
+        //if (rect.X + rect.Width > PixelWidth)
+        //{
+        //    width = PixelWidth - rect.X;
+        //}
+
+        //var height = rect.Height;
+        //if (rect.Y + rect.Height > PixelHeight)
+        //{
+        //    height = PixelHeight - rect.Y;
+        //}
+
+        if (TryLock(default(TimeSpan)))
         {
-            return;
+            AddDirtyRect(new Int32Rect(0, 0, PixelWidth, PixelHeight));
+            //AddDirtyRect(new Int32Rect((int)rect.X, (int)rect.Y, (int)width, (int)height));
         }
 
-        var width = rect.Width;
-        if (rect.X + rect.Width > PixelWidth)
-        {
-            width = PixelWidth - rect.X;
-        }
-
-        var height = rect.Height;
-        if (rect.Y + rect.Height > PixelHeight)
-        {
-            height = PixelHeight - rect.Y;
-        }
-
-        Lock();
-        AddDirtyRect(new Int32Rect((int)rect.X, (int)rect.Y, (int)width, (int)height));
         Unlock();
     }
 
     public void ClearRenderTarget()
     {
         Lock();
-        SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
+        SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, false);
         Unlock();
     }
 
@@ -97,7 +101,7 @@ internal class Dx11ImageSource : D3DImage, IDisposable
         using var surface = _renderTarget.GetSurfaceLevel(0);
 
         Lock();
-        SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer, true);
+        SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer, false);
         Unlock();
     }
 

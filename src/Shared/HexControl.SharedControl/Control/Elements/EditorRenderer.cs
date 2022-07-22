@@ -795,7 +795,7 @@ internal readonly ref struct EditorRenderer
         }
         else
         {
-            var pen = new SharedPen(_control.CaretBackground, 1, PenStyle.Dotted);
+            var pen = new SharedPen(_control.CaretBackground, 1, PenStyle.Dashed);
             var aliasOffset = GetLineAntiAliasOffset(pen);
             var rect = new SharedRectangle(position.X + aliasOffset, position.Y + aliasOffset,
                 _control.CharacterWidth * characterSet.Width,

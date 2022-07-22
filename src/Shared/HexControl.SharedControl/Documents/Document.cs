@@ -44,7 +44,7 @@ public class Document
         InternalMarkers = new List<Marker>();
         _capturedMarkers = new Marker[1000];
 
-        Caret = new Caret(0, 0, ActiveColumn.Hex);
+        Caret = new Caret(0, 0, ActiveColumn.Data);
     }
 
     public DocumentConfiguration Configuration
@@ -440,7 +440,7 @@ public class Document
     {
         return column switch
         {
-            ActiveColumn.Hex => Configuration.DataCharacterSet,
+            ActiveColumn.Data => Configuration.DataCharacterSet,
             ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
@@ -465,7 +465,7 @@ public class Document
     {
         return column switch
         {
-            ActiveColumn.Hex => Configuration.DataCharacterSet,
+            ActiveColumn.Data => Configuration.DataCharacterSet,
             ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column))
         };
@@ -667,8 +667,8 @@ public class Document
 
         visibleColumn = column switch
         {
-            ActiveColumn.Hex when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
-            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Data => ActiveColumn.Hex,
+            ActiveColumn.Data when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
+            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Data => ActiveColumn.Data,
             _ => column
         };
         return false;

@@ -11,7 +11,7 @@ public abstract class CharacterSet
 
     public int DataWidth { get; protected init; } = 1;
     
-    public abstract int GetCharacters(byte @byte, Span<char> destBuffer);
+    public abstract int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer);
 
     public abstract bool TryWrite(byte input, char @char, int nibble, out byte output);
 }

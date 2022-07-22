@@ -1,6 +1,7 @@
 using System.Drawing;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents;
 #if DEBUG
 using Avalonia;
@@ -29,7 +30,9 @@ public class MainWindow : Window
         {
             OffsetBase = NumberBase.Decimal,
             ColumnsVisible = VisibleColumns.DataText,
-            WriteMode = WriteMode.Insert
+            WriteMode = WriteMode.Insert,
+            DataCharacterSet = new DecimalCharacterSet(NumberType.Int16),
+            GroupSize = 1
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         Document = Document.FromBytes(bytes, configuration: config);

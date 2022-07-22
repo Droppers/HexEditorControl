@@ -16,8 +16,9 @@ public sealed class BinaryCharacterSet : CharacterSet, IStringParsable, IStringC
         Width = 8;
     }
 
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
+        var @byte = bytes[0];
         destBuffer[0] = GetBit(@byte, 0);
         destBuffer[1] = GetBit(@byte, 1);
         destBuffer[2] = GetBit(@byte, 2);

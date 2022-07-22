@@ -25,9 +25,9 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
 
     public TextCharacterSet(CharacterEncoding encoding) : this(CharacterTable.Table[encoding]) { }
 
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
-        var @char = _characters[@byte];
+        var @char = _characters[bytes[0]];
         destBuffer[0] = @char == '\0' ? '.' : @char;
         return Width;
     }

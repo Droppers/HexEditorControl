@@ -46,8 +46,9 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
         Width = 2;
     }
 
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
+        var @byte = bytes[0];
         destBuffer[0] = Characters[@byte * 2];
         destBuffer[1] = Characters[@byte * 2 + 1];
         return Width;

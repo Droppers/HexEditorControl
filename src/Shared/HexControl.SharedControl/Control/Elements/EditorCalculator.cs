@@ -1,5 +1,6 @@
 ﻿using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents;
+using System.Data.Common;
 
 namespace HexControl.SharedControl.Control.Elements;
 
@@ -74,25 +75,28 @@ internal class EditorCalculator
             startColumn = _horizontalCharacterOffset - _configuration.BytesPerRow;
         }
 
+        //startColumn *= GetCharacterSetForColumn(column).DataWidth;
+
         return GetColumnCharacterCount(column) * _control.CharacterWidth - GetLeft(Math.Max(0, startColumn), column);
     }
 
     public int GetColumnCharacterCount(EditorColumn column)
     {
         var characterSet = GetCharacterSetForColumn(column);
+        var bytesPerRow = _configuration.BytesPerRow / characterSet.DataWidth;
         if (!characterSet.Groupable)
         {
-            return _configuration.BytesPerRow * characterSet.Width;
+            return bytesPerRow * characterSet.Width;
         }
 
-        return _configuration.BytesPerRow * characterSet.Width + _configuration.BytesPerRow / _configuration.GroupSize -
-               1;
+        return bytesPerRow * characterSet.Width + bytesPerRow / _configuration.GroupSize - 1;
     }
 
     public int GetLeft(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
     {
         var isLastOfGroup = offsetFromLeft % _configuration.GroupSize is 0;
         var characterSet = GetCharacterSetForColumn(column);
+        offsetFromLeft /= characterSet.DataWidth;
         var groups = Math.Max(0, (characterSet.Groupable ? offsetFromLeft / _configuration.GroupSize : 0) -
                                  (excludeLastGroup && characterSet.Groupable && isLastOfGroup ? 1 : 0));
         return (offsetFromLeft * characterSet.Width + groups) * _control.CharacterWidth;
@@ -100,6 +104,8 @@ internal class EditorCalculator
 
     public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
     {
+        //offsetFromLeft = Fix(offsetFromLeft, column);
+
         switch (column)
         {
             case EditorColumn.Left:
@@ -114,7 +120,7 @@ internal class EditorCalculator
                 throw new ArgumentException("This column type is not supported.", nameof(column));
         }
     }
-    
+
     public CharacterSet GetCharacterSetForColumn(EditorColumn column)
     {
         if (column is EditorColumn.Right && _configuration.ColumnsVisible is not VisibleColumns.DataText)
@@ -138,22 +144,32 @@ internal class EditorCalculator
             var groups = characterSet.Groupable
                 ? horizontalOffset / (_configuration.GroupSize * characterSet.Width + 1)
                 : 0;
-            return Math.Min((horizontalOffset - groups) / characterSet.Width, _configuration.BytesPerRow);
+            return Math.Min((horizontalOffset - groups) / characterSet.Width, _configuration.BytesPerRow / characterSet.DataWidth);
         }
 
         var leftCharacterCount = GetColumnCharacterCount(EditorColumn.Left);
         if (_rightCharacterSet is null)
         {
-            return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet);
+            return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) * _leftCharacterSet.DataWidth;
         }
 
-        return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) + Math.Max(0,
-            GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, _rightCharacterSet));
+        return (GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) * _leftCharacterSet.DataWidth) + Math.Max(0,
+            GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, _rightCharacterSet) * _rightCharacterSet.DataWidth);
     }
 
     private void OnConfigurationChanged()
     {
         UpdateCharacterSets();
+    }
+
+    public int GetBytesPerRow(EditorColumn column)
+    {
+        return GetBytesPerRow(GetCharacterSetForColumn(column));
+    }
+
+    public int GetBytesPerRow(CharacterSet characterSet)
+    {
+        return _configuration.BytesPerRow / characterSet.DataWidth;
     }
 
     private void UpdateCharacterSets()

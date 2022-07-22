@@ -15,8 +15,9 @@ public sealed class OctalCharacterSet : CharacterSet, IStringParsable, IStringCo
         Width = 3;
     }
 
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
+        var @byte = bytes[0];
         destBuffer[2] = (char)(@byte % BASE + NUMERIC_OFFSET);
         @byte /= BASE;
         destBuffer[1] = (char)(@byte % BASE + NUMERIC_OFFSET);

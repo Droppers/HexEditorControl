@@ -262,16 +262,20 @@ internal readonly ref struct EditorRenderer
 
     private MarkerPosition CalculateMarkerPosition(long markerOffset, long markerLength, EditorColumn column)
     {
-        var bytesPerRow = _documentState.Configuration.BytesPerRow;
-
+        if (column is EditorColumn.Left)
+        {
+        }
+        var state = _documentState;
+        var bytesPerRow = _documentState.Configuration.BytesPerRow; //;_calculator.GetBytesPerRow(column);
+        
         var startOffset = Math.Max(0, markerOffset - _documentState.Offset);
         var length = Math.Min(_bytesLength, markerLength - (markerOffset < _documentState.Offset ? _documentState.Offset - markerOffset : 0) - 1);
         var endOffset = startOffset + length;
-        var startRow = startOffset / _documentState.Configuration.BytesPerRow;
-        var endRow = endOffset / _documentState.Configuration.BytesPerRow;
+        var startRow = startOffset / bytesPerRow;
+        var endRow = endOffset / bytesPerRow;
 
         var startX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(startOffset % bytesPerRow), column));
-        var startY = startOffset / _documentState.Configuration.BytesPerRow * _control.RowHeight + _control.HeaderHeight;
+        var startY = startOffset / bytesPerRow * _control.RowHeight + _control.HeaderHeight;
 
         var charset = _calculator.GetCharacterSetForColumn(column);
 
@@ -487,7 +491,7 @@ internal readonly ref struct EditorRenderer
     {
         const int padZeroCount = 2;
 
-        Span<char> characterBuffer = stackalloc char[8];
+        Span<char> characterBuffer = stackalloc char[20];
 
         var groupSize = _documentState.Configuration.GroupSize;
         var invisibleGroups = (double)_calculator.HorizontalCharacterOffset / groupSize;
@@ -499,7 +503,7 @@ internal readonly ref struct EditorRenderer
         var totalX = !firstPartiallyVisible ? 0 : (visibleCharacters + 1) * _control.CharacterWidth;
 
         var startGroup = (int)invisibleGroups;
-        var groupCount = _documentState.Configuration.BytesPerRow / groupSize;
+        var groupCount = _documentState.Configuration.BytesPerRow / groupSize / _calculator.LeftCharacterSet.DataWidth;
         for (var currentGroup = startGroup; currentGroup < groupCount; currentGroup++)
         {
             var firstGroup = currentGroup == startGroup;
@@ -546,7 +550,17 @@ internal readonly ref struct EditorRenderer
 
     private void WriteContentBytes(ITextBuilder builder)
     {
-        Span<char> characterBuffer = stackalloc char[8];
+        var state = _documentState;
+
+        long Fix(long offset, int bytesPerRow)
+        {
+            return (long)(offset / (double)state.Configuration.BytesPerRow * bytesPerRow);
+        }
+
+        Span<char> characterBuffer = stackalloc char[20];
+
+        var leftCharacterSet = _calculator.LeftCharacterSet;
+        var rightCharacterSet = _calculator.RightCharacterSet;
 
         var leftWidth = _calculator.GetColumnCharacterCount(EditorColumn.Left);
         var horizontalSpace = Math.Ceiling(_owner.Width / _control.CharacterWidth);
@@ -558,13 +572,10 @@ internal readonly ref struct EditorRenderer
         var groupSize = _documentState.Configuration.GroupSize;
         var bytesPerRow = _documentState.Configuration.BytesPerRow;
         // Round content length to full row lengths for padding of final row
-        var contentLength = (int)(Math.Ceiling(_bytesLength / (float)bytesPerRow) * bytesPerRow);
         var maxBytesWritten = _documentState.Configuration.ColumnsVisible is not VisibleColumns.DataText
             ? bytesPerRow
             : bytesPerRow * 2;
 
-        var leftCharacterSet = _calculator.LeftCharacterSet;
-        var rightCharacterSet = _calculator.RightCharacterSet;
         var horizontalOffset = _calculator.HorizontalOffset;
 
         for (var row = 0; row < verticalSpace; row++)
@@ -584,23 +595,10 @@ internal readonly ref struct EditorRenderer
                 var characterSet = column is EditorColumn.Left
                     ? leftCharacterSet
                     : rightCharacterSet;
-
+                
                 var columnIndex = (byteColumn + horizontalCharacterOffset) % bytesPerRow;
                 var byteIndex = row * bytesPerRow + columnIndex;
-
-                if (byteIndex > contentLength - 1)
-                {
-                    if (column is EditorColumn.Right)
-                    {
-                        break;
-                    }
-
-                    horizontalCharacterOffset = 0;
-                    visualCol = leftColumnVisibleCharacters + SPACING_BETWEEN_COLUMNS;
-                    byteColumn = 0;
-                    continue;
-                }
-
+                
                 if (characterSet is not null)
                 {
                     visualCol += WriteSingleContentByte(
@@ -615,9 +613,21 @@ internal readonly ref struct EditorRenderer
                         // Performance reasons
                         groupSize,
                         bytesPerRow);
+
+                    byteColumn += characterSet.DataWidth;
                 }
 
-                byteColumn++;
+                if (columnIndex >= bytesPerRow - 1)
+                {
+                    if (column is EditorColumn.Right)
+                    {
+                        break;
+                    }
+
+                    horizontalCharacterOffset = 0;
+                    visualCol = leftColumnVisibleCharacters + SPACING_BETWEEN_COLUMNS + 1;
+                    byteColumn = 0;
+                }
             }
         }
     }
@@ -644,11 +654,12 @@ internal readonly ref struct EditorRenderer
         else
         {
             var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex, groupSize);
-            writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, characterBuffer, _bytes[byteIndex]);
+            var bytes = _bytes.AsSpan(byteIndex, Math.Min(characterSet.DataWidth, _bytes.Length - (byteIndex + characterSet.DataWidth)));
+            writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, characterBuffer, bytes);
         }
 
         // Add whitespace between characters
-        if (column is EditorColumn.Left && columnIndex == bytesPerRow - 1)
+        if (column is EditorColumn.Left && (columnIndex + characterSet.DataWidth) == bytesPerRow)
         {
             builder.Whitespace(SPACING_BETWEEN_COLUMNS);
             writtenCharacters += SPACING_BETWEEN_COLUMNS;
@@ -684,9 +695,9 @@ internal readonly ref struct EditorRenderer
         ISharedBrush brush,
         CharacterSet characterSet,
         Span<char> characterBuffer,
-        byte @byte)
+        ReadOnlySpan<byte> bytes)
     {
-        var characterCount = characterSet.GetCharacters(@byte, characterBuffer);
+        var characterCount = characterSet.GetCharacters(bytes, characterBuffer);
         for (var i = 0; i < characterCount; i++)
         {
             var @char = characterBuffer[i];
@@ -864,7 +875,7 @@ internal readonly ref struct EditorRenderer
     {
         return column switch
         {
-            ActiveColumn.Hex => _documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
+            ActiveColumn.Data => _documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
                 ? EditorColumn.Left
                 : EditorColumn.Right,
             ActiveColumn.Text => _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText

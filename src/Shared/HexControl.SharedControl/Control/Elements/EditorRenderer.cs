@@ -221,7 +221,7 @@ internal readonly ref struct EditorRenderer
 
         if (_calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow)
         {
-            var leftOffset = _calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS * _control.CharacterWidth;
+            var leftOffset = (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth;
             _context.PushTranslate(leftOffset, 0);
         }
 
@@ -274,23 +274,23 @@ internal readonly ref struct EditorRenderer
         var startRow = startOffset / bytesPerRow;
         var endRow = endOffset / bytesPerRow;
 
-        var startX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(startOffset % bytesPerRow), column));
+        var startX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(startOffset % bytesPerRow), column) * _control.CharacterWidth);
         var startY = startOffset / bytesPerRow * _control.RowHeight + _control.HeaderHeight;
 
-        var charset = _calculator.GetCharacterSetForColumn(column);
+        var characterSet = _calculator.GetCharacterSetForColumn(column);
 
         var startColumn = startOffset % bytesPerRow;
-        var extendPastEdge = charset.Groupable && (startColumn % _documentState.Configuration.GroupSize is 0 || !IsOffsetVisibleHorizontally(startColumn));
+        var extendPastEdge = characterSet.Groupable && (startColumn % _documentState.Configuration.GroupSize is 0 || !IsOffsetVisibleHorizontally(startColumn));
         if (extendPastEdge)
         {
             startX -= _control.CharacterWidth / 2;
         }
 
-        var endX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(endOffset % bytesPerRow) + 1, column, true));
+        var endX = Math.Max(0, _calculator.GetLeftRelativeToColumn((int)(endOffset % bytesPerRow) + 1, column, true) * _control.CharacterWidth);
         var endY = endRow * _control.RowHeight + _control.HeaderHeight;
 
         var endOffsetVisible = IsOffsetVisibleHorizontally((endOffset + 1) % bytesPerRow is 0 ? endOffset : endOffset + 1);
-        extendPastEdge = charset.Groupable && IsEndOfGroup(_documentState, endOffset + 1) && endOffsetVisible;
+        extendPastEdge = characterSet.Groupable && IsEndOfGroup(_documentState, endOffset + 1) && endOffsetVisible;
         if (extendPastEdge)
         {
             endX += _control.CharacterWidth / 2;
@@ -308,7 +308,7 @@ internal readonly ref struct EditorRenderer
         MarkerPosition position)
     {
         // TODO: fix funky rectangle borders, introduce a 'render flags' option in IRenderContext to determine how borders behave :)!
-        var columnWidth = _calculator.GetVisibleColumnWidth(column);
+        var columnWidth = _calculator.GetVisibleColumnWidth(column) * _control.CharacterWidth;
         var aliasOffset = GetLineAntiAliasOffset(pen);
         var characterSet = _calculator.GetCharacterSetForColumn(column);
 
@@ -374,7 +374,7 @@ internal readonly ref struct EditorRenderer
         // +--------------+
 
         var characterSet = _calculator.GetCharacterSetForColumn(column);
-        var columnWidth = _calculator.GetVisibleColumnWidth(column);
+        var columnWidth = _calculator.GetVisibleColumnWidth(column) * _control.CharacterWidth;
         var aliasOffset = GetLineAntiAliasOffset(pen);
 
         var hideLastRow = position.End.X is 0;
@@ -537,7 +537,7 @@ internal readonly ref struct EditorRenderer
     {
         var left = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText &&
                    _calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow
-            ? _calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS * _control.CharacterWidth
+            ? (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth
             : 0;
         if (left > _owner.Width)
         {
@@ -552,27 +552,23 @@ internal readonly ref struct EditorRenderer
     {
         var state = _documentState;
 
-        long Fix(long offset, int bytesPerRow)
-        {
-            return (long)(offset / (double)state.Configuration.BytesPerRow * bytesPerRow);
-        }
-
         Span<char> characterBuffer = stackalloc char[20];
 
         var leftCharacterSet = _calculator.LeftCharacterSet;
         var rightCharacterSet = _calculator.RightCharacterSet;
 
-        var leftWidth = _calculator.GetColumnCharacterCount(EditorColumn.Left);
+        var leftWidth = _calculator.GetColumnWIdth(EditorColumn.Left);
         var horizontalSpace = Math.Ceiling(_owner.Width / _control.CharacterWidth);
         var verticalSpace = Math.Ceiling(_owner.Height / _control.RowHeight) + _control.RowHeight;
-        var leftColumnVisibleCharacters = _calculator.GetVisibleColumnWidth(EditorColumn.Left) / _control.CharacterWidth;
+        var leftColumnWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
         var textMiddleOffset = (int)Math.Round(_control.RowHeight / 2d - _control.CharacterHeight / 2d);
 
         var typeface = builder.Typeface;
         var groupSize = _documentState.Configuration.GroupSize;
         var bytesPerRow = _documentState.Configuration.BytesPerRow;
+
         // Round content length to full row lengths for padding of final row
-        var maxBytesWritten = _documentState.Configuration.ColumnsVisible is not VisibleColumns.DataText
+        var maxBytesToWrite = _documentState.Configuration.ColumnsVisible is not VisibleColumns.DataText
             ? bytesPerRow
             : bytesPerRow * 2;
 
@@ -589,7 +585,7 @@ internal readonly ref struct EditorRenderer
             builder.Next(new SharedPoint(0, y));
 
             while (visualCol < horizontalSpace &&
-                   ++bytesWritten + _calculator.HorizontalCharacterOffset <= maxBytesWritten)
+                   ++bytesWritten + _calculator.HorizontalCharacterOffset <= maxBytesToWrite)
             {
                 var column = visualCol < leftWidth - horizontalOffset ? EditorColumn.Left : EditorColumn.Right;
                 var characterSet = column is EditorColumn.Left
@@ -625,7 +621,7 @@ internal readonly ref struct EditorRenderer
                     }
 
                     horizontalCharacterOffset = 0;
-                    visualCol = leftColumnVisibleCharacters + SPACING_BETWEEN_COLUMNS + 1;
+                    visualCol = leftColumnWidth + SPACING_BETWEEN_COLUMNS + 1;
                     byteColumn = 0;
                 }
             }
@@ -782,7 +778,7 @@ internal readonly ref struct EditorRenderer
                 topOffset = _control.RowHeight;
 
                 var groupAdjustment = characterSet.Groupable ? _control.CharacterWidth : 1;
-                leftOffset -= _calculator.GetVisibleColumnWidth(column) + groupAdjustment;
+                leftOffset -= (_calculator.GetVisibleColumnWidth(column) * _control.CharacterWidth) + groupAdjustment;
             }
 
             var rect = new SharedRectangle(position.X - leftOffset, position.Y - topOffset, 2,
@@ -816,7 +812,7 @@ internal readonly ref struct EditorRenderer
 
         if (_calculator.RightCharacterSet is not null)
         {
-            var leftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
+            var leftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left) * _control.CharacterWidth;
 
             position = CalculateCaretPosition(caret.Offset, 0, _calculator.LeftCharacterSet, EditorColumn.Right);
             _control.AddDirtyRect(
@@ -829,13 +825,14 @@ internal readonly ref struct EditorRenderer
     {
         var relativeOffset = offset - _documentState.Offset;
         var row = relativeOffset / _documentState.Configuration.BytesPerRow;
+        var columIndex = (int)(offset % _documentState.Configuration.BytesPerRow);
 
-        var x = _calculator.GetLeftRelativeToColumn((int)(relativeOffset % _documentState.Configuration.BytesPerRow), column) +
-                Math.Min(characterSet.Width - 1, nibble) * _control.CharacterWidth;
+        var x = (_calculator.GetLeftRelativeToColumn(columIndex, column) +
+                Math.Min(characterSet.Width - 1, nibble)) * _control.CharacterWidth;
         var y = row * _control.RowHeight + _control.HeaderHeight;
         if (column is EditorColumn.Right && _calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow)
         {
-            x += _calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS * _control.CharacterWidth;
+            x += (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth;
         }
 
         return new SharedPoint(x, y);

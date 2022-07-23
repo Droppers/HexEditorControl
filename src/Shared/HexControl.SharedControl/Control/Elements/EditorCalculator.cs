@@ -6,7 +6,6 @@ namespace HexControl.SharedControl.Control.Elements;
 
 internal class EditorCalculator
 {
-    private readonly SharedHexControl _control;
     private DocumentConfiguration _configuration = DocumentConfiguration.Default;
     private int _horizontalOffset;
 
@@ -28,8 +27,8 @@ internal class EditorCalculator
         get => _horizontalOffset;
         set
         {
-            var maxHorizontalOffset = GetColumnCharacterCount(EditorColumn.Left) +
-                (_configuration.ColumnsVisible is VisibleColumns.DataText ? GetColumnCharacterCount(EditorColumn.Right) : 0) - 1;
+            var maxHorizontalOffset = GetColumnWIdth(EditorColumn.Left) +
+                (_configuration.ColumnsVisible is VisibleColumns.DataText ? GetColumnWIdth(EditorColumn.Right) : 0) - 1;
             _horizontalOffset = Math.Max(0, Math.Min(value, maxHorizontalOffset));
             _horizontalCharacterOffset = GetFirstVisibleColumnIndex();
         }
@@ -41,14 +40,15 @@ internal class EditorCalculator
 
     public CharacterSet? RightCharacterSet => _rightCharacterSet;
 
-    public EditorCalculator(SharedHexControl control, DocumentConfiguration configuration, int horizontalOffset,
+    public int MaxDataWidth { get; private set; } = 1;
+
+    public EditorCalculator(DocumentConfiguration configuration, int horizontalOffset,
         bool shortLifeSpan)
     {
-        _control = control;
         if (shortLifeSpan)
         {
             _configuration = configuration;
-            UpdateCharacterSets();
+            OnConfigurationChanged();
         }
         else
         {
@@ -75,12 +75,10 @@ internal class EditorCalculator
             startColumn = _horizontalCharacterOffset - _configuration.BytesPerRow;
         }
 
-        //startColumn *= GetCharacterSetForColumn(column).DataWidth;
-
-        return GetColumnCharacterCount(column) * _control.CharacterWidth - GetLeft(Math.Max(0, startColumn), column);
+        return GetColumnWIdth(column) - GetLeft(Math.Max(0, startColumn), column);
     }
 
-    public int GetColumnCharacterCount(EditorColumn column)
+    public int GetColumnWIdth(EditorColumn column)
     {
         var characterSet = GetCharacterSetForColumn(column);
         var bytesPerRow = _configuration.BytesPerRow / characterSet.DataWidth;
@@ -99,13 +97,11 @@ internal class EditorCalculator
         offsetFromLeft /= characterSet.DataWidth;
         var groups = Math.Max(0, (characterSet.Groupable ? offsetFromLeft / _configuration.GroupSize : 0) -
                                  (excludeLastGroup && characterSet.Groupable && isLastOfGroup ? 1 : 0));
-        return (offsetFromLeft * characterSet.Width + groups) * _control.CharacterWidth;
+        return (offsetFromLeft * characterSet.Width + groups);
     }
 
     public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
     {
-        //offsetFromLeft = Fix(offsetFromLeft, column);
-
         switch (column)
         {
             case EditorColumn.Left:
@@ -147,7 +143,7 @@ internal class EditorCalculator
             return Math.Min((horizontalOffset - groups) / characterSet.Width, _configuration.BytesPerRow / characterSet.DataWidth);
         }
 
-        var leftCharacterCount = GetColumnCharacterCount(EditorColumn.Left);
+        var leftCharacterCount = GetColumnWIdth(EditorColumn.Left);
         if (_rightCharacterSet is null)
         {
             return GetVisibleCharacterCount(HorizontalOffset, _leftCharacterSet) * _leftCharacterSet.DataWidth;
@@ -157,19 +153,22 @@ internal class EditorCalculator
             GetVisibleCharacterCount(HorizontalOffset - leftCharacterCount, _rightCharacterSet) * _rightCharacterSet.DataWidth);
     }
 
+    public long RoundToMaxDataWidth(long offset, RoundType type)
+    {
+        return type switch
+        {
+            RoundType.Ceil => (long)(Math.Ceiling(offset / (double)MaxDataWidth) * MaxDataWidth),
+            RoundType.Floor => (long)(Math.Floor(offset / (double)MaxDataWidth) * MaxDataWidth),
+            RoundType.Middle => (long)(Math.Round(offset / (double)MaxDataWidth) * MaxDataWidth),
+            _ => throw new NotImplementedException()
+        };
+    }
+
     private void OnConfigurationChanged()
     {
         UpdateCharacterSets();
-    }
 
-    public int GetBytesPerRow(EditorColumn column)
-    {
-        return GetBytesPerRow(GetCharacterSetForColumn(column));
-    }
-
-    public int GetBytesPerRow(CharacterSet characterSet)
-    {
-        return _configuration.BytesPerRow / characterSet.DataWidth;
+        MaxDataWidth = Math.Max(_leftCharacterSet.DataWidth, _rightCharacterSet?.DataWidth ?? 0);
     }
 
     private void UpdateCharacterSets()
@@ -181,5 +180,12 @@ internal class EditorCalculator
         _rightCharacterSet = _configuration.ColumnsVisible is VisibleColumns.DataText
             ? _configuration.TextCharacterSet
             : null;
+    }
+
+    public enum RoundType
+    {
+        Ceil,
+        Floor,
+        Middle
     }
 }

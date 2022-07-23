@@ -62,7 +62,7 @@ internal class EditorElement : VisualElement
     public EditorElement(SharedHexControl control)
     {
         _control = control;
-        _calculator = new EditorCalculator(_control, _configuration, _horizontalOffset, false);
+        _calculator = new EditorCalculator(_configuration, _horizontalOffset, false);
         _renderState = new EditorRendererState(this);
 
         Configuration = new DocumentConfiguration();
@@ -112,9 +112,9 @@ internal class EditorElement : VisualElement
     }
 
     public int TotalWidth =>
-        _calculator.GetColumnCharacterCount(EditorColumn.Left) +
+        _calculator.GetColumnWIdth(EditorColumn.Left) +
         (Configuration.ColumnsVisible is VisibleColumns.DataText
-            ? _calculator.GetColumnCharacterCount(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
+            ? _calculator.GetColumnWIdth(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
             : 0);
 
     public long Offset { get; set; }
@@ -180,7 +180,7 @@ internal class EditorElement : VisualElement
         }
 
         var state = Document.CapturedState;
-        var calculator = new EditorCalculator(_control, state.Configuration, _horizontalOffset, true);
+        var calculator = new EditorCalculator(state.Configuration, _horizontalOffset, true);
         new EditorRenderer(
             _control,
             this,
@@ -195,16 +195,16 @@ internal class EditorElement : VisualElement
 
     private (EditorColumn column, SharedPoint) GetPointRelativeToColumn(SharedPoint point)
     {
-        var leftVisible = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
-        var leftWidth = _calculator.GetColumnCharacterCount(EditorColumn.Left) * CharacterWidth;
-        var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, EditorColumn.Left);
+        var leftVisible = _calculator.GetVisibleColumnWidth(EditorColumn.Left) * CharacterWidth;
+        var leftWidth = _calculator.GetColumnWIdth(EditorColumn.Left) * CharacterWidth;
+        var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, EditorColumn.Left) * CharacterWidth;
 
         var y = point.Y - _control.HeaderHeight;
 
         if (leftVisible < 0)
         {
-            var x = _calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth -
-                    _calculator.GetVisibleColumnWidth(EditorColumn.Right) + point.X;
+            var x = _calculator.GetColumnWIdth(EditorColumn.Right) * CharacterWidth -
+                    (_calculator.GetVisibleColumnWidth(EditorColumn.Right) * CharacterWidth) + point.X;
             return (EditorColumn.Right, new SharedPoint(x, y));
         }
         else
@@ -214,7 +214,7 @@ internal class EditorElement : VisualElement
             if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.DataText)
             {
 
-                x = Math.Min(_calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth,
+                x = Math.Min(_calculator.GetColumnWIdth(EditorColumn.Right) * CharacterWidth,
                     x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
                 column = EditorColumn.Right;
             }
@@ -234,7 +234,7 @@ internal class EditorElement : VisualElement
             : 0;
 
         var byteColumn = (int)(((leftInCharacters - groupCount) / (double)characterSet.Width) * characterSet.DataWidth);
-        var nibble = Math.Max(0, ((int)relativePoint.X - _calculator.GetLeft(byteColumn, column)) / (double)_control.CharacterWidth);
+        var nibble = Math.Max(0, ((int)relativePoint.X - (_calculator.GetLeft(byteColumn, column) * CharacterWidth)) / (double)_control.CharacterWidth);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var offset = Offset + (byteRow * Configuration.BytesPerRow + byteColumn);
@@ -321,8 +321,8 @@ internal class EditorElement : VisualElement
 
     private bool IsPointInEditableArea(SharedPoint point)
     {
-        var leftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
-        var rightWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Right);
+        var leftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left) * CharacterWidth;
+        var rightWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Right) * CharacterWidth;
 
         var inLeftColumn = point.X < leftWidth;
         var pastHeader = point.Y > _control.HeaderHeight;
@@ -376,22 +376,14 @@ internal class EditorElement : VisualElement
         {
             offset += 1;
         }
-        
+
         // Check if user is initially dragging backwards (left or up)
         if (_mouseDownPosition is not null)
         {
-            if (position.X < _mouseDownPosition.Value.X || position.Y < _mouseDownPosition.Value.Y)
-            {
-                _startSelectionOffset += 1;
-
-                var lol = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(ActiveColumn.Data)); // TODO: obtain greatest datawidth
-                _startSelectionOffset = (long)(Math.Ceiling(_startSelectionOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-            }
-            else
-            {
-                var lol = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(ActiveColumn.Data)); // TODO: obtain greatest datawidth
-                _startSelectionOffset = (long)(Math.Floor(_startSelectionOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-            }
+            var roundType = position.X < _mouseDownPosition.Value.X || position.Y < _mouseDownPosition.Value.Y
+                ? EditorCalculator.RoundType.Ceil
+                : EditorCalculator.RoundType.Floor;
+            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_startSelectionOffset.Value, roundType);
         }
 
         _mouseDownPosition = null;
@@ -410,34 +402,14 @@ internal class EditorElement : VisualElement
         {
             return;
         }
-        
-        var lol = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(ActiveColumn.Data)); // TODO: obtain greatest datawidth
-        if (newOffset >= _startSelectionOffset)
-        {
-            newOffset = (long)(Math.Ceiling(newOffset / (double)lol.DataWidth) * lol.DataWidth);
-        }
-        else
-        {
-            newOffset = (long)(Math.Floor(newOffset / (double)lol.DataWidth) * lol.DataWidth);
-        }
 
+        var roundType = newOffset >= _startSelectionOffset
+            ? EditorCalculator.RoundType.Ceil
+            : EditorCalculator.RoundType.Floor;
+        newOffset = _calculator.RoundToMaxDataWidth(newOffset, roundType);
 
-        long start = _startSelectionOffset.Value;
-        //if (newOffset > _startSelectionOffset)
-        //{
-        //    start = (long)(Math.Floor(_startSelectionOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-        //}
-        //else
-        //{
-        //    start = (long)(Math.Ceiling(_startSelectionOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-        //}
-
-        var startOffset = newOffset >= start ? start : newOffset;
-        var endOffset = newOffset >= start ? newOffset : start;
-
-
-        //startOffset = (long)(Math.Floor(startOffset / (double)lol.DataWidth) * lol.DataWidth);
-        //endOffset = (long)(Math.Ceiling(endOffset / (double)lol.DataWidth) * lol.DataWidth);
+        var startOffset = newOffset >= _startSelectionOffset.Value ? _startSelectionOffset.Value : newOffset;
+        var endOffset = newOffset >= _startSelectionOffset.Value ? newOffset : _startSelectionOffset.Value;
 
         ResetCaretTick();
 
@@ -452,7 +424,7 @@ internal class EditorElement : VisualElement
         }
         else
         {
-            var newCaretLocation = newOffset >= start
+            var newCaretLocation = newOffset >= _startSelectionOffset.Value
                 ? NewCaretLocation.SelectionEnd
                 : NewCaretLocation.SelectionStart;
             Document.Select(startOffset, endOffset, column, newCaretLocation, true);
@@ -618,21 +590,8 @@ internal class EditorElement : VisualElement
 
         if (_keyDownOffset.HasValue)
         {
-            if (offset < _keyDownOffset)
-            {
-                var lol = _calculator.GetCharacterSetForColumn(
-                    MapFromActiveColumn(ActiveColumn.Data)); // TODO: obtain greatest datawidth
-                _startSelectionOffset =
-                    (long)(Math.Ceiling(_keyDownOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-            }
-            else
-            {
-                var lol = _calculator.GetCharacterSetForColumn(
-                    MapFromActiveColumn(ActiveColumn.Data)); // TODO: obtain greatest datawidth
-                _startSelectionOffset =
-                    (long)(Math.Floor(_keyDownOffset.Value / (double)lol.DataWidth) * lol.DataWidth);
-            }
-
+            var roundType = offset < _keyDownOffset ? EditorCalculator.RoundType.Ceil : EditorCalculator.RoundType.Floor;
+            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_keyDownOffset.Value, roundType);
             _keyDownOffset = null;
         }
 

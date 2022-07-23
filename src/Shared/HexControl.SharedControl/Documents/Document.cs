@@ -74,7 +74,7 @@ public class Document
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;
 
-    public int HorizontalOffset { get; internal set; }
+    public int HorizontalCharacterOffset { get; internal set; }
 
     public long Offset
     {
@@ -632,7 +632,7 @@ public class Document
         if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible) or nameof(Configuration.DataCharacterSet)
                 or nameof(Configuration.TextCharacterSet)))
         {
-            HorizontalOffset = 0;
+            HorizontalCharacterOffset = 0;
         }
 
         // Ensure that invisible columns cannot be active

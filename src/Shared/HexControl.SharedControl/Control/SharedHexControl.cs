@@ -564,7 +564,7 @@ internal class SharedHexControl : VisualElement
 
     private async ValueTask InitDocument()
     {
-        _editorElement.HorizontalOffset = Document?.HorizontalOffset ?? 0;
+        _editorElement.HorizontalCharacterOffset = Document?.HorizontalCharacterOffset ?? 0;
         _offsetElement.Length = Document?.Length ?? 0;
 
         await RefreshDocument();
@@ -667,8 +667,8 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        _editorElement.HorizontalOffset = (int)scrollValue;
-        Document.HorizontalOffset = (int)scrollValue;
+        _editorElement.HorizontalCharacterOffset = (int)scrollValue;
+        Document.HorizontalCharacterOffset = (int)scrollValue;
 
         AddDirtyRect(
             new SharedRectangle(_editorElement.Left, _editorElement.Top, _editorElement.Width, _editorElement.Height),

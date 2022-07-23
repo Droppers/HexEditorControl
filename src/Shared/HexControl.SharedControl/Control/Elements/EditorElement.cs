@@ -15,7 +15,7 @@ internal class EditorElement : VisualElement
 {
     private const int SPACING_BETWEEN_COLUMNS = 2;
 
-    private int _horizontalOffset;
+    private int _horizontalCharacterOffset;
 
     private readonly SharedHexControl _control;
     private readonly EditorRendererState _renderState;
@@ -44,12 +44,12 @@ internal class EditorElement : VisualElement
         set => _bytesLength = value;
     }
 
-    public int HorizontalOffset
+    public int HorizontalCharacterOffset
     {
-        get => _horizontalOffset; set
+        get => _horizontalCharacterOffset; set
         {
-            _calculator.HorizontalOffset = value;
-            _horizontalOffset = value;
+            _calculator.HorizontalCharacterOffset = value;
+            _horizontalCharacterOffset = value;
         }
     }
 
@@ -62,7 +62,7 @@ internal class EditorElement : VisualElement
     public EditorElement(SharedHexControl control)
     {
         _control = control;
-        _calculator = new EditorCalculator(_configuration, _horizontalOffset, false);
+        _calculator = new EditorCalculator(_configuration, _horizontalCharacterOffset, false);
         _renderState = new EditorRendererState(this);
 
         Configuration = new DocumentConfiguration();
@@ -112,9 +112,9 @@ internal class EditorElement : VisualElement
     }
 
     public int TotalWidth =>
-        _calculator.GetColumnWIdth(EditorColumn.Left) +
+        _calculator.GetColumnWidth(EditorColumn.Left) +
         (Configuration.ColumnsVisible is VisibleColumns.DataText
-            ? _calculator.GetColumnWIdth(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
+            ? _calculator.GetColumnWidth(EditorColumn.Right) + SPACING_BETWEEN_COLUMNS
             : 0);
 
     public long Offset { get; set; }
@@ -180,7 +180,7 @@ internal class EditorElement : VisualElement
         }
 
         var state = Document.CapturedState;
-        var calculator = new EditorCalculator(state.Configuration, _horizontalOffset, true);
+        var calculator = new EditorCalculator(state.Configuration, _horizontalCharacterOffset, true);
         new EditorRenderer(
             _control,
             this,
@@ -196,14 +196,14 @@ internal class EditorElement : VisualElement
     private (EditorColumn column, SharedPoint) GetPointRelativeToColumn(SharedPoint point)
     {
         var leftVisible = _calculator.GetVisibleColumnWidth(EditorColumn.Left) * CharacterWidth;
-        var leftWidth = _calculator.GetColumnWIdth(EditorColumn.Left) * CharacterWidth;
-        var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, EditorColumn.Left) * CharacterWidth;
+        var leftWidth = _calculator.GetColumnWidth(EditorColumn.Left) * CharacterWidth;
+        var leftOffset = _calculator.GetLeft(_calculator.HorizontalColumnoffset, EditorColumn.Left) * CharacterWidth;
 
         var y = point.Y - _control.HeaderHeight;
 
         if (leftVisible < 0)
         {
-            var x = _calculator.GetColumnWIdth(EditorColumn.Right) * CharacterWidth -
+            var x = _calculator.GetColumnWidth(EditorColumn.Right) * CharacterWidth -
                     (_calculator.GetVisibleColumnWidth(EditorColumn.Right) * CharacterWidth) + point.X;
             return (EditorColumn.Right, new SharedPoint(x, y));
         }
@@ -214,7 +214,7 @@ internal class EditorElement : VisualElement
             if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.DataText)
             {
 
-                x = Math.Min(_calculator.GetColumnWIdth(EditorColumn.Right) * CharacterWidth,
+                x = Math.Min(_calculator.GetColumnWidth(EditorColumn.Right) * CharacterWidth,
                     x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
                 column = EditorColumn.Right;
             }

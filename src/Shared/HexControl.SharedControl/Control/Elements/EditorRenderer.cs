@@ -203,7 +203,7 @@ internal readonly ref struct EditorRenderer
 
     private void DrawLeftMarker(Marker marker)
     {
-        if (_calculator.HorizontalCharacterOffset >= _documentState.Configuration.BytesPerRow ||
+        if (_calculator.HorizontalColumnoffset >= _documentState.Configuration.BytesPerRow ||
             marker.Column is not (MarkerColumn.Data or MarkerColumn.DataText))
         {
             return;
@@ -219,7 +219,7 @@ internal readonly ref struct EditorRenderer
             return;
         }
 
-        if (_calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow)
+        if (_calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow)
         {
             var leftOffset = (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth;
             _context.PushTranslate(leftOffset, 0);
@@ -230,7 +230,7 @@ internal readonly ref struct EditorRenderer
             DrawMarkerArea(EditorColumn.Right, marker);
         }
 
-        if (_calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow)
+        if (_calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow)
         {
             _context.Pop();
         }
@@ -494,7 +494,7 @@ internal readonly ref struct EditorRenderer
         Span<char> characterBuffer = stackalloc char[20];
 
         var groupSize = _documentState.Configuration.GroupSize;
-        var invisibleGroups = (double)_calculator.HorizontalCharacterOffset / groupSize;
+        var invisibleGroups = (double)_calculator.HorizontalColumnoffset / groupSize;
 
         var visibleCharacters =
             (int)((1 - (invisibleGroups - (int)invisibleGroups)) * (_calculator.LeftCharacterSet.Width * groupSize));
@@ -536,7 +536,7 @@ internal readonly ref struct EditorRenderer
     private void WriteTextHeader(ITextBuilder builder)
     {
         var left = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText &&
-                   _calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow
+                   _calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow
             ? (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth
             : 0;
         if (left > _owner.Width)
@@ -557,7 +557,7 @@ internal readonly ref struct EditorRenderer
         var leftCharacterSet = _calculator.LeftCharacterSet;
         var rightCharacterSet = _calculator.RightCharacterSet;
 
-        var leftWidth = _calculator.GetColumnWIdth(EditorColumn.Left);
+        var leftWidth = _calculator.GetColumnWidth(EditorColumn.Left);
         var horizontalSpace = Math.Ceiling(_owner.Width / _control.CharacterWidth);
         var verticalSpace = Math.Ceiling(_owner.Height / _control.RowHeight) + _control.RowHeight;
         var leftColumnWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
@@ -572,7 +572,7 @@ internal readonly ref struct EditorRenderer
             ? bytesPerRow
             : bytesPerRow * 2;
 
-        var horizontalOffset = _calculator.HorizontalOffset;
+        var horizontalCharacterOffset = _calculator.HorizontalCharacterOffset;
 
         for (var row = 0; row < verticalSpace; row++)
         {
@@ -581,18 +581,18 @@ internal readonly ref struct EditorRenderer
             var visualCol = 0;
             var bytesWritten = 0;
 
-            var horizontalCharacterOffset = _calculator.HorizontalCharacterOffset;
+            var horizontalColumnOffset = _calculator.HorizontalColumnoffset;
             builder.Next(new SharedPoint(0, y));
 
             while (visualCol < horizontalSpace &&
-                   ++bytesWritten + _calculator.HorizontalCharacterOffset <= maxBytesToWrite)
+                   ++bytesWritten + _calculator.HorizontalColumnoffset <= maxBytesToWrite)
             {
-                var column = visualCol < leftWidth - horizontalOffset ? EditorColumn.Left : EditorColumn.Right;
+                var column = visualCol < leftWidth - horizontalCharacterOffset ? EditorColumn.Left : EditorColumn.Right;
                 var characterSet = column is EditorColumn.Left
                     ? leftCharacterSet
                     : rightCharacterSet;
                 
-                var columnIndex = (byteColumn + horizontalCharacterOffset) % bytesPerRow;
+                var columnIndex = (byteColumn + horizontalColumnOffset) % bytesPerRow;
                 var byteIndex = row * bytesPerRow + columnIndex;
                 
                 if (characterSet is not null)
@@ -620,7 +620,7 @@ internal readonly ref struct EditorRenderer
                         break;
                     }
 
-                    horizontalCharacterOffset = 0;
+                    horizontalColumnOffset = 0;
                     visualCol = leftColumnWidth + SPACING_BETWEEN_COLUMNS + 1;
                     byteColumn = 0;
                 }
@@ -830,7 +830,7 @@ internal readonly ref struct EditorRenderer
         var x = (_calculator.GetLeftRelativeToColumn(columIndex, column) +
                 Math.Min(characterSet.Width - 1, nibble)) * _control.CharacterWidth;
         var y = row * _control.RowHeight + _control.HeaderHeight;
-        if (column is EditorColumn.Right && _calculator.HorizontalCharacterOffset < _documentState.Configuration.BytesPerRow)
+        if (column is EditorColumn.Right && _calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow)
         {
             x += (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth;
         }
@@ -864,7 +864,7 @@ internal readonly ref struct EditorRenderer
     private bool IsOffsetVisibleHorizontally(long offset)
     {
         var columnIndex = offset % _documentState.Configuration.BytesPerRow;
-        var invisibleColumnIndex = _calculator.HorizontalCharacterOffset % _documentState.Configuration.BytesPerRow;
+        var invisibleColumnIndex = _calculator.HorizontalColumnoffset % _documentState.Configuration.BytesPerRow;
         return columnIndex > invisibleColumnIndex;
     }
 

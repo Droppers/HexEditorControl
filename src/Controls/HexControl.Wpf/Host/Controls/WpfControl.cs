@@ -78,7 +78,10 @@ internal class WpfControl : HostControl
     private void ElementOnMouseWheel(object sender, MouseWheelEventArgs e)
     {
         var point = e.GetPosition(_element);
-        RaiseMouseWheel(new SharedPoint(point.X, point.Y), e.Delta);
+
+        var delta = e.Delta / 120d;
+        var (deltaX, deltaY) = modifiers.HasFlag(HostKeyModifier.Shift) ? (delta, 0d) : (0d, delta);
+        RaiseMouseWheel(new SharedPoint(point.X, point.Y), new SharedPoint(deltaX, deltaY));
     }
 
     private void ElementOnKeyDown(object sender, KeyEventArgs e)

@@ -555,46 +555,49 @@ internal class EditorElement : VisualElement
 
         var characterSet = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(document.Caret.Column));
         var maxDataWith = _calculator.GetCharacterSetForColumn(EditorColumn.Left).DataWidth;
-        var offsetIncrement = document.Selection.HasValue ? maxDataWith : 1;
 
-        // Allow for nibble level control when not selecting and byte level when selecting.
-        switch (key)
+        if (_keyDownOffset.HasValue)
         {
-            case HostKey.Right when nibble == characterSet.Width - 1 || _keyboardSelectMode || jumpByte:
-                offset += offsetIncrement;
-                nibble = 0;
-                break;
+            var roundType = key is HostKey.Right or HostKey.Down ? EditorCalculator.RoundType.Floor : EditorCalculator.RoundType.Ceil;
+            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_keyDownOffset.Value, roundType);
+            offset = key is HostKey.Right or HostKey.Down ? _startSelectionOffset.Value + maxDataWith : _startSelectionOffset.Value - maxDataWith;
+            _keyDownOffset = null;
+        }
+        else
+        {
+            var offsetIncrement = document.Selection.HasValue ? maxDataWith : characterSet.DataWidth;
 
-            case HostKey.Left when nibble == 1 && jumpByte:
-                nibble--;
-                break;
-            case HostKey.Left when _keyboardSelectMode || jumpByte:
-                offset -= offsetIncrement;
-                nibble = 0;
-                break;
-            case HostKey.Left when nibble == 0:
-                offset--;
-                nibble = characterSet.Width - 1;
-                break;
-            case HostKey.Left or HostKey.Right:
-                nibble += key is HostKey.Left ? -1 : 1;
-                break;
-            case HostKey.Up or HostKey.Down:
-                offset += Configuration.BytesPerRow *
-                          (key is HostKey.Up ? -1 : 1);
-                break;
+            // Allow for nibble level control when not selecting and byte level when selecting.
+            switch (key)
+            {
+                case HostKey.Right when nibble == characterSet.Width - 1 || _keyboardSelectMode || jumpByte:
+                    offset += offsetIncrement;
+                    nibble = 0;
+                    break;
+
+                case HostKey.Left when nibble == 1 && jumpByte:
+                    nibble--;
+                    break;
+                case HostKey.Left when _keyboardSelectMode || jumpByte:
+                    offset -= offsetIncrement;
+                    nibble = 0;
+                    break;
+                case HostKey.Left when nibble == 0:
+                    offset--;
+                    nibble = characterSet.Width - 1;
+                    break;
+                case HostKey.Left or HostKey.Right:
+                    nibble += key is HostKey.Left ? -1 : 1;
+                    break;
+                case HostKey.Up or HostKey.Down:
+                    offset += Configuration.BytesPerRow *
+                              (key is HostKey.Up ? -1 : 1);
+                    break;
+            }
         }
 
         offset = Math.Max(0, Math.Min(document.Length, offset));
         nibble = Math.Max(0, nibble);
-
-        if (_keyDownOffset.HasValue)
-        {
-            var roundType = offset < _keyDownOffset ? EditorCalculator.RoundType.Ceil : EditorCalculator.RoundType.Floor;
-            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_keyDownOffset.Value, roundType);
-            _keyDownOffset = null;
-        }
-
 
         if (_keyboardSelectMode is false && document.Selection is null)
         {

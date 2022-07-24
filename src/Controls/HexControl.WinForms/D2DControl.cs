@@ -25,6 +25,14 @@ internal class D2DControl : Control, IRenderStateProvider
 
     private WindowRenderTarget? _windowRenderTarget;
 
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+
+        Dispose();
+        InitRendering();
+    }
+
     public bool CanRender
     {
         get => _canRender;
@@ -55,18 +63,23 @@ internal class D2DControl : Control, IRenderStateProvider
             _d2dFactory = new Factory(FactoryType.MultiThreaded, DebugLevel.None);
 
             _renderTargetProperties =
-                new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied));
+                new RenderTargetProperties(new PixelFormat(Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied))
+                {
+                    DpiX = DeviceDpi,
+                    DpiY = DeviceDpi
+                };
 
             _hwndRenderTargetProperties = new HwndRenderTargetProperties
             {
                 Hwnd = Handle,
                 PixelSize = new Size2(Width, Height),
-                PresentOptions = PresentOptions.Immediately
+                PresentOptions = PresentOptions.None
             };
 
             _d2dRenderTarget = _windowRenderTarget =
                 new WindowRenderTarget(_d2dFactory, _renderTargetProperties, _hwndRenderTargetProperties);
             _d2dRenderTarget.TextAntialiasMode = TextAntialiasMode.Default;
+            _d2dRenderTarget.AntialiasMode = AntialiasMode.Aliased;
         }
 
         CanRender = true;

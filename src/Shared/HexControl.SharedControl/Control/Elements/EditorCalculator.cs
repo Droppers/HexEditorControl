@@ -30,7 +30,7 @@ internal class EditorCalculator
             var maxHorizontalOffset = GetColumnWidth(EditorColumn.Left) +
                 (_configuration.ColumnsVisible is VisibleColumns.DataText ? GetColumnWidth(EditorColumn.Right) : 0) - 1;
             _horizontalCharacterOffset = Math.Max(0, Math.Min(value, maxHorizontalOffset));
-            _horizontalColumnOffset = GetInvisibleWidth();
+            _horizontalColumnOffset = GetColumnInvisibleWidth();
         }
     }
 
@@ -133,7 +133,7 @@ internal class EditorCalculator
         };
     }
 
-    private int GetInvisibleWidth()
+    private int GetColumnInvisibleWidth()
     {
         int GetVisibleColumnCount(int HorizontalCharacterOffset, CharacterSet characterSet)
         {

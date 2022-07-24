@@ -61,7 +61,7 @@ internal abstract class HostControl : IHostControl, IEnumerable, IDisposable
     public abstract void Focus();
     public abstract void Invalidate();
 
-    protected void RaiseMouseWheel(SharedPoint point, int delta)
+    protected void RaiseMouseWheel(SharedPoint point, SharedPoint delta)
     {
         MouseWheel?.Invoke(this, new HostMouseWheelEventArgs(point, delta));
     }

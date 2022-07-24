@@ -17,7 +17,7 @@ public partial class Form1 : Form
             WriteMode = WriteMode.Insert,
             OffsetBase = NumberBase.Decimal,
             GroupSize = 1,
-            DataCharacterSet = new DecimalCharacterSet(NumberType.Int32)
+            DataCharacterSet = new NumberCharacterSet(NumberType.Int32)
         };
         var document = Document.FromBytes(bytes, configuration: config, changeTracking: ChangeTracking.Undo);
         hexEditorControl1.Document = document;

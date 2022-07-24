@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using HexControl.Framework.Collections;
+using HexControl.Buffers.Helpers;
 
 namespace HexControl.SharedControl.Documents;
 
@@ -32,6 +33,8 @@ public class Document
     private Caret _caret;
     private Selection? _selection;
 
+    private AsyncReaderWriterLock _lock;
+
     public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
         Buffer = ReplaceBuffer(buffer);
@@ -45,6 +48,8 @@ public class Document
         _capturedMarkers = new Marker[1000];
 
         Caret = new Caret(0, 0, ActiveColumn.Data);
+
+        _lock = new AsyncReaderWriterLock();
     }
 
     public DocumentConfiguration Configuration
@@ -505,8 +510,10 @@ public class Document
 
     public bool CanModify => !Buffer.IsReadOnly && !Buffer.Locked;
 
-    public async Task<bool> TryTypeAtCaretAsync(char @char)
+    public async ValueTask<bool> TryTypeAtCaretAsync(char @char)
     {
+        using var _ = await _lock.AcquireWriterLockAsync();
+
         var endOfDocument = Caret.Offset >= Length;
         var isNewByte = Selection.HasValue || endOfDocument || Configuration.WriteMode is WriteMode.Insert && Caret.Nibble is 0;
 

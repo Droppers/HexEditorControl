@@ -83,7 +83,10 @@ internal class WinFormsControl : HostControl
 
     private void ControlOnMouseWheel(object? sender, MouseEventArgs e)
     {
-        RaiseMouseWheel(MapPoint(e.Location), e.Delta);
+        var delta = e.Delta / 120d;
+        var (deltaX, deltaY) = modifiers.HasFlag(HostKeyModifier.Shift) ? (delta, 0d) : (0d, delta);
+
+        RaiseMouseWheel(MapPoint(e.Location), new SharedPoint(deltaX, deltaY));
     }
 
     private void ControlOnSizeChanged(object? sender, EventArgs e)

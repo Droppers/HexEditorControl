@@ -220,9 +220,13 @@ internal class SharedHexControl : VisualElement
             return;
         }
 
-        var direction = e.Delta >= 0 ? -1 : 1;
-        var increment = Configuration.BytesPerRow * _scrollWheelSkipRows * direction;
-        Document.Offset += increment;
+        if (Math.Abs(e.Delta.Y) > double.Epsilon)
+        {
+            var direction = e.Delta.Y >= 0 ? -1 : 1;
+            var modifier = Math.Clamp(Math.Abs(e.Delta.Y), 0.35, 1.70);
+            var increment = (long)(((Configuration.BytesPerRow * _scrollWheelSkipRows) * modifier) * direction);
+            Document.Offset += increment;
+        }
     }
 
     protected async void OnMouseUp(object? sender, HostMouseButtonEventArgs e)

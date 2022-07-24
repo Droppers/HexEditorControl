@@ -6,6 +6,7 @@ using Avalonia.Media;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Host;
 using HexControl.Framework.Host.Controls;
+using System.Diagnostics;
 
 namespace HexControl.Avalonia.Host.Controls;
 
@@ -86,7 +87,7 @@ internal class AvaloniaControl : HostControl
     private void ControlOnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         var position = e.GetCurrentPoint(_control).Position;
-        RaiseMouseWheel(new SharedPoint(position.X, position.Y), (int)e.Delta.Y);
+        RaiseMouseWheel(new SharedPoint(position.X, position.Y), new SharedPoint(e.Delta.X, e.Delta.Y));
     }
 
     private void ControlOnKeyDown(object? sender, KeyEventArgs e)

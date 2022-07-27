@@ -5,15 +5,10 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public record struct Selection
 {
-    public Selection(long start, long end, ActiveColumn column)
+    public Selection(long start, long length, ActiveColumn column)
     {
-        if (end < start)
-        {
-            throw new ArgumentException("End offset cannot be lower than start offset.", nameof(end));
-        }
-
         Start = start;
-        Length = end - start;
+        Length = length;
         Column = column;
     }
     

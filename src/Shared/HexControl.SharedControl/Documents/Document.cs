@@ -33,13 +33,14 @@ public class Document
     private Caret _caret;
     private Selection? _selection;
 
-    private AsyncReaderWriterLock _lock;
+    private readonly AsyncReaderWriterLock _lock;
 
     public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
         Buffer = ReplaceBuffer(buffer);
 
-        Configuration = _configuration = configuration ?? new DocumentConfiguration();
+        _configuration = DocumentConfiguration.Default;
+        Configuration = configuration ?? _configuration;
 
         _undoStates = new Stack<(DocumentState Undo, DocumentState? Redo)>();
         _redoStates = new Stack<(DocumentState Undo, DocumentState? Redo)>();
@@ -61,6 +62,8 @@ public class Document
             {
                 return;
             }
+
+            value.Verify();
 
             var oldConfiguration = _configuration;
             _configuration = value;
@@ -261,11 +264,11 @@ public class Document
         }
     }
 
-    public void Select(long startOffset, long endOffset, ActiveColumn column,
+    public void Select(long offset, long length, ActiveColumn column,
         NewCaretLocation newCaretLocation = NewCaretLocation.Current,
         bool requestCenter = false)
     {
-        Select(new Selection(startOffset, endOffset, column), newCaretLocation, requestCenter);
+        Select(new Selection(offset, length, column), newCaretLocation, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).

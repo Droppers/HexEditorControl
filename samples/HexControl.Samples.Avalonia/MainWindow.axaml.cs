@@ -37,16 +37,24 @@ public class MainWindow : Window
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         Document = Document.FromBytes(bytes, configuration: config);
 
-        for (var i = 0; i < 10_000; i++)
+        Document.AddMarker(new Marker(2, 23)
         {
-            Document.AddMarker(new Marker(i * 200, 100)
-            {
-                Background = Color.FromArgb(255, 0, 0, 0),
-                Column = MarkerColumn.Text,
-                BehindText = true,
-                Foreground = Color.White
-            });
-        }
+            Background = Color.FromArgb(255, 0, 0, 0),
+            Column = MarkerColumn.DataText,
+            BehindText = true,
+            Foreground = Color.White
+        });
+
+        //for (var i = 0; i < 10_000; i++)
+        //{
+        //    Document.AddMarker(new Marker(i * 200, 100)
+        //    {
+        //        Background = Color.FromArgb(255, 0, 0, 0),
+        //        Column = MarkerColumn.Text,
+        //        BehindText = true,
+        //        Foreground = Color.White
+        //    });
+        //}
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
     }
 }

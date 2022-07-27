@@ -52,7 +52,7 @@ public class NumberCharacterSet : CharacterSet
         _type = type;
         Groupable = true;
         Width = GetWidth(type);
-        DataWidth = GetSize(type);
+        ByteWidth = GetSize(type);
     }
 
     public override unsafe int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)

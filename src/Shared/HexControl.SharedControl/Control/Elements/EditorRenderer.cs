@@ -103,18 +103,35 @@ internal readonly ref struct EditorRenderer
 
     private void UpdateModificationBrushOverrides(ReadOnlySpan<ModifiedRange> modifications)
     {
+        var leftByteWidth = _calculator.GetCharacterSetForColumn(EditorColumn.Left).ByteWidth;
+        var rightByteWidth = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText 
+            ? _calculator.GetCharacterSetForColumn(EditorColumn.Right).ByteWidth 
+            : 0;
+
+        var lookup = _renderState.MarkerForegroundLookup;
         var count = modifications.Length;
-        var rightOffset = _renderState.MarkerForegroundLookup.Length / 2;
+        var rightOffset = lookup.Length / 2;
         for (var i = 0; i < count; i++)
         {
             var modification = modifications[i];
             var startOffset = Math.Max(0, modification.StartOffset - _documentState.Offset);
-            var length = Math.Min(_bytesLength - startOffset,
-                modification.Length - (modification.StartOffset < _documentState.Offset ? _documentState.Offset - modification.StartOffset : 0));
-            for (var j = 0; j < length; j++)
+            var lengthDecrement = modification.StartOffset < _documentState.Offset ? _documentState.Offset - modification.StartOffset : 0;
+            var length = Math.Min(_bytesLength - startOffset, modification.Length - lengthDecrement);
+
+            // Left column
+            var leftStartOffset = leftByteWidth > 1 ? EditorCalculator.RoundTo(startOffset, leftByteWidth, EditorCalculator.RoundType.Floor) : startOffset;
+            var leftEndOffset = leftByteWidth > 1 ? EditorCalculator.RoundTo(startOffset + length, leftByteWidth, EditorCalculator.RoundType.Ceil) : startOffset + length;
+            for (var j = 0; j < leftEndOffset - leftStartOffset && leftStartOffset + j < lookup.Length; j++)
             {
-                _renderState.MarkerForegroundLookup[startOffset + j] = _control.ModifiedForeground;
-                _renderState.MarkerForegroundLookup[rightOffset + startOffset + j] = _control.ModifiedForeground;
+                lookup[leftStartOffset + j] = _control.ModifiedForeground;
+            }
+
+            // Right column
+            var rightStartOffset = rightByteWidth > 1 ? EditorCalculator.RoundTo(startOffset, rightByteWidth, EditorCalculator.RoundType.Floor) : startOffset;
+            var rightEndOffset = rightByteWidth > 1 ? EditorCalculator.RoundTo(startOffset + length, rightByteWidth, EditorCalculator.RoundType.Ceil) : startOffset + length;
+            for (var j = 0; j < rightEndOffset - rightStartOffset && rightOffset + rightStartOffset + j < lookup.Length; j++)
+            {
+                lookup[rightOffset + rightStartOffset + j] = _control.ModifiedForeground;
             }
         }
     }
@@ -262,11 +279,7 @@ internal readonly ref struct EditorRenderer
 
     private MarkerPosition CalculateMarkerPosition(long markerOffset, long markerLength, EditorColumn column)
     {
-        if (column is EditorColumn.Left)
-        {
-        }
-        var state = _documentState;
-        var bytesPerRow = _documentState.Configuration.BytesPerRow; //;_calculator.GetBytesPerRow(column);
+        var bytesPerRow = _documentState.Configuration.BytesPerRow;
         
         var startOffset = Math.Max(0, markerOffset - _documentState.Offset);
         var length = Math.Min(_bytesLength, markerLength - (markerOffset < _documentState.Offset ? _documentState.Offset - markerOffset : 0) - 1);
@@ -417,27 +430,45 @@ internal readonly ref struct EditorRenderer
 
     private void UpdateMarkerBrushOverrides(Marker marker)
     {
-        var rightOffset = _renderState.MarkerForegroundLookup.Length / 2;
         var foreground = marker.Foreground ?? (marker.BehindText ? DetermineTextColor(marker.Background) : null);
         if (foreground is null || _renderState.ColorToBrushCache[foreground.Value] is not { } foregroundBrush)
         {
             return;
         }
 
+        var lookup = _renderState.MarkerForegroundLookup;
+
+        var column = MapFromMarkerColumn(marker.Column);
+        var leftByteWidth = _calculator.GetCharacterSetForColumn(EditorColumn.Left).ByteWidth;
+        var rightByteWidth = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText
+            ? _calculator.GetCharacterSetForColumn(EditorColumn.Right).ByteWidth
+            : 0;
+
         var startOffset = Math.Max(0, marker.Offset - _documentState.Offset);
+        var lengthDecrement = marker.Offset < _documentState.Offset ? _documentState.Offset - marker.Offset : 0;
         var length = Math.Min(_bytesLength - startOffset,
-            marker.Length - (marker.Offset < _documentState.Offset ? _documentState.Offset - marker.Offset : 0));
-        for (var j = 0; j < length; j++)
+            marker.Length - lengthDecrement);
+        var rightOffset = lookup.Length / 2;
+
+        // Left column
+        if (column is EditorColumn.Left || marker.Column is MarkerColumn.DataText)
         {
-            if (marker.Column is MarkerColumn.DataText)
+            var leftStartOffset = leftByteWidth > 1 ? EditorCalculator.RoundTo(startOffset, leftByteWidth, EditorCalculator.RoundType.Floor) : startOffset;
+            var leftEndOffset = leftByteWidth > 1 ? EditorCalculator.RoundTo(startOffset + length, leftByteWidth, EditorCalculator.RoundType.Ceil) : startOffset + length;
+            for (var j = 0; j < leftEndOffset - leftStartOffset && leftStartOffset + j < lookup.Length; j++)
             {
-                _renderState.MarkerForegroundLookup[startOffset + j] = foregroundBrush;
-                _renderState.MarkerForegroundLookup[rightOffset + startOffset + j] = foregroundBrush;
+                lookup[leftStartOffset + j] = foregroundBrush;
             }
-            else
+        }
+
+        // Right column
+        if (column is EditorColumn.Right || marker.Column is MarkerColumn.DataText)
+        {
+            var rightStartOffset = rightByteWidth > 1 ? EditorCalculator.RoundTo(startOffset, rightByteWidth, EditorCalculator.RoundType.Floor) : startOffset;
+            var rightEndOffset = rightByteWidth > 1 ? EditorCalculator.RoundTo(startOffset + length, rightByteWidth, EditorCalculator.RoundType.Ceil) : startOffset + length;
+            for (var j = 0; j < rightEndOffset - rightStartOffset && rightOffset + rightStartOffset + j < lookup.Length; j++)
             {
-                var offset = marker.Column is MarkerColumn.Data ? 0 : rightOffset;
-                _renderState.MarkerForegroundLookup[offset + startOffset + j] = foregroundBrush;
+                lookup[rightOffset + rightStartOffset + j] = foregroundBrush;
             }
         }
     }
@@ -503,7 +534,7 @@ internal readonly ref struct EditorRenderer
         var totalX = !firstPartiallyVisible ? 0 : (visibleCharacters + 1) * _control.CharacterWidth;
 
         var startGroup = (int)invisibleGroups;
-        var groupCount = _documentState.Configuration.BytesPerRow / groupSize / _calculator.LeftCharacterSet.DataWidth;
+        var groupCount = _documentState.Configuration.BytesPerRow / groupSize / _calculator.LeftCharacterSet.ByteWidth;
         for (var currentGroup = startGroup; currentGroup < groupCount; currentGroup++)
         {
             var firstGroup = currentGroup == startGroup;
@@ -610,7 +641,7 @@ internal readonly ref struct EditorRenderer
                         groupSize,
                         bytesPerRow);
 
-                    byteColumn += characterSet.DataWidth;
+                    byteColumn += characterSet.ByteWidth;
                 }
 
                 if (columnIndex >= bytesPerRow - 1)
@@ -650,12 +681,12 @@ internal readonly ref struct EditorRenderer
         else
         {
             var brush = LookupBrushForByte(characterSet, column, byteIndex, columnIndex, groupSize);
-            var bytes = _bytes.AsSpan(byteIndex, Math.Min(characterSet.DataWidth, _bytes.Length - (byteIndex + characterSet.DataWidth)));
+            var bytes = _bytes.AsSpan(byteIndex, Math.Min(characterSet.ByteWidth, _bytes.Length - (byteIndex + characterSet.ByteWidth)));
             writtenCharacters = WriteByteToTextBuilder(builder, typeface, brush, characterSet, characterBuffer, bytes);
         }
 
         // Add whitespace between characters
-        if (column is EditorColumn.Left && (columnIndex + characterSet.DataWidth) == bytesPerRow)
+        if (column is EditorColumn.Left && (columnIndex + characterSet.ByteWidth) == bytesPerRow)
         {
             builder.Whitespace(SPACING_BETWEEN_COLUMNS);
             writtenCharacters += SPACING_BETWEEN_COLUMNS;
@@ -742,7 +773,10 @@ internal readonly ref struct EditorRenderer
 
         if (_context.DirtyRect && _renderState.PreviousCaretOffset != caret.Offset)
         {
-            var previousPosition = CalculateCaretPosition(_renderState.PreviousCaretOffset, 0, characterSet, column);
+            var previousOffset = _documentState.Selection?.End == caret.Offset
+                ? EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Ceil)
+                : caret.Offset;
+            var previousPosition = CalculateCaretPosition(previousOffset, 0, characterSet, column);
             if (previousPosition.X >= 0 && previousPosition.Y <= _owner.Height)
             {
                 _owner.AddDirtyRect(new SharedRectangle(previousPosition.X, previousPosition.Y,
@@ -755,7 +789,10 @@ internal readonly ref struct EditorRenderer
                         (caretColumn != column || _renderState.CaretTick) &&
                         (caretColumn == column || !_documentState.Selection.HasValue);
 
-        var position = CalculateCaretPosition(caret.Offset, caret.Nibble, characterSet, column);
+        var offset = _documentState.Selection?.End == caret.Offset 
+            ? EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Ceil) 
+            : caret.Offset;
+        var position = CalculateCaretPosition(offset, caret.Nibble, characterSet, column);
         if (position.X < 0 || position.Y > _owner.Height)
         {
             return;
@@ -764,14 +801,14 @@ internal readonly ref struct EditorRenderer
         if (column == caretColumn)
         {
             var topOffset = 0;
-            var leftOffset = characterSet.Groupable && IsEndOfGroup(_documentState, caret.Offset) &&
+            var leftOffset = characterSet.Groupable && IsEndOfGroup(_documentState, offset) &&
                              _documentState.Selection?.End == caret.Offset
                 ? _control.CharacterWidth
                 : 1;
 
             // Move the caret up to the end of last row for visual reasons
             var moveCaretUp = _documentState.Selection?.End == caret.Offset &&
-                              caret.Offset % _documentState.Configuration.BytesPerRow is 0;
+                              offset % _documentState.Configuration.BytesPerRow is 0;
 
             if (moveCaretUp)
             {
@@ -879,6 +916,20 @@ internal readonly ref struct EditorRenderer
                 ? EditorColumn.Right
                 : default!,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
+        };
+    }
+
+    private EditorColumn? MapFromMarkerColumn(MarkerColumn column)
+    {
+        return column switch
+        {
+            MarkerColumn.Data => _documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText
+                ? EditorColumn.Left
+                : EditorColumn.Right,
+            MarkerColumn.Text => _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText
+                ? EditorColumn.Right
+                : default!,
+            _ => null
         };
     }
 

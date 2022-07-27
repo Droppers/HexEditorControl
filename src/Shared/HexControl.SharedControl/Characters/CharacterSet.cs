@@ -9,7 +9,7 @@ public abstract class CharacterSet
 
     public int Width { get; protected init; } = 1;
 
-    public int DataWidth { get; protected init; } = 1;
+    public int ByteWidth { get; protected init; } = 1;
     
     public abstract int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer);
 

@@ -233,7 +233,7 @@ internal class EditorElement : VisualElement
             ? leftInCharacters / (Configuration.GroupSize * characterSet.Width + 1)
             : 0;
 
-        var byteColumn = (int)(((leftInCharacters - groupCount) / (double)characterSet.Width) * characterSet.DataWidth);
+        var byteColumn = (int)(((leftInCharacters - groupCount) / (double)characterSet.Width) * characterSet.ByteWidth);
         var nibble = Math.Max(0, ((int)relativePoint.X - (_calculator.GetLeft(byteColumn, column) * CharacterWidth)) / (double)_control.CharacterWidth);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
@@ -383,7 +383,7 @@ internal class EditorElement : VisualElement
             var roundType = position.X < _mouseDownPosition.Value.X || position.Y < _mouseDownPosition.Value.Y
                 ? EditorCalculator.RoundType.Ceil
                 : EditorCalculator.RoundType.Floor;
-            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_startSelectionOffset.Value, roundType);
+            _startSelectionOffset = EditorCalculator.RoundTo(_startSelectionOffset.Value, _calculator.MaxByteWidth, roundType);
         }
 
         _mouseDownPosition = null;
@@ -406,7 +406,7 @@ internal class EditorElement : VisualElement
         var roundType = newOffset >= _startSelectionOffset
             ? EditorCalculator.RoundType.Ceil
             : EditorCalculator.RoundType.Floor;
-        newOffset = _calculator.RoundToMaxDataWidth(newOffset, roundType);
+        newOffset = EditorCalculator.RoundTo(newOffset, _calculator.MaxByteWidth, roundType);
 
         var startOffset = newOffset >= _startSelectionOffset.Value ? _startSelectionOffset.Value : newOffset;
         var endOffset = newOffset >= _startSelectionOffset.Value ? newOffset : _startSelectionOffset.Value;
@@ -427,7 +427,9 @@ internal class EditorElement : VisualElement
             var newCaretLocation = newOffset >= _startSelectionOffset.Value
                 ? NewCaretLocation.SelectionEnd
                 : NewCaretLocation.SelectionStart;
-            Document.Select(startOffset, endOffset, column, newCaretLocation, true);
+
+            var length = endOffset >= Document.Length ? Document.Length - startOffset : endOffset - startOffset;
+            Document.Select(startOffset, length, column, newCaretLocation, true);
         }
     }
 
@@ -487,10 +489,13 @@ internal class EditorElement : VisualElement
         else if (e.Key is HostKey.Shift)
         {
             // Respect user dragging up for continuation with keyboard controls
-            var newStartOffset = (caret.Offset == selection?.Start ? selection.Value.End - 1 : selection?.Start) ??
+            var newStartOffset = (caret.Offset == selection?.Start ? selection.Value.End : selection?.Start) ??
                                  caret.Offset;
             _startSelectionOffset = newStartOffset;
-            _keyDownOffset = newStartOffset;
+            if (!selection.HasValue)
+            {
+                _keyDownOffset = newStartOffset;
+            }
             _keyboardSelectMode = true;
         }
         else if (e.Key is HostKey.Back or HostKey.Delete && CanModify && selection.HasValue)
@@ -554,18 +559,18 @@ internal class EditorElement : VisualElement
         var nibble = document.Caret.Nibble;
 
         var characterSet = _calculator.GetCharacterSetForColumn(MapFromActiveColumn(document.Caret.Column));
-        var maxDataWith = _calculator.GetCharacterSetForColumn(EditorColumn.Left).DataWidth;
+        var maxDataWith = _calculator.GetCharacterSetForColumn(EditorColumn.Left).ByteWidth;
 
         if (_keyDownOffset.HasValue)
         {
             var roundType = key is HostKey.Right or HostKey.Down ? EditorCalculator.RoundType.Floor : EditorCalculator.RoundType.Ceil;
-            _startSelectionOffset = _calculator.RoundToMaxDataWidth(_keyDownOffset.Value, roundType);
+            _startSelectionOffset = EditorCalculator.RoundTo(_keyDownOffset.Value, _calculator.MaxByteWidth, roundType);
             offset = key is HostKey.Right or HostKey.Down ? _startSelectionOffset.Value + maxDataWith : _startSelectionOffset.Value - maxDataWith;
             _keyDownOffset = null;
         }
         else
         {
-            var offsetIncrement = document.Selection.HasValue ? maxDataWith : characterSet.DataWidth;
+            var offsetIncrement = document.Selection.HasValue ? maxDataWith : characterSet.ByteWidth;
 
             // Allow for nibble level control when not selecting and byte level when selecting.
             switch (key)

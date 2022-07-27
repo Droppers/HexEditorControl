@@ -40,7 +40,7 @@ internal class EditorCalculator
 
     public CharacterSet? RightCharacterSet => _rightCharacterSet;
 
-    public int MaxDataWidth { get; private set; } = 1;
+    public int MaxByteWidth { get; private set; } = 1;
 
     public EditorCalculator(DocumentConfiguration configuration, int horizontalCharacterOffset,
         bool shortLifeSpan)
@@ -81,7 +81,7 @@ internal class EditorCalculator
     public int GetColumnWidth(EditorColumn column)
     {
         var characterSet = GetCharacterSetForColumn(column);
-        var bytesPerRow = _configuration.BytesPerRow / characterSet.DataWidth;
+        var bytesPerRow = _configuration.BytesPerRow / characterSet.ByteWidth;
         if (!characterSet.Groupable)
         {
             return bytesPerRow * characterSet.Width;
@@ -90,28 +90,30 @@ internal class EditorCalculator
         return bytesPerRow * characterSet.Width + bytesPerRow / _configuration.GroupSize - 1;
     }
 
-    public int GetLeft(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
+    public int GetLeft(int offsetFromLeft, EditorColumn column, bool isEndOffset = false)
     {
         var isLastOfGroup = offsetFromLeft % _configuration.GroupSize is 0;
         var characterSet = GetCharacterSetForColumn(column);
-        offsetFromLeft /= characterSet.DataWidth;
+        offsetFromLeft = isEndOffset 
+            ? (int)Math.Ceiling(offsetFromLeft / (double)characterSet.ByteWidth)
+            : offsetFromLeft / characterSet.ByteWidth;
         var groups = Math.Max(0, (characterSet.Groupable ? offsetFromLeft / _configuration.GroupSize : 0) -
-                                 (excludeLastGroup && characterSet.Groupable && isLastOfGroup ? 1 : 0));
+                                 (isEndOffset && characterSet.Groupable && isLastOfGroup ? 1 : 0));
         return (offsetFromLeft * characterSet.Width + groups);
     }
 
-    public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool excludeLastGroup = false)
+    public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool isEndOffset = false)
     {
         switch (column)
         {
             case EditorColumn.Left:
-                return GetLeft(offsetFromLeft, column, excludeLastGroup) -
+                return GetLeft(offsetFromLeft, column, isEndOffset) -
                        Math.Max(0, GetLeft(_horizontalColumnOffset, column));
             case EditorColumn.Right:
                 var leftOffset = _horizontalColumnOffset > _configuration.BytesPerRow
                     ? GetLeft(_horizontalColumnOffset - _configuration.BytesPerRow, column)
                     : 0;
-                return GetLeft(offsetFromLeft, column, excludeLastGroup) - leftOffset;
+                return GetLeft(offsetFromLeft, column, isEndOffset) - leftOffset;
             default:
                 throw new ArgumentException("This column type is not supported.", nameof(column));
         }
@@ -140,26 +142,31 @@ internal class EditorCalculator
             var groups = characterSet.Groupable
                 ? HorizontalCharacterOffset / (_configuration.GroupSize * characterSet.Width + 1)
                 : 0;
-            return Math.Min((HorizontalCharacterOffset - groups) / characterSet.Width, _configuration.BytesPerRow / characterSet.DataWidth);
+            return Math.Min((HorizontalCharacterOffset - groups) / characterSet.Width, _configuration.BytesPerRow / characterSet.ByteWidth);
         }
 
         var leftColumnWidth = GetColumnWidth(EditorColumn.Left);
         if (_rightCharacterSet is null)
         {
-            return GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.DataWidth;
+            return GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth;
         }
 
-        return (GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.DataWidth) + Math.Max(0,
-            GetVisibleColumnCount(HorizontalCharacterOffset - leftColumnWidth, _rightCharacterSet) * _rightCharacterSet.DataWidth);
+        return (GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth) + Math.Max(0,
+            GetVisibleColumnCount(HorizontalCharacterOffset - leftColumnWidth, _rightCharacterSet) * _rightCharacterSet.ByteWidth);
     }
 
-    public long RoundToMaxDataWidth(long offset, RoundType type)
+    public static long RoundTo(long offset, long target, RoundType type)
     {
+        if (target is 1)
+        {
+            return offset;
+        }
+
         return type switch
         {
-            RoundType.Ceil => (long)(Math.Ceiling(offset / (double)MaxDataWidth) * MaxDataWidth),
-            RoundType.Floor => (long)(Math.Floor(offset / (double)MaxDataWidth) * MaxDataWidth),
-            RoundType.Middle => (long)(Math.Round(offset / (double)MaxDataWidth) * MaxDataWidth),
+            RoundType.Ceil => (long)(Math.Ceiling(offset / (double)target) * target),
+            RoundType.Floor => (long)(Math.Floor(offset / (double)target) * target),
+            RoundType.Middle => (long)(Math.Round(offset / (double)target) * target),
             _ => throw new NotImplementedException()
         };
     }
@@ -168,7 +175,7 @@ internal class EditorCalculator
     {
         UpdateCharacterSets();
 
-        MaxDataWidth = Math.Max(_leftCharacterSet.DataWidth, _rightCharacterSet?.DataWidth ?? 0);
+        MaxByteWidth = Math.Max(_leftCharacterSet.ByteWidth, _rightCharacterSet?.ByteWidth ?? 0);
     }
 
     private void UpdateCharacterSets()

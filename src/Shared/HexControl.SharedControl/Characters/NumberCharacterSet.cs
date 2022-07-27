@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace HexControl.SharedControl.Characters;
 
@@ -14,9 +15,10 @@ public enum NumberType
     Double
 }
 
-public class NumberCharacterSet : CharacterSet
+public class NumberCharacterSet : CharacterSet, IStringConvertible
 {
     private readonly NumberType _type;
+    private readonly bool _reverseBytes;
 
     private static int GetSize(NumberType type)
     {
@@ -47,9 +49,10 @@ public class NumberCharacterSet : CharacterSet
         };
     }
 
-    public NumberCharacterSet(NumberType type)
+    public NumberCharacterSet(NumberType type, bool reverseBytes = false)
     {
         _type = type;
+        _reverseBytes = reverseBytes;
         Groupable = true;
         Width = GetWidth(type);
         ByteWidth = GetSize(type);
@@ -59,7 +62,7 @@ public class NumberCharacterSet : CharacterSet
     {
         Span<char> tempBuffer = stackalloc char[Width];
 
-        if (TryFormat(bytes, _type, tempBuffer, out var charsWritten))
+        if (TryFormat(bytes, _type, tempBuffer, _reverseBytes, out var charsWritten))
         {
             tempBuffer.Slice(0, charsWritten).CopyTo(destBuffer.Slice(Width - charsWritten));
             destBuffer.Slice(0, Width - charsWritten).Fill(' ');
@@ -70,9 +73,29 @@ public class NumberCharacterSet : CharacterSet
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool TryFormat(ReadOnlySpan<byte> bytes, NumberType type, Span<char> destBuffer, out int charsWritten)
+    private static unsafe bool TryFormat(ReadOnlySpan<byte> bytes, NumberType type, Span<char> destBuffer, bool reverse, out int charsWritten)
     {
-        var result = type switch
+        if (reverse)
+        {
+            Span<byte> reversedBytes = stackalloc byte[bytes.Length];
+            bytes.CopyTo(reversedBytes);
+            reversedBytes.Reverse();
+            
+            return type switch
+            {
+                NumberType.Float => BitConverter.ToSingle(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.Double => BitConverter.ToDouble(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.Int16 => BitConverter.ToInt16(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.Int32 => BitConverter.ToInt32(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.Int64 => BitConverter.ToInt64(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.UInt16 => BitConverter.ToUInt16(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.UInt32 => BitConverter.ToUInt32(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                NumberType.UInt64 => BitConverter.ToUInt64(reversedBytes).TryFormat(destBuffer, out charsWritten),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+            };
+        }
+
+        return type switch
         {
             NumberType.Float => BitConverter.ToSingle(bytes).TryFormat(destBuffer, out charsWritten),
             NumberType.Double => BitConverter.ToDouble(bytes).TryFormat(destBuffer, out charsWritten),
@@ -84,13 +107,36 @@ public class NumberCharacterSet : CharacterSet
             NumberType.UInt64 => BitConverter.ToUInt64(bytes).TryFormat(destBuffer, out charsWritten),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
         };
-
-        return result;
     }
 
     public override bool TryWrite(byte input, char @char, int nibble, out byte output)
     {
         output = default;
         return false;
+    }
+
+    public unsafe string? ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
+    {
+        if (buffer.Length % ByteWidth is not 0)
+        {
+            return null;
+        }
+
+        var sb = new StringBuilder();
+
+        Span<char> tempBuffer = stackalloc char[Width];
+
+        for (var i = 0; i < buffer.Length / ByteWidth; i++)
+        {
+            var bytes = buffer.Slice(i * ByteWidth, ByteWidth);
+            if (TryFormat(bytes, _type, tempBuffer, _reverseBytes, out var charsWritten))
+            {
+                sb.Append(tempBuffer.Slice(0, charsWritten));
+            }
+            
+            sb.Append(' ');
+        }
+
+        return sb.ToString();
     }
 }

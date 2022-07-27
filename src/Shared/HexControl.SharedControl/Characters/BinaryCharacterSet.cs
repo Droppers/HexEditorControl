@@ -72,7 +72,7 @@ public sealed class BinaryCharacterSet : CharacterSet, IStringParsable, IStringC
         return true;
     }
 
-    public string ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
+    public string? ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
     {
         var sb = new StringBuilder();
         var currentOffset = info.Offset;

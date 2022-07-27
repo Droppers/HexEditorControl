@@ -255,6 +255,8 @@ public class Document
             return;
         }
 
+        Selection = null;
+
         var oldCaret = Caret;
         Caret = newCaret;
 
@@ -423,11 +425,11 @@ public class Document
 
                     if (length.HasValue)
                     {
-                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer);
+                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer, cancellationToken);
                     }
                     else
                     {
-                        await Buffer.InsertAsync(offset, writeBuffer);
+                        await Buffer.InsertAsync(offset, writeBuffer, cancellationToken);
                     }
 
                     return true;
@@ -441,7 +443,7 @@ public class Document
 
         return false;
     }
-
+    
     #endregion
 
     private CharacterSet GetCharacterSet(ActiveColumn column)
@@ -461,24 +463,14 @@ public class Document
             throw new ArgumentException("Caret offset must be between zero and Length of the document.");
         }
 
-        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSetForColumn(caret.Column).Width)
+        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSet(caret.Column).Width)
         {
             throw new ArgumentException("Caret nibble must be between zero and Width of the column's character set.");
         }
 
         return true;
     }
-
-    private CharacterSet GetCharacterSetForColumn(ActiveColumn column)
-    {
-        return column switch
-        {
-            ActiveColumn.Data => Configuration.DataCharacterSet,
-            ActiveColumn.Text => Configuration.TextCharacterSet,
-            _ => throw new ArgumentOutOfRangeException(nameof(column))
-        };
-    }
-
+    
     internal ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
     {
         var oldBuffer = Buffer;
@@ -520,7 +512,7 @@ public class Document
         var endOfDocument = Caret.Offset >= Length;
         var isNewByte = Selection.HasValue || endOfDocument || Configuration.WriteMode is WriteMode.Insert && Caret.Nibble is 0;
 
-        var characterSet = GetCharacterSetForColumn(Caret.Column);
+        var characterSet = GetCharacterSet(Caret.Column);
         var oldByte = (byte)0;
 
         if (!isNewByte)

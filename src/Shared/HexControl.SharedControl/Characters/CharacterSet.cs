@@ -25,5 +25,5 @@ public interface IStringParsable
 [PublicAPI]
 public interface IStringConvertible
 {
-    string ToString(ReadOnlySpan<byte> buffer, FormatInfo info);
+    string? ToString(ReadOnlySpan<byte> buffer, FormatInfo info);
 }

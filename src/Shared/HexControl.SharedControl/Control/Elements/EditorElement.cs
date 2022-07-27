@@ -260,9 +260,7 @@ internal class EditorElement : VisualElement
         {
             return; // Use clicked outside editable area, don't count this as valid click to prevent weird behavior
         }
-
-        Deselect();
-
+        
         var (column, offset, _) = GetOffsetFromPoint(position);
 
         // Track the mouse down position for determining initial drag direction and whether it is a click or selection.
@@ -289,7 +287,6 @@ internal class EditorElement : VisualElement
         {
             var activeColumn = MapToActiveColumn(column);
             SetCaretOffset(activeColumn, offset, nibble);
-            Deselect();
         }
 
         _mouseDownPosition = null;

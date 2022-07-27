@@ -69,7 +69,7 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
         return true;
     }
 
-    public string ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
+    public string? ToString(ReadOnlySpan<byte> buffer, FormatInfo info)
     {
         var sb = new StringBuilder();
         foreach (var @byte in buffer)

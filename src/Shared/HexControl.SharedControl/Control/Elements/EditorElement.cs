@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;
@@ -192,39 +191,46 @@ internal class EditorElement : VisualElement
             _bytesLength).Render(modifications);
     }
 
-    private (EditorColumn column, SharedPoint) GetPointRelativeToColumn(SharedPoint point)
+    private (EditorColumn column, SharedPoint) GetPointRelativeToColumn(SharedPoint point, EditorColumn? column = null)
     {
         var leftWidth = _calculator.GetColumnCharacterCount(EditorColumn.Left) * CharacterWidth;
         var leftOffset = _calculator.GetLeft(_calculator.HorizontalCharacterOffset, EditorColumn.Left);
-
-        var column = EditorColumn.Left;
+        
         var x = leftOffset + Math.Max(0, point.X);
-        if (x > leftWidth && Configuration.ColumnsVisible is VisibleColumns.DataText)
-        {
-            x = Math.Min(_calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth,
-                x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
-            column = EditorColumn.Right;
-        }
+        var y = point.Y - _control.HeaderHeight;
 
-        return (column, new SharedPoint(x, point.Y - _control.HeaderHeight));
+        if (column is EditorColumn.Left || (column is null && x <= leftWidth) || Configuration.ColumnsVisible is not VisibleColumns.DataText)
+        {
+            return (EditorColumn.Left, new SharedPoint(x, y));
+        }
+        
+        x = Math.Min(_calculator.GetColumnCharacterCount(EditorColumn.Right) * CharacterWidth,
+            x - (leftWidth + SPACING_BETWEEN_COLUMNS * CharacterWidth));
+
+        return (EditorColumn.Right, new SharedPoint(x, y));
     }
 
-    private (EditorColumn side, long offset, int nibble) GetOffsetFromPoint(SharedPoint point)
+    private (EditorColumn side, long offset, int nibble) GetOffsetFromPoint(SharedPoint point,
+        EditorColumn? column = null)
     {
-        var (column, relativePoint) = GetPointRelativeToColumn(point);
-        var characterSet = _calculator.GetCharacterSetForColumn(column);
-        var leftInCharacters = (int)(relativePoint.X / CharacterWidth);
+        var (inferredColumn, relativePoint) = GetPointRelativeToColumn(point, column);
+        var characterSet = _calculator.GetCharacterSetForColumn(inferredColumn);
+
+        var columnWidth = _calculator.GetColumnCharacterCount(inferredColumn) * _control.CharacterWidth;
+        var relativeX = Math.Clamp(relativePoint.X, 0, columnWidth);
+        var leftInCharacters = (int)(relativeX / CharacterWidth);
 
         var groupCount = characterSet.Groupable
             ? leftInCharacters / (Configuration.GroupSize * characterSet.Width + 1)
             : 0;
 
         var byteColumn = (leftInCharacters - groupCount) / characterSet.Width;
-        var nibble = Math.Max(0, ((int)relativePoint.X - _calculator.GetLeft(byteColumn, column)) / (double)_control.CharacterWidth);
+        var nibble = Math.Max(0,
+            ((int)relativeX - _calculator.GetLeft(byteColumn, inferredColumn)) / (double)_control.CharacterWidth);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var offset = Offset + (byteRow * Configuration.BytesPerRow + byteColumn);
-
+        
         if (characterSet.Width is 1 && nibble >= 0.5 || Math.Round(nibble) >= characterSet.Width)
         {
             offset++;
@@ -232,7 +238,7 @@ internal class EditorElement : VisualElement
         }
 
         nibble = Math.Round(nibble);
-        return (column, ClampOffset(offset), offset >= Document?.Length ? 0 : (int)nibble);
+        return (inferredColumn, ClampOffset(offset), offset >= Document?.Length ? 0 : (int)nibble);
     }
 
     private void OnMouseDown(object? sender, HostMouseButtonEventArgs e)
@@ -258,7 +264,7 @@ internal class EditorElement : VisualElement
         CaptureMouse();
     }
 
-    private long ClampOffset(long offset) => Math.Max(0, Math.Min(offset, Document?.Length ?? 0));
+    private long ClampOffset(long offset) => Math.Clamp(offset, 0, Document?.Length ?? 0);
 
     private void OnMouseUp(object? sender, HostMouseButtonEventArgs e)
     {
@@ -269,7 +275,7 @@ internal class EditorElement : VisualElement
             return;
         }
 
-        var (column, offset, nibble) = GetOffsetFromPoint(e.PointRelativeTo(this));
+        var (column, offset, nibble) = GetOffsetFromPoint(e.PointRelativeTo(this), _activeColumn);
         if (_mouseDownPosition is not null)
         {
             var activeColumn = MapToActiveColumn(column);
@@ -344,7 +350,7 @@ internal class EditorElement : VisualElement
             return;
         }
 
-        var (column, offset, nibble) = GetOffsetFromPoint(position);
+        var (column, offset, nibble) = GetOffsetFromPoint(position, _activeColumn);
 
         // Allow selecting from middle of character rather than entire character
         var characterSet = _calculator.GetCharacterSetForColumn(column);
@@ -550,7 +556,7 @@ internal class EditorElement : VisualElement
                 break;
         }
 
-        offset = Math.Max(0, Math.Min(document.Length, offset));
+        offset = ClampOffset(offset);
         nibble = Math.Max(0, nibble);
 
         if (_keyboardSelectMode is false && document.Selection is null)

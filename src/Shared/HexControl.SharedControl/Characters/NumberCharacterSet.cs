@@ -53,23 +53,26 @@ public class NumberCharacterSet : CharacterSet, IStringConvertible
     {
         _type = type;
         _reverseBytes = reverseBytes;
+
+        Type = CharacterSetType.Data;
         Groupable = true;
-        Width = GetWidth(type);
+
+        VisualWidth = GetWidth(type);
         ByteWidth = GetSize(type);
     }
 
     public override unsafe int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
-        Span<char> tempBuffer = stackalloc char[Width];
+        Span<char> tempBuffer = stackalloc char[VisualWidth];
 
         if (TryFormat(bytes, _type, tempBuffer, _reverseBytes, out var charsWritten))
         {
-            tempBuffer.Slice(0, charsWritten).CopyTo(destBuffer.Slice(Width - charsWritten));
-            destBuffer.Slice(0, Width - charsWritten).Fill(' ');
-            return Width;
+            tempBuffer.Slice(0, charsWritten).CopyTo(destBuffer.Slice(VisualWidth - charsWritten));
+            destBuffer.Slice(0, VisualWidth - charsWritten).Fill(' ');
+            return VisualWidth;
         }
 
-        return Width;
+        return VisualWidth;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -124,7 +127,7 @@ public class NumberCharacterSet : CharacterSet, IStringConvertible
 
         var sb = new StringBuilder();
 
-        Span<char> tempBuffer = stackalloc char[Width];
+        Span<char> tempBuffer = stackalloc char[VisualWidth];
 
         for (var i = 0; i < buffer.Length / ByteWidth; i++)
         {

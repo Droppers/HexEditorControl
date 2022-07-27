@@ -62,16 +62,8 @@ internal readonly ref struct EditorRenderer
         if (_textBuilder is not null)
         {
             _textBuilder.Clear();
-            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Data or VisibleColumns.DataText &&
-                _calculator.LeftCharacterSet.Groupable)
-            {
-                WriteHexOffsetHeader(_textBuilder);
-            }
-
-            if (_documentState.Configuration.ColumnsVisible is VisibleColumns.Text or VisibleColumns.DataText)
-            {
-                WriteTextHeader(_textBuilder);
-            }
+            
+            WriteHeaders(_textBuilder);
 
             if (_bytes.Length is not 0 && _bytesLength is not 0)
             {
@@ -518,23 +510,59 @@ internal readonly ref struct EditorRenderer
     #endregion
 
     #region Content
-    private unsafe void WriteHexOffsetHeader(ITextBuilder builder)
+    private void WriteHeaders(ITextBuilder builder)
+    {
+        var visibleLeftWidth = _calculator.GetVisibleColumnWidth(EditorColumn.Left);
+        if (visibleLeftWidth > 0)
+        {
+            if (_calculator.LeftCharacterSet.Type is CharacterSetType.Data)
+            {
+                WriteDataOffsetHeader(builder, EditorColumn.Left, _calculator.LeftCharacterSet, 0);
+            }
+            else
+            {
+                WriteTextHeader(builder, 0);
+            }
+        }
+
+        if (_documentState.Configuration.ColumnsVisible is VisibleColumns.DataText)
+        {
+            var leftPosition = _calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow
+                ? (visibleLeftWidth + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth
+                : 0;
+
+            if (_calculator.RightCharacterSet?.Type is CharacterSetType.Data)
+            {
+                WriteDataOffsetHeader(builder, EditorColumn.Right, _calculator.RightCharacterSet, leftPosition);
+            }
+            else
+            {
+                WriteTextHeader(builder, leftPosition);
+            }
+        }
+    }
+
+    private unsafe void WriteDataOffsetHeader(ITextBuilder builder, EditorColumn column, CharacterSet characterSet, int leftPosition)
     {
         const int padZeroCount = 2;
 
         Span<char> characterBuffer = stackalloc char[20];
 
+        var horizontalColumnoffset = column is EditorColumn.Left
+            ? _calculator.HorizontalColumnoffset
+            : Math.Max(0, _calculator.HorizontalColumnoffset - _documentState.Configuration.BytesPerRow);
+
         var groupSize = _documentState.Configuration.GroupSize;
-        var invisibleGroups = (double)_calculator.HorizontalColumnoffset / groupSize;
+        var invisibleGroups = (double)(horizontalColumnoffset / characterSet.ByteWidth) / groupSize;
 
         var visibleCharacters =
-            (int)((1 - (invisibleGroups - (int)invisibleGroups)) * (_calculator.LeftCharacterSet.Width * groupSize));
+            (int)((1 - (invisibleGroups - (int)invisibleGroups)) * (characterSet.VisualWidth * groupSize));
         var firstPartiallyVisible = visibleCharacters > 0;
-        var incrementX = (_calculator.LeftCharacterSet.Width * groupSize + 1) * _control.CharacterWidth;
-        var totalX = !firstPartiallyVisible ? 0 : (visibleCharacters + 1) * _control.CharacterWidth;
+        var incrementX = (characterSet.VisualWidth * groupSize + 1) * _control.CharacterWidth;
+        var totalX = leftPosition + (!firstPartiallyVisible ? 0 : (visibleCharacters + 1) * _control.CharacterWidth);
 
         var startGroup = (int)invisibleGroups;
-        var groupCount = _documentState.Configuration.BytesPerRow / groupSize / _calculator.LeftCharacterSet.ByteWidth;
+        var groupCount = _documentState.Configuration.BytesPerRow / groupSize / characterSet.ByteWidth;
         for (var currentGroup = startGroup; currentGroup < groupCount; currentGroup++)
         {
             var firstGroup = currentGroup == startGroup;
@@ -542,7 +570,7 @@ internal readonly ref struct EditorRenderer
             var length = BaseConverter.Convert(currentGroup, _documentState.Configuration.OffsetBase, true, characterBuffer);
             var padZeros = Math.Max(0, padZeroCount - length);
 
-            var x = firstGroup ? 0 : totalX;
+            var x = firstGroup ? leftPosition : totalX;
             var y = -(_control.CharacterHeight + 2);
 
             for (var i = 0; i < length + padZeros; i++)
@@ -564,18 +592,14 @@ internal readonly ref struct EditorRenderer
         }
     }
 
-    private void WriteTextHeader(ITextBuilder builder)
+    private void WriteTextHeader(ITextBuilder builder, int leftPosition)
     {
-        var left = _documentState.Configuration.ColumnsVisible is VisibleColumns.DataText &&
-                   _calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow
-            ? (_calculator.GetVisibleColumnWidth(EditorColumn.Left) + SPACING_BETWEEN_COLUMNS) * _control.CharacterWidth
-            : 0;
-        if (left > _owner.Width)
+        if (leftPosition > _owner.Width)
         {
             return;
         }
 
-        builder.Next(new SharedPoint(Math.Max(0, left), 0));
+        builder.Next(new SharedPoint(Math.Max(0, leftPosition), 0));
         builder.Add(_control.HeaderForeground, _control.TextHeader);
     }
 
@@ -620,29 +644,31 @@ internal readonly ref struct EditorRenderer
                 var characterSet = column is EditorColumn.Left
                     ? leftCharacterSet
                     : rightCharacterSet;
-                
-                var columnIndex = (byteColumn + horizontalColumnOffset) % bytesPerRow;
-                var byteIndex = row * bytesPerRow + columnIndex;
-                
-                if (characterSet is not null)
+
+                if (characterSet is null)
                 {
-                    visualCol += WriteSingleContentByte(
-                        builder,
-                        typeface,
-                        characterSet,
-                        characterBuffer,
-                        column,
-                        byteIndex,
-                        columnIndex,
-
-                        // Performance reasons
-                        groupSize,
-                        bytesPerRow);
-
-                    byteColumn += characterSet.ByteWidth;
+                    return;
                 }
 
-                if (columnIndex >= bytesPerRow - 1)
+                var columnIndex = (byteColumn + horizontalColumnOffset) % bytesPerRow;
+                var byteIndex = row * bytesPerRow + columnIndex;
+
+                visualCol += WriteSingleContentByte(
+                    builder,
+                    typeface,
+                    characterSet,
+                    characterBuffer,
+                    column,
+                    byteIndex,
+                    columnIndex,
+
+                    // Performance reasons
+                    groupSize,
+                    bytesPerRow);
+
+                byteColumn += characterSet.ByteWidth;
+
+                if (columnIndex >= bytesPerRow - characterSet.ByteWidth)
                 {
                     if (column is EditorColumn.Right)
                     {
@@ -673,7 +699,7 @@ internal readonly ref struct EditorRenderer
         int writtenCharacters;
         if (byteIndex > _bytesLength - 1) // Pad excess bytes with whitespaces
         {
-            writtenCharacters = characterSet.Width;
+            writtenCharacters = characterSet.VisualWidth;
             builder.Whitespace(writtenCharacters);
         }
         else
@@ -734,7 +760,7 @@ internal readonly ref struct EditorRenderer
             builder.Add(brush, @char);
         }
 
-        return characterSet.Width;
+        return characterSet.VisualWidth;
     }
     #endregion
 
@@ -763,6 +789,20 @@ internal readonly ref struct EditorRenderer
         _renderState.PreviousCaretOffset = _documentState.Caret.Offset;
     }
 
+    private (long Offset, int Nibble) GetCaretOffset(CharacterSet characterSet, Caret caret, bool isActive)
+    {
+        if (!isActive)
+        {
+            return (EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Floor), 0);
+        }
+        else if (_documentState.Selection?.End == caret.Offset)
+        {
+            return (EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Ceil), 0);
+        }
+
+        return (caret.Offset, caret.Nibble);
+    }
+
     private void DrawCaret(EditorColumn column)
     {
         var caret = _documentState.Caret;
@@ -778,7 +818,7 @@ internal readonly ref struct EditorRenderer
             if (previousPosition.X >= 0 && previousPosition.Y <= _owner.Height)
             {
                 _owner.AddDirtyRect(new SharedRectangle(previousPosition.X, previousPosition.Y,
-                    characterSet.Width * _control.CharacterWidth, _control.RowHeight), _control.CharacterWidth);
+                    characterSet.VisualWidth * _control.CharacterWidth, _control.RowHeight), _control.CharacterWidth);
             }
         }
 
@@ -787,10 +827,11 @@ internal readonly ref struct EditorRenderer
                         (caretColumn != column || _renderState.CaretTick) &&
                         (caretColumn == column || !_documentState.Selection.HasValue);
 
-        var offset = _documentState.Selection?.End == caret.Offset 
-            ? EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Ceil) 
-            : caret.Offset;
-        var position = CalculateCaretPosition(offset, caret.Nibble, characterSet, column);
+        //var offset = _documentState.Selection?.End == caret.Offset || caretColumn != column
+        //    ? EditorCalculator.RoundTo(caret.Offset, characterSet.ByteWidth, EditorCalculator.RoundType.Ceil) 
+        //    : caret.Offset;
+        var (offset, nibble) = GetCaretOffset(characterSet, caret, caretColumn == column);
+        var position = CalculateCaretPosition(offset, nibble, characterSet, column);
         if (position.X < 0 || position.Y > _owner.Height)
         {
             return;
@@ -829,7 +870,7 @@ internal readonly ref struct EditorRenderer
             var pen = new SharedPen(_control.CaretBackground, 1, PenStyle.Dashed);
             var aliasOffset = GetLineAntiAliasOffset(pen);
             var rect = new SharedRectangle(position.X + aliasOffset, position.Y + aliasOffset,
-                _control.CharacterWidth * characterSet.Width,
+                _control.CharacterWidth * characterSet.VisualWidth,
                 _control.RowHeight - aliasOffset * 2);
 
             if (drawCaret)
@@ -842,7 +883,7 @@ internal readonly ref struct EditorRenderer
     private void AddCaretDirtyRect(Caret caret)
     {
         var position = CalculateCaretPosition(caret.Offset, 0, _calculator.LeftCharacterSet, EditorColumn.Left);
-        _control.AddDirtyRect(new SharedRectangle(position.X, position.Y, _calculator.LeftCharacterSet.Width * _control.CharacterWidth, _control.RowHeight),
+        _control.AddDirtyRect(new SharedRectangle(position.X, position.Y, _calculator.LeftCharacterSet.VisualWidth * _control.CharacterWidth, _control.RowHeight),
             _control.CharacterWidth);
 
         if (_calculator.RightCharacterSet is not null)
@@ -851,7 +892,7 @@ internal readonly ref struct EditorRenderer
 
             position = CalculateCaretPosition(caret.Offset, 0, _calculator.LeftCharacterSet, EditorColumn.Right);
             _control.AddDirtyRect(
-                new SharedRectangle(leftWidth + position.X, position.Y, _calculator.LeftCharacterSet.Width * _control.CharacterWidth, _control.RowHeight * 2),
+                new SharedRectangle(leftWidth + position.X, position.Y, _calculator.LeftCharacterSet.VisualWidth * _control.CharacterWidth, _control.RowHeight * 2),
                 _control.CharacterWidth);
         }
     }
@@ -863,7 +904,7 @@ internal readonly ref struct EditorRenderer
         var columIndex = (int)(offset % _documentState.Configuration.BytesPerRow);
 
         var x = (_calculator.GetLeftRelativeToColumn(columIndex, column) +
-                Math.Min(characterSet.Width - 1, nibble)) * _control.CharacterWidth;
+                Math.Min(characterSet.VisualWidth - 1, nibble)) * _control.CharacterWidth;
         var y = row * _control.RowHeight + _control.HeaderHeight;
         if (column is EditorColumn.Right && _calculator.HorizontalColumnoffset < _documentState.Configuration.BytesPerRow)
         {

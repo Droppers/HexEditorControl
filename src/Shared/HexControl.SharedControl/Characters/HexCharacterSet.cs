@@ -42,8 +42,9 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
 
     public HexCharacterSet()
     {
+        Type = CharacterSetType.Data;
         Groupable = true;
-        Width = 2;
+        VisualWidth = 2;
     }
 
     public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
@@ -51,7 +52,7 @@ public sealed class HexCharacterSet : CharacterSet, IStringParsable, IStringConv
         var @byte = bytes[0];
         destBuffer[0] = Characters[@byte * 2];
         destBuffer[1] = Characters[@byte * 2 + 1];
-        return Width;
+        return VisualWidth;
     }
 
     public override bool TryWrite(byte input, char @char, int nibble, out byte output)

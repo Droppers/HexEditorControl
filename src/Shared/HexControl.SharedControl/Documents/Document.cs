@@ -463,7 +463,7 @@ public class Document
             throw new ArgumentException("Caret offset must be between zero and Length of the document.");
         }
 
-        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSet(caret.Column).Width)
+        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSet(caret.Column).VisualWidth)
         {
             throw new ArgumentException("Caret nibble must be between zero and Width of the column's character set.");
         }
@@ -549,7 +549,7 @@ public class Document
             await Buffer.WriteAsync(Caret.Offset, newByte);
         }
 
-        var advanceOffset = oldCaret.Nibble >= characterSet.Width - 1;
+        var advanceOffset = oldCaret.Nibble >= characterSet.VisualWidth - 1;
         var redoCaret = Caret = oldCaret with
         {
             Offset = advanceOffset ? redoOffset + 1 : redoOffset,

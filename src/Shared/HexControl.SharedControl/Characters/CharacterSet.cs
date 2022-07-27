@@ -5,9 +5,11 @@ namespace HexControl.SharedControl.Characters;
 [PublicAPI]
 public abstract class CharacterSet
 {
+    public CharacterSetType Type { get; protected init; }
+
     public bool Groupable { get; protected init; }
 
-    public int Width { get; protected init; } = 1;
+    public int VisualWidth { get; protected init; } = 1;
 
     public int ByteWidth { get; protected init; } = 1;
     

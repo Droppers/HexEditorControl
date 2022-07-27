@@ -229,16 +229,16 @@ internal class EditorElement : VisualElement
         var leftInCharacters = (int)(relativePoint.X / CharacterWidth);
 
         var groupCount = characterSet.Groupable
-            ? leftInCharacters / (Configuration.GroupSize * characterSet.Width + 1)
+            ? leftInCharacters / (Configuration.GroupSize * characterSet.VisualWidth + 1)
             : 0;
 
-        var byteColumn = (int)(((leftInCharacters - groupCount) / (double)characterSet.Width) * characterSet.ByteWidth);
+        var byteColumn = (int)(((leftInCharacters - groupCount) / (double)characterSet.VisualWidth) * characterSet.ByteWidth);
         var nibble = Math.Max(0, ((int)relativePoint.X - (_calculator.GetLeft(byteColumn, column) * CharacterWidth)) / (double)_control.CharacterWidth);
 
         var byteRow = (int)(relativePoint.Y / RowHeight);
         var offset = Offset + (byteRow * Configuration.BytesPerRow + byteColumn);
 
-        if (characterSet.Width is 1 && nibble >= 0.5 || Math.Round(nibble) >= characterSet.Width)
+        if (characterSet.VisualWidth is 1 && nibble >= 0.5 || Math.Round(nibble) >= characterSet.VisualWidth)
         {
             offset++;
             nibble = 0;
@@ -368,7 +368,7 @@ internal class EditorElement : VisualElement
 
         // Allow selecting from middle of character rather than entire character
         var characterSet = _calculator.GetCharacterSetForColumn(column);
-        if (nibble >= 1 && nibble >= characterSet.Width / 2)
+        if (nibble >= 1 && nibble >= characterSet.VisualWidth / 2)
         {
             offset += 1;
         }
@@ -571,7 +571,7 @@ internal class EditorElement : VisualElement
             // Allow for nibble level control when not selecting and byte level when selecting.
             switch (key)
             {
-                case HostKey.Right when nibble == characterSet.Width - 1 || _keyboardSelectMode || jumpByte:
+                case HostKey.Right when nibble == characterSet.VisualWidth - 1 || _keyboardSelectMode || jumpByte:
                     offset += offsetIncrement;
                     nibble = 0;
                     break;
@@ -584,8 +584,8 @@ internal class EditorElement : VisualElement
                     nibble = 0;
                     break;
                 case HostKey.Left when nibble == 0:
-                    offset--;
-                    nibble = characterSet.Width - 1;
+                    offset -= offsetIncrement;
+                    nibble = characterSet.VisualWidth - 1;
                     break;
                 case HostKey.Left or HostKey.Right:
                     nibble += key is HostKey.Left ? -1 : 1;

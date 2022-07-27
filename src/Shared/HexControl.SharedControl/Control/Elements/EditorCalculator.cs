@@ -83,10 +83,10 @@ internal class EditorCalculator
         var bytesPerRow = _configuration.BytesPerRow / characterSet.ByteWidth;
         if (!characterSet.Groupable)
         {
-            return bytesPerRow * characterSet.Width;
+            return bytesPerRow * characterSet.VisualWidth;
         }
 
-        return bytesPerRow * characterSet.Width + bytesPerRow / _configuration.GroupSize - 1;
+        return bytesPerRow * characterSet.VisualWidth + bytesPerRow / _configuration.GroupSize - 1;
     }
 
     public int GetLeft(int offsetFromLeft, EditorColumn column, bool isEndOffset = false)
@@ -98,7 +98,7 @@ internal class EditorCalculator
             : offsetFromLeft / characterSet.ByteWidth;
         var groups = Math.Max(0, (characterSet.Groupable ? offsetFromLeft / _configuration.GroupSize : 0) -
                                  (isEndOffset && characterSet.Groupable && isLastOfGroup ? 1 : 0));
-        return (offsetFromLeft * characterSet.Width + groups);
+        return (offsetFromLeft * characterSet.VisualWidth + groups);
     }
 
     public int GetLeftRelativeToColumn(int offsetFromLeft, EditorColumn column, bool isEndOffset = false)
@@ -139,9 +139,9 @@ internal class EditorCalculator
         static int GetVisibleColumnCount(DocumentConfiguration configuration, int horizontalCharacterOffset, CharacterSet characterSet)
         {
             var groups = characterSet.Groupable
-                ? horizontalCharacterOffset / (configuration.GroupSize * characterSet.Width + 1)
+                ? horizontalCharacterOffset / (configuration.GroupSize * characterSet.VisualWidth + 1)
                 : 0;
-            return Math.Min((horizontalCharacterOffset - groups) / characterSet.Width, configuration.BytesPerRow / characterSet.ByteWidth);
+            return Math.Min((horizontalCharacterOffset - groups) / characterSet.VisualWidth, configuration.BytesPerRow / characterSet.ByteWidth);
         }
 
         var leftColumnWidth = GetColumnWidth(EditorColumn.Left);

@@ -21,7 +21,7 @@ public record DocumentConfiguration
 
     public CharacterSet DataCharacterSet { get; init; } = new HexCharacterSet();
 
-    public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(CharacterEncoding.Windows);
+    public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(TextEncoding.Windows);
 
     public WriteMode WriteMode { get; init; } = WriteMode.Overwrite;
 

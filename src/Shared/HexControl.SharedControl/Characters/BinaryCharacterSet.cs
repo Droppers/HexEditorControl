@@ -12,8 +12,9 @@ public sealed class BinaryCharacterSet : CharacterSet, IStringParsable, IStringC
 
     public BinaryCharacterSet()
     {
+        Type = CharacterSetType.Data;
         Groupable = true;
-        Width = 8;
+        VisualWidth = 8;
     }
 
     public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
@@ -27,7 +28,7 @@ public sealed class BinaryCharacterSet : CharacterSet, IStringParsable, IStringC
         destBuffer[5] = GetBit(@byte, 5);
         destBuffer[6] = GetBit(@byte, 6);
         destBuffer[7] = GetBit(@byte, 7);
-        return Width;
+        return VisualWidth;
     }
 
     public override bool TryWrite(byte input, char @char, int nibble, out byte output)

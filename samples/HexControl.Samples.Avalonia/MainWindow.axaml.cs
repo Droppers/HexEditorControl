@@ -31,7 +31,8 @@ public class MainWindow : Window
             OffsetBase = NumberBase.Decimal,
             ColumnsVisible = VisibleColumns.DataText,
             WriteMode = WriteMode.Insert,
-            DataCharacterSet = new NumberCharacterSet(NumberType.Int32),
+            DataCharacterSet = new TextCharacterSet(TextEncoding.Windows),
+            TextCharacterSet = new NumberCharacterSet(NumberType.Int16),
             GroupSize = 1
         };
         var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");

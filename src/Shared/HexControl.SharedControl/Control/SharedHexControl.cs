@@ -351,7 +351,7 @@ internal class SharedHexControl : VisualElement
             Document.CaretChanged -= DocumentOnCaretChanged;
             Document.ConfigurationChanged -= DocumentOnConfigurationChanged;
             
-            Document.Modified -= BufferOnModified;
+            Document.Modified -= DocumentOnModified;
             Document.Saved += DocumentOnSaved;
             Document.LengthChanged -= DocumentOnLengthChanged;
         }
@@ -363,7 +363,7 @@ internal class SharedHexControl : VisualElement
             newDocument.CaretChanged += DocumentOnCaretChanged;
             newDocument.ConfigurationChanged += DocumentOnConfigurationChanged;
 
-            newDocument.Modified += BufferOnModified;
+            newDocument.Modified += DocumentOnModified;
             newDocument.Saved += DocumentOnSaved;
             newDocument.LengthChanged += DocumentOnLengthChanged;
 
@@ -420,19 +420,21 @@ internal class SharedHexControl : VisualElement
         }
 
         _scrollToCaret = false;
-        
+
         if (Document.Caret.Offset <= Document.Offset)
         {
             Document.Offset = Document.Caret.Offset;
         }
-        else if (Document.Caret.Offset > _editorElement.MaxVisibleOffset && (_bytesLength / Configuration.BytesPerRow) >= _editorElement.VisibleRows)
+        else if (Document.Caret.Offset > _editorElement.MaxVisibleOffset
+            && (_bytesLength / Configuration.BytesPerRow) >= _editorElement.VisibleRows
+                || (Document.Caret.Offset - Document.Offset) / Configuration.BytesPerRow >= _editorElement.VisibleRows)
         {
             Document.Offset = Document.Caret.Offset - (_editorElement.MaxVisibleOffset - Document.Offset) +
                               Configuration.BytesPerRow;
         }
     }
 
-    private async void BufferOnModified(object? sender, ModifiedEventArgs e)
+    private async void DocumentOnModified(object? sender, ModifiedEventArgs e)
     {
         if (Document is null)
         {

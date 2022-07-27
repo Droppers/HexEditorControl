@@ -6,7 +6,6 @@ using Avalonia.Media;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Host;
 using HexControl.Framework.Host.Controls;
-using System.Diagnostics;
 
 namespace HexControl.Avalonia.Host.Controls;
 

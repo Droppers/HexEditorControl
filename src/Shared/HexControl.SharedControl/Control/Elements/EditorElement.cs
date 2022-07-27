@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using HexControl.Framework.Drawing;
 using HexControl.Framework.Drawing.Text;
 using HexControl.Framework.Host;

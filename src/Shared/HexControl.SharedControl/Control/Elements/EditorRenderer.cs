@@ -581,8 +581,6 @@ internal readonly ref struct EditorRenderer
 
     private void WriteContentBytes(ITextBuilder builder)
     {
-        var state = _documentState;
-
         Span<char> characterBuffer = stackalloc char[20];
 
         var leftCharacterSet = _calculator.LeftCharacterSet;

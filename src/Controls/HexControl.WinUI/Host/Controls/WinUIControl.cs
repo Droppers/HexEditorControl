@@ -97,7 +97,11 @@ internal class WinUIControl : HostControl
     private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(_element);
-        RaiseMouseWheel(MapPoint(point), point.Properties.MouseWheelDelta);
+
+        // TODO: implement shift modifier check when implemented
+        var (deltaX, deltaY) = false ? (point.Properties.MouseWheelDelta, 0) : (0, point.Properties.MouseWheelDelta);
+
+        RaiseMouseWheel(MapPoint(point), new SharedPoint(deltaX, deltaY));
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)

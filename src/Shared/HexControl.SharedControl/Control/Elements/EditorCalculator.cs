@@ -1,6 +1,5 @@
 ﻿using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents;
-using System.Data.Common;
 
 namespace HexControl.SharedControl.Control.Elements;
 
@@ -137,22 +136,22 @@ internal class EditorCalculator
 
     private int GetColumnInvisibleWidth()
     {
-        int GetVisibleColumnCount(int HorizontalCharacterOffset, CharacterSet characterSet)
+        static int GetVisibleColumnCount(DocumentConfiguration configuration, int horizontalCharacterOffset, CharacterSet characterSet)
         {
             var groups = characterSet.Groupable
-                ? HorizontalCharacterOffset / (_configuration.GroupSize * characterSet.Width + 1)
+                ? horizontalCharacterOffset / (configuration.GroupSize * characterSet.Width + 1)
                 : 0;
-            return Math.Min((HorizontalCharacterOffset - groups) / characterSet.Width, _configuration.BytesPerRow / characterSet.ByteWidth);
+            return Math.Min((horizontalCharacterOffset - groups) / characterSet.Width, configuration.BytesPerRow / characterSet.ByteWidth);
         }
 
         var leftColumnWidth = GetColumnWidth(EditorColumn.Left);
         if (_rightCharacterSet is null)
         {
-            return GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth;
+            return GetVisibleColumnCount(_configuration, HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth;
         }
 
-        return (GetVisibleColumnCount(HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth) + Math.Max(0,
-            GetVisibleColumnCount(HorizontalCharacterOffset - leftColumnWidth, _rightCharacterSet) * _rightCharacterSet.ByteWidth);
+        return (GetVisibleColumnCount(_configuration, HorizontalCharacterOffset, _leftCharacterSet) * _leftCharacterSet.ByteWidth) + Math.Max(0,
+            GetVisibleColumnCount(_configuration, HorizontalCharacterOffset - leftColumnWidth, _rightCharacterSet) * _rightCharacterSet.ByteWidth);
     }
 
     public static long RoundTo(long offset, long target, RoundType type)

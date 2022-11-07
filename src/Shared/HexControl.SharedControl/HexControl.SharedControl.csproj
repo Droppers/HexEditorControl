@@ -8,6 +8,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\HexControl.Buffers\HexControl.Buffers.csproj" />
-		<ProjectReference Include="..\HexControl.Framework.\HexControl.Framework.csproj" />
+		<ProjectReference Include="..\HexControl.Framework\HexControl.Framework.csproj" />
 	</ItemGroup>
 </Project>

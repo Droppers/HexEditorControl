@@ -1,6 +1,6 @@
 ﻿namespace HexControl.SharedControl.Characters;
 
-public enum CharacterEncoding
+public enum TextEncoding
 {
     Windows,
     Macintosh,

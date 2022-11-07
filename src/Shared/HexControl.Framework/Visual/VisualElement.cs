@@ -405,10 +405,10 @@ internal abstract class VisualElement : ObservableObject
     {
         if (Parent is null)
         {
+            context.Begin();
+
             _sw ??= new Stopwatch();
             _sw.Restart();
-
-            context.Begin();
         }
 
         Render(context);
@@ -440,10 +440,10 @@ internal abstract class VisualElement : ObservableObject
 
         if (_tree?.Root == this && _sw is not null)
         {
+            Debug.WriteLine($"Render: {_sw.ElapsedMilliseconds}");
+
             context.End(_tree.DirtyRect);
             _tree?.ClearDirtyRect();
-
-            Debug.WriteLine($"Render: {_sw.ElapsedMilliseconds}");
         }
     }
 

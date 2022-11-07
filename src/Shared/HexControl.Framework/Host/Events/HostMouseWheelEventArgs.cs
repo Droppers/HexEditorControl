@@ -4,10 +4,10 @@ namespace HexControl.Framework.Host.Events;
 
 internal class HostMouseWheelEventArgs : PointerEventArgs
 {
-    public HostMouseWheelEventArgs(SharedPoint point, int delta) : base(point)
+    public HostMouseWheelEventArgs(SharedPoint point, SharedPoint delta) : base(point)
     {
         Delta = delta;
     }
 
-    public int Delta { get; }
+    public SharedPoint Delta { get; }
 }

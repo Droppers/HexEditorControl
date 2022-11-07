@@ -466,13 +466,22 @@ public abstract class ByteBuffer
         return actualRead;
     }
 
-    public long Find(long startOffset, bool backward, byte[] pattern,
-        CancellationToken cancellationToken = default)
+    public long Find(byte[] pattern, long offset, CancellationToken cancellationToken = default)
     {
-        return Find(startOffset, null, backward, pattern, cancellationToken);
+        return Find(pattern, offset, null, default, cancellationToken);
+    }
+    
+    public long Find(byte[] pattern, long offset, FindOptions options, CancellationToken cancellationToken = default)
+    {
+        return Find(pattern, offset, null, options, cancellationToken);
     }
 
-    public long Find(long startOffset, long? maxLength, bool backward, byte[] pattern,
+    public long Find(byte[] pattern, long offset, long? length, CancellationToken cancellationToken = default)
+    {
+        return Find(pattern, offset, length, default, cancellationToken);
+    }
+
+    public long Find(byte[] pattern, long offset, long? length, FindOptions options,
         CancellationToken cancellationToken = default)
     {
         using var _ = _lock.AcquireReaderLock(cancellationToken);
@@ -481,27 +490,27 @@ public abstract class ByteBuffer
         try
         {
             var strategy = new KmpFindStrategy(pattern);
-            var currentStartOffset = startOffset;
+            var currentStartOffset = offset;
             var didWrap = false;
-            var remainingMaxLength = maxLength ?? long.MaxValue;
+            var remainingMaxLength = length ?? long.MaxValue;
             while (true)
             {
                 var findOffset = currentStartOffset;
                 long findLength;
-                if (backward)
+                if (options.Backward)
                 {
                     findLength = didWrap
-                        ? currentStartOffset - startOffset + (pattern.Length - 1)
-                        : startOffset - (startOffset - currentStartOffset) + 1;
+                        ? currentStartOffset - offset + (pattern.Length - 1)
+                        : offset - (offset - currentStartOffset) + 1;
                 }
                 else
                 {
                     findLength = didWrap
-                        ? startOffset - findOffset + pattern.Length
+                        ? offset - findOffset + pattern.Length
                         : Length - findOffset;
                 }
 
-                if (maxLength is not null)
+                if (length is not null)
                 {
                     findLength = Math.Min(findLength, remainingMaxLength);
                     remainingMaxLength -= findLength;
@@ -509,8 +518,8 @@ public abstract class ByteBuffer
 
                 // Find without overhead when the buffer is not modified.
                 var foundOffset = IsModified
-                    ? FindInMemory(strategy, findOffset, findLength, backward, cancellationToken)
-                    : FindInImmutable(strategy, findOffset, findLength, backward, cancellationToken);
+                    ? FindInMemory(strategy, findOffset, findLength, options, cancellationToken)
+                    : FindInImmutable(strategy, findOffset, findLength, options, cancellationToken);
                 if (foundOffset is not -1)
                 {
                     return foundOffset;
@@ -522,7 +531,7 @@ public abstract class ByteBuffer
                 }
 
                 didWrap = true;
-                currentStartOffset = backward ? Length : 0;
+                currentStartOffset = options.Backward ? Length : 0;
             }
         }
         finally
@@ -531,11 +540,11 @@ public abstract class ByteBuffer
         }
     }
 
-    private long FindInMemory(IFindStrategy strategy, long offset, long length, bool backward,
+    private long FindInMemory(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken) =>
-        strategy.FindInBuffer(this, offset, length, backward, cancellationToken);
+        strategy.FindInBuffer(this, offset, length, options, cancellationToken);
 
-    protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
+    protected abstract long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken);
 
     protected abstract IChunk CreateDefaultChunk();

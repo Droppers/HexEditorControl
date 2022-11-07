@@ -19,17 +19,20 @@ public sealed class TextCharacterSet : CharacterSet, IStringConvertible, IString
 
         _characters = characters;
 
+        Type = CharacterSetType.Text;
         Groupable = false;
-        Width = 1;
+        VisualWidth = 1;
     }
 
-    public TextCharacterSet(CharacterEncoding encoding) : this(CharacterTable.Table[encoding]) { }
-
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public TextCharacterSet(TextEncoding encoding) : this(CharacterTable.Table[encoding])
     {
-        var @char = _characters[@byte];
+    }
+
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
+    {
+        var @char = _characters[bytes[0]];
         destBuffer[0] = @char == '\0' ? '.' : @char;
-        return Width;
+        return VisualWidth;
     }
 
     public override bool TryWrite(byte input, char @char, int nibble, out byte output)

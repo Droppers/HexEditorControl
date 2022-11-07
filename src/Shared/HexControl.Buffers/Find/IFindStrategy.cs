@@ -8,9 +8,20 @@ public interface IFindStrategy
         MemoryMappedViewAccessor accessor,
         long startOffset,
         long maxSearchLength,
-        bool backward,
+        FindOptions findOptions,
         CancellationToken cancellationToken);
 
-    long FindInBuffer(byte[] buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken);
-    long FindInBuffer(ByteBuffer buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken);
+    long FindInBuffer(
+        byte[] buffer, 
+        long startOffset, 
+        long maxSearchLength, 
+        FindOptions findOptions, 
+        CancellationToken cancellationToken);
+    
+    long FindInBuffer(
+        ByteBuffer buffer, 
+        long startOffset, 
+        long maxSearchLength, 
+        FindOptions findOptions, 
+        CancellationToken cancellationToken);
 }

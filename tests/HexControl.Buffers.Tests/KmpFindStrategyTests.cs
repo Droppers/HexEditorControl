@@ -12,7 +12,10 @@ public class KmpFindStrategyTests
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
 
-        var result = kmp.FindInBuffer(_data, _data.Length - 1, 1000, true, default);
+        var result = kmp.FindInBuffer(_data, _data.Length - 1, 1000, new FindOptions
+        {
+            Backward = true
+        }, default);
         Assert.Equal(16, result);
     }
 
@@ -21,7 +24,10 @@ public class KmpFindStrategyTests
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
 
-        var result = kmp.FindInBuffer(_data, 16, 1000, true, default);
+        var result = kmp.FindInBuffer(_data, 16, 1000, new FindOptions
+        {
+            Backward = true
+        }, default);
         Assert.Equal(2, result);
     }
 
@@ -30,7 +36,10 @@ public class KmpFindStrategyTests
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
 
-        var result = kmp.FindInBuffer(_data, 13, 10, true, default);
+        var result = kmp.FindInBuffer(_data, 13, 10, new FindOptions
+        {
+            Backward = true
+        }, default);
         Assert.Equal(-1, result);
     }
 
@@ -39,7 +48,7 @@ public class KmpFindStrategyTests
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
 
-        var result = kmp.FindInBuffer(_data, 0, 1000, false, default);
+        var result = kmp.FindInBuffer(_data, 0, 1000, default, default);
         Assert.Equal(2, result);
     }
 
@@ -47,7 +56,7 @@ public class KmpFindStrategyTests
     public void FindInBuffer_Forward_FromStartIndex()
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
-        var result = kmp.FindInBuffer(_data, 3, 1000, false, default);
+        var result = kmp.FindInBuffer(_data, 3, 1000, default, default);
         Assert.Equal(16, result);
     }
 
@@ -56,7 +65,7 @@ public class KmpFindStrategyTests
     {
         var kmp = new KmpFindStrategy(new byte[] {3, 2, 1, 0});
 
-        var result = kmp.FindInBuffer(_data, 4, 10, false, default);
+        var result = kmp.FindInBuffer(_data, 4, 10, default, default);
         Assert.Equal(-1, result);
     }
 }

@@ -29,6 +29,7 @@ public class MemoryBuffer : ByteBuffer
         return true;
     }
 
-    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
-        CancellationToken cancellationToken) => strategy.FindInBuffer(Bytes, offset, length, backward, cancellationToken);
+    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
+        CancellationToken cancellationToken) =>
+        strategy.FindInBuffer(Bytes, offset, length, options, cancellationToken);
 }

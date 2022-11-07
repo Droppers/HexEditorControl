@@ -74,12 +74,12 @@ internal static class CharacterTable
         '1', '2', '3', '4', '5', '6', '7', '8', '9', '|', '.', '.', '.', '.', '.'
     };
 
-    public static readonly IReadOnlyDictionary<CharacterEncoding, char[]> Table =
-        new Dictionary<CharacterEncoding, char[]>
+    public static readonly IReadOnlyDictionary<TextEncoding, char[]> Table =
+        new Dictionary<TextEncoding, char[]>
         {
-            {CharacterEncoding.Windows, Windows},
-            {CharacterEncoding.Macintosh, Macintosh},
-            {CharacterEncoding.IBM, IBM},
-            {CharacterEncoding.EBCDIC, EBCDIC}
+            {TextEncoding.Windows, Windows},
+            {TextEncoding.Macintosh, Macintosh},
+            {TextEncoding.IBM, IBM},
+            {TextEncoding.EBCDIC, EBCDIC}
         };
 }

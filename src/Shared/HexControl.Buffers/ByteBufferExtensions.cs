@@ -1,5 +1,4 @@
-﻿using HexControl.Buffers.Helpers;
-using HexControl.Buffers.Numerics;
+﻿using HexControl.Buffers.Numerics;
 using JetBrains.Annotations;
 
 namespace HexControl.Buffers;
@@ -19,249 +18,188 @@ public static class ByteBufferExtensions
     {
         if (offset + Int128.Size > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(Int128.Size);
-        try
-        {
-            buffer.Read(bytes, offset);
-            bytes = SwapEndianess(bytes, endianess);
-
-            var span = bytes.AsSpan();
-            var a = BitConverter.ToInt64(span.Slice(0, Int128.Size / 2));
-            var b = BitConverter.ToInt64(span.Slice(Int128.Size / 2, Int128.Size / 2));
-            return new Int128(a, b);
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[Int128.Size];
+        buffer.Read(bytes, offset);
+        SwapEndianess(bytes, endianess);
+        var a = BitConverter.ToInt64(bytes.Slice(0, Int128.Size / 2));
+        var b = BitConverter.ToInt64(bytes.Slice(Int128.Size / 2, Int128.Size / 2));
+        return new Int128(a, b);
     }
 
     public static UInt128 ReadUInt128(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + UInt128.Size > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
-
-        var bytes = ExactArrayPool<byte>.Shared.Rent(UInt128.Size);
-        try
-        {
-            buffer.Read(bytes, offset);
-            bytes = SwapEndianess(bytes, endianess);
-
-            var span = bytes.AsSpan();
-            var a = BitConverter.ToUInt64(span.Slice(0, UInt128.Size / 2));
-            var b = BitConverter.ToUInt64(span.Slice(UInt128.Size / 2, UInt128.Size / 2));
-            return new UInt128(a, b);
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        
+        Span<byte> bytes = stackalloc byte[UInt128.Size];
+        buffer.Read(bytes, offset);
+        SwapEndianess(bytes, endianess);
+        var a = BitConverter.ToUInt64(bytes.Slice(0, UInt128.Size / 2));
+        var b = BitConverter.ToUInt64(bytes.Slice(UInt128.Size / 2, UInt128.Size / 2));
+        return new UInt128(a, b);
     }
 
     public static long ReadInt64(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(long) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(long));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToInt64(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(long)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToInt64(SwapEndianess(bytes, endianess));
     }
 
     public static ulong ReadUInt64(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(ulong) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(ulong));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(ulong)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToUInt64(SwapEndianess(bytes, endianess));
     }
 
     public static int ReadInt32(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(int) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(int));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToInt32(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(int)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToInt32(SwapEndianess(bytes, endianess));
     }
 
     public static uint ReadUInt32(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(uint) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(uint));
-
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToUInt32(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(uint)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToUInt32(SwapEndianess(bytes, endianess));
     }
 
     public static short ReadInt16(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(short) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(short));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToInt16(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(short)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToInt16(SwapEndianess(bytes, endianess));
     }
 
     public static ushort ReadUInt16(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(ushort) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(ushort));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return BitConverter.ToUInt16(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(ushort)];
+        buffer.Read(bytes, offset);
+        return BitConverter.ToUInt16(SwapEndianess(bytes, endianess));
     }
 
     public static char ReadChar(this ByteBuffer buffer, long offset, Endianess endianess = Endianess.Native)
     {
         if (offset + sizeof(short) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(char));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return (char)BitConverter.ToInt16(SwapEndianess(bytes, endianess));
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(char)];
+        buffer.Read(bytes, offset);
+        return (char)BitConverter.ToInt16(SwapEndianess(bytes, endianess)); 
     }
 
-    public static sbyte ReadUInt8(this ByteBuffer buffer, long offset)
+    public static byte ReadUInt8(this ByteBuffer buffer, long offset)
     {
         if (offset + sizeof(byte) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(sbyte));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return (sbyte)bytes[0];
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(byte)];
+        buffer.Read(bytes, offset);
+        return bytes[0];
     }
 
-    public static byte ReadInt8(this ByteBuffer buffer, long offset)
+    public static sbyte ReadInt8(this ByteBuffer buffer, long offset)
     {
-        if (offset + sizeof(byte) > buffer.Length)
+        if (offset + sizeof(sbyte) > buffer.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read longer than buffer length.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read outside the buffer.");
         }
 
-        var bytes = ExactArrayPool<byte>.Shared.Rent(sizeof(byte));
-        try
-        {
-            buffer.Read(bytes, offset);
-            return bytes[0];
-        }
-        finally
-        {
-            ExactArrayPool<byte>.Shared.Return(bytes);
-        }
+        Span<byte> bytes = stackalloc byte[sizeof(sbyte)];
+        buffer.Read(bytes, offset);
+        return (sbyte)bytes[0];
     }
 
-    public static IEnumerable<long> FindAll(this ByteBuffer buffer, long startOffset, long maxLength,
-        bool backward, byte[] pattern, CancellationToken cancellationToken = default)
+    public static IEnumerable<long> FindAll(this ByteBuffer buffer, byte[] pattern, long offset,
+        CancellationToken cancellationToken = default)
     {
-        var lastOffset = startOffset;
+        return FindAll(buffer, pattern, offset, null, default, cancellationToken);
+    }
+
+    public static IEnumerable<long> FindAll(this ByteBuffer buffer, byte[] pattern, long offset, FindOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        return FindAll(buffer, pattern, offset, null, options, cancellationToken);
+    }
+
+    public static IEnumerable<long> FindAll(this ByteBuffer buffer, byte[] pattern, long offset, long length,
+        CancellationToken cancellationToken = default)
+    {
+        return FindAll(buffer, pattern, offset, length, default, cancellationToken);
+    }
+
+    public static IEnumerable<long> FindAll(this ByteBuffer buffer, byte[] pattern, long offset, long? length,
+        FindOptions options, CancellationToken cancellationToken = default)
+    {
+        length ??= buffer.Length;
+        var lastOffset = offset;
         var searchedLength = 0L;
 
-        while (maxLength - searchedLength > 0)
+        while (length - searchedLength > 0)
         {
-            var offset = buffer.Find(lastOffset, maxLength - searchedLength, backward, pattern, cancellationToken);
-            if (offset is -1)
+            var currentOffset = buffer.Find(pattern, lastOffset, length - searchedLength, options, cancellationToken);
+            if (currentOffset is -1)
             {
                 yield break;
             }
 
-            yield return offset;
+            yield return currentOffset;
 
             long newLastOffset;
-            if (backward)
+            if (options.Backward)
             {
-                newLastOffset = offset - pattern.Length <= 0 ? buffer.Length - 1 : offset - pattern.Length;
+                newLastOffset = currentOffset - pattern.Length <= 0
+                    ? buffer.Length - 1
+                    : currentOffset - pattern.Length;
                 searchedLength += newLastOffset > lastOffset
                     ? lastOffset + 1
                     : lastOffset - newLastOffset;
             }
             else
             {
-                newLastOffset = offset + pattern.Length;
+                newLastOffset = currentOffset + pattern.Length;
                 searchedLength += newLastOffset < lastOffset
                     ? newLastOffset + ((buffer.Length) - lastOffset)
                     : newLastOffset - lastOffset;
@@ -271,13 +209,13 @@ public static class ByteBufferExtensions
         }
     }
 
-    private static byte[] SwapEndianess(byte[] buffer, Endianess endianess)
+    private static Span<byte> SwapEndianess(Span<byte> buffer, Endianess endianess)
     {
         var shouldSwap = BitConverter.IsLittleEndian && endianess is Endianess.Big ||
                          !BitConverter.IsLittleEndian && endianess is Endianess.Little;
         if (shouldSwap)
         {
-            Array.Reverse(buffer);
+            buffer.Reverse();
         }
 
         return buffer;

@@ -5,6 +5,6 @@ namespace HexControl.SharedControl.Documents;
 [PublicAPI]
 public enum ActiveColumn
 {
-    Hex,
+    Data,
     Text
 }

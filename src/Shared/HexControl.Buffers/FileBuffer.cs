@@ -133,7 +133,7 @@ public class FileBuffer : ByteBuffer, IDisposable, IAsyncDisposable
         MemoryMappedFile.CreateFromFile(fileStream, null, 0, MemoryMappedFileAccess.Read,
             HandleInheritability.Inheritable, true);
 
-    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, bool backward,
+    protected override long FindInImmutable(IFindStrategy strategy, long offset, long length, FindOptions options,
         CancellationToken cancellationToken) =>
-        strategy.FindInFile(_viewAccessor, offset, length, backward, cancellationToken);
+        strategy.FindInFile(_viewAccessor, offset, length, options, cancellationToken);
 }

@@ -19,31 +19,31 @@ internal class KmpFindStrategy : IFindStrategy
         MemoryMappedViewAccessor accessor,
         long startOffset,
         long maxSearchLength,
-        bool backward,
+        FindOptions options,
         CancellationToken cancellationToken)
     {
         var safeBuffer = accessor.SafeMemoryMappedViewHandle;
         var bytes = (byte*)safeBuffer.DangerousGetHandle();
-        return backward
+        return options.Backward
             ? LastIndexOf(bytes, startOffset, maxSearchLength, cancellationToken)
             : FirstIndexOf(bytes, (long)safeBuffer.ByteLength, startOffset, maxSearchLength, cancellationToken);
     }
 
-    public unsafe long FindInBuffer(byte[] buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken)
+    public unsafe long FindInBuffer(byte[] buffer, long startOffset, long maxSearchLength, FindOptions options, CancellationToken cancellationToken)
     {
         fixed (byte* bytes = buffer)
         {
-            return backward
+            return options.Backward
                 ? LastIndexOf(bytes, startOffset, maxSearchLength, cancellationToken)
                 : FirstIndexOf(bytes, buffer.LongLength, startOffset, maxSearchLength, cancellationToken);
         }
     }
 
-    public long FindInBuffer(ByteBuffer buffer, long startOffset, long maxSearchLength, bool backward, CancellationToken cancellationToken)
+    public long FindInBuffer(ByteBuffer buffer, long startOffset, long maxSearchLength, FindOptions options, CancellationToken cancellationToken)
     {
         var provider = new BufferByteProvider(buffer, _readBuffer);
 
-        return backward
+        return options.Backward
             ? LastIndexOfInProvider(provider, startOffset, maxSearchLength, cancellationToken)
             : FirstIndexOfInProvider(provider, startOffset, maxSearchLength, cancellationToken);
     }

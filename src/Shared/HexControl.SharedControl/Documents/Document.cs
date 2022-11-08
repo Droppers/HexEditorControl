@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using HexControl.Framework.Collections;
+using HexControl.Buffers.Helpers;
 
 namespace HexControl.SharedControl.Documents;
 
@@ -32,11 +33,14 @@ public class Document
     private Caret _caret;
     private Selection? _selection;
 
+    private readonly AsyncReaderWriterLock _lock;
+
     public Document(ByteBuffer buffer, DocumentConfiguration? configuration = null)
     {
         Buffer = ReplaceBuffer(buffer);
 
-        Configuration = _configuration = configuration ?? new DocumentConfiguration();
+        _configuration = DocumentConfiguration.Default;
+        Configuration = configuration ?? _configuration;
 
         _undoStates = new Stack<(DocumentState Undo, DocumentState? Redo)>();
         _redoStates = new Stack<(DocumentState Undo, DocumentState? Redo)>();
@@ -44,7 +48,9 @@ public class Document
         InternalMarkers = new List<Marker>();
         _capturedMarkers = new Marker[1000];
 
-        Caret = new Caret(0, 0, ActiveColumn.Hex);
+        Caret = new Caret(0, 0, ActiveColumn.Data);
+
+        _lock = new AsyncReaderWriterLock();
     }
 
     public DocumentConfiguration Configuration
@@ -56,6 +62,8 @@ public class Document
             {
                 return;
             }
+
+            value.Verify();
 
             var oldConfiguration = _configuration;
             _configuration = value;
@@ -74,7 +82,7 @@ public class Document
     public long Length => Buffer.Length;
     public long OriginalLength => Buffer.OriginalLength;
 
-    public int HorizontalOffset { get; internal set; }
+    public int HorizontalCharacterOffset { get; internal set; }
 
     public long Offset
     {
@@ -247,6 +255,8 @@ public class Document
             return;
         }
 
+        Selection = null;
+
         var oldCaret = Caret;
         Caret = newCaret;
 
@@ -256,11 +266,11 @@ public class Document
         }
     }
 
-    public void Select(long startOffset, long endOffset, ActiveColumn column,
+    public void Select(long offset, long length, ActiveColumn column,
         NewCaretLocation newCaretLocation = NewCaretLocation.Current,
         bool requestCenter = false)
     {
-        Select(new Selection(startOffset, endOffset, column), newCaretLocation, requestCenter);
+        Select(new Selection(offset, length, column), newCaretLocation, requestCenter);
     }
 
     // requestCenter = request the listener to center the hex viewer around the selection (e.g. useful when highlighting a find result).
@@ -415,11 +425,11 @@ public class Document
 
                     if (length.HasValue)
                     {
-                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer);
+                        await Buffer.ReplaceAsync(offset, length.Value, writeBuffer, cancellationToken);
                     }
                     else
                     {
-                        await Buffer.InsertAsync(offset, writeBuffer);
+                        await Buffer.InsertAsync(offset, writeBuffer, cancellationToken);
                     }
 
                     return true;
@@ -433,14 +443,14 @@ public class Document
 
         return false;
     }
-
+    
     #endregion
 
     private CharacterSet GetCharacterSet(ActiveColumn column)
     {
         return column switch
         {
-            ActiveColumn.Hex => Configuration.DataCharacterSet,
+            ActiveColumn.Data => Configuration.DataCharacterSet,
             ActiveColumn.Text => Configuration.TextCharacterSet,
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null)
         };
@@ -453,24 +463,14 @@ public class Document
             throw new ArgumentException("Caret offset must be between zero and Length of the document.");
         }
 
-        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSetForColumn(caret.Column).Width)
+        if (caret.Nibble < 0 || caret.Nibble >= GetCharacterSet(caret.Column).VisualWidth)
         {
             throw new ArgumentException("Caret nibble must be between zero and Width of the column's character set.");
         }
 
         return true;
     }
-
-    private CharacterSet GetCharacterSetForColumn(ActiveColumn column)
-    {
-        return column switch
-        {
-            ActiveColumn.Hex => Configuration.DataCharacterSet,
-            ActiveColumn.Text => Configuration.TextCharacterSet,
-            _ => throw new ArgumentOutOfRangeException(nameof(column))
-        };
-    }
-
+    
     internal ByteBuffer ReplaceBuffer(ByteBuffer newBuffer)
     {
         var oldBuffer = Buffer;
@@ -505,12 +505,14 @@ public class Document
 
     public bool CanModify => !Buffer.IsReadOnly && !Buffer.Locked;
 
-    public async Task<bool> TryTypeAtCaretAsync(char @char)
+    public async ValueTask<bool> TryTypeAtCaretAsync(char @char)
     {
+        using var _ = await _lock.AcquireWriterLockAsync();
+
         var endOfDocument = Caret.Offset >= Length;
         var isNewByte = Selection.HasValue || endOfDocument || Configuration.WriteMode is WriteMode.Insert && Caret.Nibble is 0;
 
-        var characterSet = GetCharacterSetForColumn(Caret.Column);
+        var characterSet = GetCharacterSet(Caret.Column);
         var oldByte = (byte)0;
 
         if (!isNewByte)
@@ -547,7 +549,7 @@ public class Document
             await Buffer.WriteAsync(Caret.Offset, newByte);
         }
 
-        var advanceOffset = oldCaret.Nibble >= characterSet.Width - 1;
+        var advanceOffset = oldCaret.Nibble >= characterSet.VisualWidth - 1;
         var redoCaret = Caret = oldCaret with
         {
             Offset = advanceOffset ? redoOffset + 1 : redoOffset,
@@ -632,7 +634,7 @@ public class Document
         if (changesArray.Any(p => p is nameof(Configuration.ColumnsVisible) or nameof(Configuration.DataCharacterSet)
                 or nameof(Configuration.TextCharacterSet)))
         {
-            HorizontalOffset = 0;
+            HorizontalCharacterOffset = 0;
         }
 
         // Ensure that invisible columns cannot be active
@@ -667,8 +669,8 @@ public class Document
 
         visibleColumn = column switch
         {
-            ActiveColumn.Hex when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
-            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Data => ActiveColumn.Hex,
+            ActiveColumn.Data when Configuration.ColumnsVisible is VisibleColumns.Text => ActiveColumn.Text,
+            ActiveColumn.Text when Configuration.ColumnsVisible is VisibleColumns.Data => ActiveColumn.Data,
             _ => column
         };
         return false;

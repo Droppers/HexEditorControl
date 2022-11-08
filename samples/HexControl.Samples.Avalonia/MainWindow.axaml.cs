@@ -1,6 +1,7 @@
 using System.Drawing;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using HexControl.SharedControl.Characters;
 using HexControl.SharedControl.Documents;
 #if DEBUG
 using Avalonia;
@@ -29,21 +30,34 @@ public class MainWindow : Window
         {
             OffsetBase = NumberBase.Decimal,
             ColumnsVisible = VisibleColumns.DataText,
-            WriteMode = WriteMode.Insert
+            WriteMode = WriteMode.Insert,
+            DataCharacterSet = new TextCharacterSet(TextEncoding.Windows),
+            TextCharacterSet = new NumberCharacterSet(NumberType.Int16),
+            GroupSize = 1
         };
-        var bytes = File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
+        var bytes = OperatingSystem.IsMacOS()
+            ? File.ReadAllBytes(@"/Users/joery.droppers/Downloads/test.dmg")
+            : File.ReadAllBytes(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe");
         Document = Document.FromBytes(bytes, configuration: config);
 
-        for (var i = 0; i < 10_000; i++)
+        Document.AddMarker(new Marker(2, 23)
         {
-            Document.AddMarker(new Marker(i * 200, 100)
-            {
-                Background = Color.FromArgb(255, 0, 0, 0),
-                Column = MarkerColumn.Text,
-                BehindText = true,
-                Foreground = Color.White
-            });
-        }
+            Background = Color.FromArgb(255, 0, 0, 0),
+            Column = MarkerColumn.DataText,
+            BehindText = true,
+            Foreground = Color.White
+        });
+
+        //for (var i = 0; i < 10_000; i++)
+        //{
+        //    Document.AddMarker(new Marker(i * 200, 100)
+        //    {
+        //        Background = Color.FromArgb(255, 0, 0, 0),
+        //        Column = MarkerColumn.Text,
+        //        BehindText = true,
+        //        Foreground = Color.White
+        //    });
+        //}
         //Document = Document.FromFile(@"C:\Users\joery\Downloads\MemProfilerInstaller5_7_26.exe", FileOpenMode.ReadWrite, ChangeTracking.None);
     }
 }

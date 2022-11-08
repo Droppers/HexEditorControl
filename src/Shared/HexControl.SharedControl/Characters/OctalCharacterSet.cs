@@ -11,19 +11,21 @@ public sealed class OctalCharacterSet : CharacterSet, IStringParsable, IStringCo
 
     public OctalCharacterSet()
     {
+        Type = CharacterSetType.Data;
         Groupable = true;
-        Width = 3;
+        VisualWidth = 3;
     }
 
-    public override int GetCharacters(byte @byte, Span<char> destBuffer)
+    public override int GetCharacters(ReadOnlySpan<byte> bytes, Span<char> destBuffer)
     {
+        var @byte = bytes[0];
         destBuffer[2] = (char)(@byte % BASE + NUMERIC_OFFSET);
         @byte /= BASE;
         destBuffer[1] = (char)(@byte % BASE + NUMERIC_OFFSET);
         @byte /= BASE;
         destBuffer[0] = (char)(@byte % BASE + NUMERIC_OFFSET);
 
-        return Width;
+        return VisualWidth;
     }
 
     public override bool TryWrite(byte input, char @char, int nibble, out byte output)

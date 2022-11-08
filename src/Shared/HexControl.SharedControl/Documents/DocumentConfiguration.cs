@@ -1,5 +1,6 @@
 ﻿using HexControl.SharedControl.Characters;
 using JetBrains.Annotations;
+using System.Diagnostics;
 
 namespace HexControl.SharedControl.Documents;
 
@@ -20,10 +21,29 @@ public record DocumentConfiguration
 
     public CharacterSet DataCharacterSet { get; init; } = new HexCharacterSet();
 
-    public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(CharacterEncoding.Windows);
+    public CharacterSet TextCharacterSet { get; init; } = new TextCharacterSet(TextEncoding.Windows);
 
     public WriteMode WriteMode { get; init; } = WriteMode.Overwrite;
 
+    [StackTraceHidden]
+    public void Verify()
+    {
+        if ((DataCharacterSet.ByteWidth > 1 || TextCharacterSet.ByteWidth > 1) && GroupSize is not 1)
+        {
+            throw new InvalidConfigurationException(nameof(GroupSize), "Group size cannot be greater than '1' when using a grouped (multiple byte width) character set.");
+        }
+
+        var maxByteWidth = Math.Max(DataCharacterSet.ByteWidth, TextCharacterSet.ByteWidth);
+        if(BytesPerRow % maxByteWidth is not 0)
+        {
+            throw new InvalidConfigurationException(nameof(BytesPerRow), $"Bytes per row ('{BytesPerRow}') cannot be divided by max byte width ('{maxByteWidth}').");
+        }
+
+        if(GroupSize > 1 && BytesPerRow % GroupSize is not 0)
+        {
+            throw new InvalidConfigurationException(nameof(BytesPerRow), $"Bytes per row ('{BytesPerRow}') cannot be divided by group size ('{GroupSize}').");
+        }
+    }
     public IEnumerable<string> DetectChanges(DocumentConfiguration other)
     {
         if (OffsetsVisible != other.OffsetsVisible)

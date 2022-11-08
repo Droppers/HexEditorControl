@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "HexControl.sln",
+    "projects": [
+      "src\\Shared\\HexControl.Buffers\\HexControl.Buffers.csproj",
+      "src\\Shared\\HexControl.Framework\\HexControl.Framework.csproj",
+      "src\\Shared\\HexControl.SharedControl\\HexControl.SharedControl.csproj",
+      "src\\Controls\\HexControl.Avalonia\\HexControl.Avalonia.csproj",
+      "tests\\HexControl.Buffers.Tests\\HexControl.Buffers.Tests.csproj",
+      "src\\Renderers\\HexControl.Renderer.Skia\\HexControl.Renderer.Skia.csproj",
+      "src\\Renderers\\HexControl.Renderer.Direct2D\\HexControl.Renderer.Direct2D.csproj",
+      "samples\\HexControl.Samples.Avalonia\\HexControl.Samples.Avalonia.csproj"
+    ]
+  }
+}

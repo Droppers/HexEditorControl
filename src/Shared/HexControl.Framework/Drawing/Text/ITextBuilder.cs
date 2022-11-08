@@ -11,11 +11,11 @@ internal interface ITextBuilder
 
     void Add(ISharedBrush brush, char @char);
 
-    void Add(ISharedBrush brush, ReadOnlySpan<char> @string)
+    void Add(ISharedBrush brush, ReadOnlySpan<char> @string, int start = 0)
     {
-        foreach (var @char in @string)
+        for (var i = start; i < @string.Length; i++)
         {
-            Add(brush, @char);
+            Add(brush, @string[i]);
         }
     }
 
